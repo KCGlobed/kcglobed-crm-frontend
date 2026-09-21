@@ -1,5 +1,9 @@
 import { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { useAppDispatch, useAppSelector } from '../../hooks/useRedux';
+import { loginUser } from '../../store/slices/authSlice';
 import kcglobedLogo from '../../assets/kcglobed-logo.svg';
 
 /**
@@ -12,6 +16,28 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { loading } = useAppSelector((state) => state.auth);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error('Please enter both email and password');
+      return;
+    }
+    try {
+      const actionResult = await dispatch(loginUser({ email, password }));
+      if (loginUser.fulfilled.match(actionResult)) {
+        toast.success('Login successful');
+        navigate('/dashboard');
+      } else {
+        toast.error((actionResult.payload as string) || 'Login failed');
+      }
+    } catch (err) {
+      toast.error('An unexpected error occurred');
+    }
+  };
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-major-tint px-4 py-8 sm:px-6 sm:py-10">
@@ -39,7 +65,7 @@ const LoginPage = () => {
           <p className="mt-2 text-[15px] text-crmText-secondary">Login to your CRM account</p>
 
           {/* Form */}
-          <form className="mt-8 space-y-5" onSubmit={(e) => e.preventDefault()}>
+          <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             {/* Email */}
             <div>
               <label
@@ -115,9 +141,10 @@ const LoginPage = () => {
             {/* Submit */}
             <button
               type="submit"
-              className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-minor text-[15px] font-semibold text-white shadow-[0_12px_26px_-10px_rgba(112,26,117,0.75)] transition hover:bg-minor-hover focus:outline-none focus-visible:ring-4 focus-visible:ring-minor-ring active:translate-y-[1px]"
+              disabled={loading}
+              className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-minor text-[15px] font-semibold text-white shadow-[0_12px_26px_-10px_rgba(112,26,117,0.75)] transition hover:bg-minor-hover focus:outline-none focus-visible:ring-4 focus-visible:ring-minor-ring active:translate-y-[1px] disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Login
+              {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
         </div>

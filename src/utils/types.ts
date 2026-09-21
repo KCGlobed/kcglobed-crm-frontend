@@ -22,13 +22,38 @@ export interface LoginCred {
 }
 
 export interface AuthUser {
-  id?: number;
-  full_name?: string;
-  name?: string;
-  email?: string;
-  role_name?: string;
-  is_superadmin?: boolean;
-  [key: string]: unknown;
+  uid: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: {
+    id: number;
+    name: string;
+    slug: string;
+  };
+  is_active: boolean;
+  is_admin: boolean;
+}
+
+export interface AuthAccess {
+  role: {
+    id: number;
+    name: string;
+    slug: string;
+  };
+  full_access: boolean;
+  permissions: Record<string, unknown>;
+}
+
+export interface LoginResponse {
+  status_code: number;
+  message: string;
+  data: {
+    access_token: string;
+    refresh_token: string;
+    user: AuthUser;
+    access: AuthAccess;
+  };
 }
 
 export interface AuthState {
@@ -38,6 +63,8 @@ export interface AuthState {
   error: string | null;
   /** Optional profile details, read defensively by the header/sidebar. */
   user?: AuthUser | null;
+  /** User access/permissions */
+  access?: AuthAccess | null;
   /** Optional API origin used by some legacy screens. */
   baseUrl?: string | null;
 }

@@ -1,12 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { Pagination, UserItem, CreateUserPayload } from "../../utils/types";
-import {
-  fetchUsersApi,
-  fetchUserByIdApi,
-  createUserApi,
-  activateUserApi,
-  deactivateUserApi,
-} from "../../services/apiServices";
+
 
 interface UserState extends Pagination<UserItem> {
   selectedUser: UserItem | null;
@@ -28,7 +22,7 @@ export const fetchUsers = createAsyncThunk(
   "users/fetchUsers",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetchUsersApi();
+      const response = "";
       return response;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to fetch users");
@@ -49,7 +43,7 @@ export const fetchUserById = createAsyncThunk(
   "users/fetchUserById",
   async (userId: number, { rejectWithValue }) => {
     try {
-      const response = await fetchUserByIdApi(userId);
+      const response = await "";
       return response;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to fetch user details");
@@ -61,7 +55,7 @@ export const createUser = createAsyncThunk(
   "users/createUser",
   async (payload: CreateUserPayload, { rejectWithValue }) => {
     try {
-      const response = await createUserApi(payload);
+      const response = await "";
       return response;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to create user");
@@ -73,7 +67,7 @@ export const activateUser = createAsyncThunk(
   "users/activateUser",
   async (userId: number, { rejectWithValue }) => {
     try {
-      const response = await activateUserApi(userId);
+      const response = await "";
       return { userId, response };
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to activate user");
@@ -85,7 +79,7 @@ export const deactivateUser = createAsyncThunk(
   "users/deactivateUser",
   async (userId: number, { rejectWithValue }) => {
     try {
-      const response = await deactivateUserApi(userId);
+      const response = await "";
       return { userId, response };
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to deactivate user");

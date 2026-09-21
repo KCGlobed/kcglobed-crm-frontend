@@ -1,15 +1,23 @@
+// src/utils/baseUrl.ts
+
 let BASE_URL: string;
 
-const savedBaseUrl = localStorage.getItem('crm_custom_base_url');
-if (savedBaseUrl) {
-  BASE_URL = savedBaseUrl;
+const DEV_URL = 'http://192.168.1.32:8000/api';
+// const PROD_URL = 'https://backend-prod-254015706580.asia-south2.run.app/api/';
+const PROD_URL = 'https://prodlmsbackend-254015706580.asia-south1.run.app/api/';
+
+const savedMode = localStorage.getItem('app_mode');
+if (savedMode === 'production') {
+  BASE_URL = PROD_URL;
 } else {
-  BASE_URL = 'https://crm-server.kcglobed.com/';
+  BASE_URL = DEV_URL;
 }
 
-export const changeBaseUrl = (url: string, reload: boolean = true): void => {
-  localStorage.setItem('crm_custom_base_url', url);
-  BASE_URL = url;
+
+
+export const changeMode = (isProd: boolean, reload: boolean = true): void => {
+  localStorage.setItem('app_mode', isProd ? 'production' : 'development');
+  BASE_URL = isProd ? PROD_URL : DEV_URL;
   if (reload) {
     window.location.reload();
   }

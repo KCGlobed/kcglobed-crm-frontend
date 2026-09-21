@@ -1,13 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { Pagination, RoleItem, ModulePermissionsGroup } from "../../utils/types";
-import {
-  fetchRolesApi,
-  createRoleApi,
-  updateRolePermissionsApi,
-  updateRoleStatusApi,
-  deleteRoleApi,
-  fetchPermissionsByModuleApi,
-} from "../../services/apiServices";
+
 
 interface RoleState extends Pagination<RoleItem> {
   permissionsByModule: ModulePermissionsGroup[];
@@ -31,7 +24,7 @@ export const fetchRoles = createAsyncThunk(
   "roles/fetchRoles",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetchRolesApi();
+      const response = await "";
       return response;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to fetch roles");
@@ -52,7 +45,7 @@ export const createRole = createAsyncThunk(
   "roles/createRole",
   async (payload: { name: string; description: string; permissions: string[] }, { rejectWithValue }) => {
     try {
-      const response = await createRoleApi(payload);
+      const response = await "";
       return response;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to create role");
@@ -64,7 +57,7 @@ export const updateRolePermissions = createAsyncThunk(
   "roles/updateRolePermissions",
   async (payload: { id: number; permissions: string[] }, { rejectWithValue }) => {
     try {
-      const response = await updateRolePermissionsApi(payload.id, payload.permissions);
+      const response = await "";
       return response;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to update role permissions");
@@ -76,7 +69,7 @@ export const updateRoleStatus = createAsyncThunk(
   "roles/updateRoleStatus",
   async (payload: { id: number; is_active: boolean }, { rejectWithValue }) => {
     try {
-      const response = await updateRoleStatusApi(payload.id, payload.is_active);
+      const response = await "updateRoleStatusApi(payload.id, payload.is_active)";
       return response;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to update role status");
@@ -88,7 +81,7 @@ export const deleteRole = createAsyncThunk(
   "roles/deleteRole",
   async (roleId: number, { rejectWithValue }) => {
     try {
-      await deleteRoleApi(roleId);
+      await "";
       return roleId;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to delete role");
@@ -100,7 +93,7 @@ export const fetchPermissionsByModule = createAsyncThunk(
   "roles/fetchPermissionsByModule",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetchPermissionsByModuleApi();
+      const response = await "";
       return response;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to fetch permissions");
