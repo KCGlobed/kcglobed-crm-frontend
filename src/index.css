@@ -1,0 +1,358 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   KC Globe CRM - Tailwind CSS v4 Theme
+   Brand accent: #701A75 | Surfaces: white (light) / deep plum-slate (dark)
+
+   Dark mode is CLASS driven (`.dark` on <html>), not OS driven, so the
+   in-app toggle controls it. Every surface/text/border token below is an
+   `@theme inline` alias pointing at a runtime CSS variable, which means the
+   existing utility names (bg-major, text-crmText, border-crmBorder, ...)
+   automatically re-colour when `.dark` is applied — no markup changes needed.
+   ========================================================================== */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* --------------------------------------------------------------------------
+   Runtime palette - light mode
+   -------------------------------------------------------------------------- */
+:root {
+  /* Surfaces */
+  --surface: #ffffff;
+  --surface-tint: #faf8fc;
+  --surface-muted: #f4f1f7;
+  --surface-raised: #ffffff;
+
+  /* Borders */
+  --border-color: #ece6f2;
+  --border-strong: #ddd2e6;
+
+  /* Text */
+  --text-primary: #1e1926;
+  --text-secondary: #5f576b;
+  --text-tertiary: #928a9e;
+  --text-on-accent: #ffffff;
+
+  /* Brand accent - identical hue in both themes */
+  --accent: #701a75;
+  --accent-hover: #5d1461;
+  --accent-active: #4b1050;
+  --accent-light: #9b3fa0;
+  --accent-contrast: #701a75; /* accent text that must sit on a soft/neutral bg */
+  --accent-soft: #fbf2fc;
+  --accent-subtle: rgba(112, 26, 117, 0.08);
+  --accent-ring: rgba(112, 26, 117, 0.2);
+  --accent-glow: rgba(112, 26, 117, 0.35);
+
+  /* Semantic feedback */
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+  --danger-border: #fecaca;
+  --success: #0f9d63;
+  --success-bg: #ecfdf5;
+  --success-border: #a7f3d0;
+  --warning: #b45309;
+  --warning-bg: #fffbeb;
+  --warning-border: #fde68a;
+  --info: #1d4ed8;
+  --info-bg: #eff6ff;
+  --info-border: #bfdbfe;
+
+  /* Elevation */
+  --shadow-sm-color: rgba(30, 25, 38, 0.05);
+  --shadow-md-color: rgba(112, 26, 117, 0.08);
+  --shadow-lg-color: rgba(112, 26, 117, 0.15);
+  --scrollbar-thumb: #ddd2e6;
+}
+
+/* --------------------------------------------------------------------------
+   Runtime palette - dark mode
+   -------------------------------------------------------------------------- */
+.dark {
+  --surface: #191521;
+  --surface-tint: #120f18;
+  --surface-muted: #231d2e;
+  --surface-raised: #1f1a29;
+
+  --border-color: #2e2739;
+  --border-strong: #3d3449;
+
+  --text-primary: #f5f2f8;
+  --text-secondary: #b3a9bf;
+  --text-tertiary: #8b8096;
+  --text-on-accent: #ffffff;
+
+  --accent: #701a75;
+  --accent-hover: #8a2790;
+  --accent-active: #9b3fa0;
+  --accent-light: #c07fc9;
+  --accent-contrast: #d8a6df; /* readable accent text on dark surfaces */
+  --accent-soft: rgba(112, 26, 117, 0.22);
+  --accent-subtle: rgba(160, 63, 153, 0.14);
+  --accent-ring: rgba(192, 127, 201, 0.28);
+  --accent-glow: rgba(112, 26, 117, 0.55);
+
+  --danger: #f87171;
+  --danger-bg: rgba(220, 38, 38, 0.14);
+  --danger-border: rgba(248, 113, 113, 0.3);
+  --success: #34d399;
+  --success-bg: rgba(16, 185, 129, 0.14);
+  --success-border: rgba(52, 211, 153, 0.3);
+  --warning: #fbbf24;
+  --warning-bg: rgba(180, 83, 9, 0.18);
+  --warning-border: rgba(251, 191, 36, 0.3);
+  --info: #60a5fa;
+  --info-bg: rgba(29, 78, 216, 0.18);
+  --info-border: rgba(96, 165, 250, 0.3);
+
+  --shadow-sm-color: rgba(0, 0, 0, 0.35);
+  --shadow-md-color: rgba(0, 0, 0, 0.45);
+  --shadow-lg-color: rgba(0, 0, 0, 0.55);
+  --scrollbar-thumb: #3d3449;
+}
+
+/* --------------------------------------------------------------------------
+   Tailwind theme mapping
+   `inline` keeps the var() reference in the generated utility, so the
+   utilities follow the runtime palette above instead of being frozen at build.
+   -------------------------------------------------------------------------- */
+@theme inline {
+  /* Surfaces (major scale) */
+  --color-major: var(--surface);
+  --color-major-tint: var(--surface-tint);
+  --color-major-muted: var(--surface-muted);
+  --color-major-border: var(--border-color);
+  --color-surface: var(--surface);
+  --color-surface-tint: var(--surface-tint);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-raised: var(--surface-raised);
+
+  /* Accent (minor scale) */
+  --color-minor: var(--accent);
+  --color-minor-hover: var(--accent-hover);
+  --color-minor-active: var(--accent-active);
+  --color-minor-light: var(--accent-light);
+  --color-minor-contrast: var(--accent-contrast);
+  --color-minor-soft: var(--accent-soft);
+  --color-minor-subtle: var(--accent-subtle);
+  --color-minor-ring: var(--accent-ring);
+  --color-minor-glow: var(--accent-glow);
+
+  /* Text - both camelCase and kebab-case spellings stay valid */
+  --color-crmText: var(--text-primary);
+  --color-crmText-primary: var(--text-primary);
+  --color-crmText-secondary: var(--text-secondary);
+  --color-crmText-tertiary: var(--text-tertiary);
+  --color-crmTextSecondary: var(--text-secondary);
+  --color-crmTextTertiary: var(--text-tertiary);
+  --color-crm-text: var(--text-primary);
+  --color-crm-text-primary: var(--text-primary);
+  --color-crm-text-secondary: var(--text-secondary);
+  --color-crm-text-tertiary: var(--text-tertiary);
+  --color-crm-text-on-accent: var(--text-on-accent);
+
+  /* Borders & backgrounds */
+  --color-crmBorder: var(--border-color);
+  --color-crmBorder-strong: var(--border-strong);
+  --color-crmBgTint: var(--surface-tint);
+  --color-crmBgMuted: var(--surface-muted);
+  --color-crm-border: var(--border-color);
+  --color-crm-border-strong: var(--border-strong);
+  --color-crm-bg-tint: var(--surface-tint);
+  --color-crm-bg-muted: var(--surface-muted);
+
+  /* Semantic feedback */
+  --color-crmDanger: var(--danger);
+  --color-crmDanger-bg: var(--danger-bg);
+  --color-crmDanger-border: var(--danger-border);
+  --color-crmSuccess: var(--success);
+  --color-crmSuccess-bg: var(--success-bg);
+  --color-crmSuccess-border: var(--success-border);
+  --color-crmWarning: var(--warning);
+  --color-crmWarning-bg: var(--warning-bg);
+  --color-crmWarning-border: var(--warning-border);
+  --color-crmInfo: var(--info);
+  --color-crmInfo-bg: var(--info-bg);
+  --color-crmInfo-border: var(--info-border);
+  --color-crm-danger: var(--danger);
+  --color-crm-danger-bg: var(--danger-bg);
+  --color-crm-danger-border: var(--danger-border);
+  --color-crm-success: var(--success);
+  --color-crm-success-bg: var(--success-bg);
+  --color-crm-success-border: var(--success-border);
+
+  /* Elevation */
+  --shadow-crm-sm: 0 1px 2px 0 var(--shadow-sm-color);
+  --shadow-crm-md: 0 4px 16px -2px var(--shadow-md-color), 0 2px 6px -1px var(--shadow-sm-color);
+  --shadow-crm-lg: 0 20px 45px -10px var(--shadow-lg-color), 0 0 1px 1px var(--shadow-md-color);
+  --shadow-crm-accent: 0 10px 25px -5px var(--accent-glow);
+  --shadow-accent: 0 10px 25px -5px var(--accent-glow);
+  --shadow-crm-card: 0 1px 2px 0 var(--shadow-sm-color), 0 8px 24px -12px var(--shadow-md-color);
+}
+
+@theme {
+  /* Typography */
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Outfit', sans-serif;
+  --font-outfit: 'Outfit', sans-serif;
+
+  /* Border Radii */
+  --radius-crm-sm: 8px;
+  --radius-crm-md: 12px;
+  --radius-crm-lg: 18px;
+  --radius-crm-xl: 24px;
+
+  /* Animations */
+  --animate-floatOrb: floatOrb 18s ease-in-out infinite alternate;
+  --animate-float-orb: floatOrb 18s ease-in-out infinite alternate;
+  --animate-beaconPulse: beaconPulse 2s ease-out infinite;
+  --animate-beacon-pulse: beaconPulse 2s ease-out infinite;
+  --animate-scaleUp: scaleUp 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-scale-up: scaleUp 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fadeIn: fadeIn 150ms ease-in-out;
+  --animate-fade-in: fadeIn 150ms ease-in-out;
+  --animate-slideDown: slideDown 200ms ease-out;
+  --animate-slide-down: slideDown 200ms ease-out;
+  --animate-fadeSlideIn: fadeSlideIn 200ms ease-out;
+  --animate-fade-slide-in: fadeSlideIn 200ms ease-out;
+  --animate-menuIn: menuIn 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-menu-in: menuIn 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: var(--surface-tint);
+    color: var(--text-primary);
+    line-height: 1.5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Surfaces glide between themes instead of snapping */
+  body,
+  aside,
+  header,
+  main,
+  table,
+  th,
+  td,
+  input,
+  select,
+  textarea {
+    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Native controls follow the theme */
+  input,
+  select,
+  textarea {
+    color-scheme: inherit;
+  }
+
+  ::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  /* Scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--border-strong);
+  }
+
+  /* Consistent keyboard focus across the app */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* ==========================================================================
+   Keyframe Animations
+   ========================================================================== */
+
+@keyframes floatOrb {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -25px) scale(1.06); }
+  100% { transform: translate(-25px, 35px) scale(0.95); }
+}
+
+@keyframes beaconPulse {
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
