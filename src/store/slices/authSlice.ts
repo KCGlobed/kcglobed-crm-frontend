@@ -26,7 +26,7 @@ export const loginUser = createAsyncThunk<LoginResponse["data"], LoginCred>(
 
       storeToken(access_token);
       storeRefreshToken(refresh_token);
-      storeUserID(user.uid);
+      storeUserID(user.uid || "");
       storeUser(user);
       storeAccess(access);
       return response.data;

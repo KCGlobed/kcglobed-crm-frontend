@@ -1,9 +1,15 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import type { Pagination, UserItem, CreateUserPayload } from "../../utils/types";
+import {
+  fetchUsersApi,
+  fetchUserByUidApi,
+  createUserApi,
+  updateUserRoleApi,
+} from "../../services/apiServices";
+import type { Pagination, User } from "../../utils/types";
 
 
-interface UserState extends Pagination<UserItem> {
-  selectedUser: UserItem | null;
+interface UserState extends Pagination<User> {
+  selectedUser: User | null;
   selectedUserLoading: boolean;
   actionLoading: boolean;
 }
@@ -18,12 +24,12 @@ const initialState: UserState = {
   actionLoading: false,
 };
 
-export const fetchUsers = createAsyncThunk(
+export const fetchUsers = createAsyncThunk<User[]>(
   "users/fetchUsers",
   async (_, { rejectWithValue }) => {
     try {
-      const response = "";
-      return response;
+      const response = await fetchUsersApi();
+      return response.data;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to fetch users");
     }
@@ -39,26 +45,45 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
-export const fetchUserById = createAsyncThunk(
-  "users/fetchUserById",
-  async (userId: number, { rejectWithValue }) => {
+export const fetchUserByUid = createAsyncThunk<User, string>(
+  "users/fetchUserByUid",
+  async (userUid: string, { rejectWithValue }) => {
     try {
-      const response = await "";
-      return response;
+      const response = await fetchUserByUidApi(userUid);
+      return response.data;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to fetch user details");
     }
   }
 );
 
-export const createUser = createAsyncThunk(
+export const fetchUserById = fetchUserByUid;
+
+export const createUser = createAsyncThunk<User, any>(
   "users/createUser",
-  async (payload: CreateUserPayload, { rejectWithValue }) => {
+  async (payload: any, { rejectWithValue }) => {
     try {
-      const response = await "";
-      return response;
+      const response = await createUserApi(payload);
+      return response.data;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to create user");
+    }
+  }
+);
+
+export const updateUserRole = createAsyncThunk<
+  { userUid: string; roleId: number | string; roleObj?: any },
+  { userUid: string; roleId: number | string; roleObj?: any }
+>(
+  "users/updateUserRole",
+  async ({ userUid, roleId, roleObj }, { rejectWithValue }) => {
+    try {
+      const response = await updateUserRoleApi(userUid, { role: roleId });
+      // Backend returns { "role": "{{role_id}}" }
+      const returnedRoleId = response?.data?.role ?? response?.role ?? roleId;
+      return { userUid, roleId: returnedRoleId, roleObj };
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to update role");
     }
   }
 );
@@ -105,33 +130,38 @@ const userSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchUsers.fulfilled, (state, action: any) => {
+      .addCase(fetchUsers.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload.results || action.payload;
-        state.next = action.payload.next || null;
+        state.data = Array.isArray(action.payload)
+          ? action.payload
+          : (action.payload as any)?.results || [];
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
 
-      // Fetch user by ID (GET /api/users/{id}/)
-      .addCase(fetchUserById.pending, (state) => {
+      // Fetch user by UID (GET /access/users/{user_uid}/)
+      .addCase(fetchUserByUid.pending, (state) => {
         state.selectedUserLoading = true;
         state.error = null;
       })
-      .addCase(fetchUserById.fulfilled, (state, action: any) => {
+      .addCase(fetchUserByUid.fulfilled, (state, action: any) => {
         state.selectedUserLoading = false;
         state.selectedUser = action.payload;
         // Keep in-memory list synchronized if user exists
-        if (state.data && state.data.length > 0) {
-          const idx = state.data.findIndex((u) => u.id === action.payload.id);
+        if (state.data && state.data.length > 0 && action.payload) {
+          const idx = state.data.findIndex(
+            (u) =>
+              (u.uid && u.uid === action.payload.uid) ||
+              (u.id != null && u.id === action.payload.id)
+          );
           if (idx !== -1) {
             state.data[idx] = { ...state.data[idx], ...action.payload };
           }
         }
       })
-      .addCase(fetchUserById.rejected, (state, action) => {
+      .addCase(fetchUserByUid.rejected, (state, action) => {
         state.selectedUserLoading = false;
         state.error = action.payload as string;
       })
@@ -186,6 +216,49 @@ const userSlice = createSlice({
         }
       })
       .addCase(deactivateUser.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Update user role (PATCH /access/users/{user_uid}/role/)
+      .addCase(updateUserRole.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(updateUserRole.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const { userUid, roleId, roleObj } = action.payload;
+        if (state.data && state.data.length > 0) {
+          const idx = state.data.findIndex((u) => u.uid === userUid);
+          if (idx !== -1) {
+            const currentRole = state.data[idx].role;
+            const updatedRole =
+              roleObj ||
+              (typeof currentRole === "object" && currentRole !== null
+                ? { ...currentRole, id: Number(roleId) }
+                : roleId);
+            state.data[idx] = {
+              ...state.data[idx],
+              role: updatedRole,
+              role_name: roleObj?.name ?? state.data[idx].role_name,
+            };
+          }
+        }
+        if (state.selectedUser && state.selectedUser.uid === userUid) {
+          const currentRole = state.selectedUser.role;
+          const updatedRole =
+            roleObj ||
+            (typeof currentRole === "object" && currentRole !== null
+              ? { ...currentRole, id: Number(roleId) }
+              : roleId);
+          state.selectedUser = {
+            ...state.selectedUser,
+            role: updatedRole,
+            role_name: roleObj?.name ?? state.selectedUser.role_name,
+          };
+        }
+      })
+      .addCase(updateUserRole.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload as string;
       });

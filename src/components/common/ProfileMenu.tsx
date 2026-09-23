@@ -2,7 +2,8 @@ import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, LogOut, Settings, User } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAppDispatch, useAppSelector } from '../../hooks/useRedux';
+import { useAppDispatch } from '../../hooks/useAppDispatch';
+import { useAppSelector } from '../../hooks/useRedux';
 import { logout } from '../../store/slices/authSlice';
 import useClickOutside from '../../hooks/useClickOutside';
 
@@ -16,13 +17,23 @@ export const ProfileMenu: React.FC = () => {
   const close = useCallback(() => setIsOpen(false), []);
   const wrapperRef = useClickOutside<HTMLDivElement>(isOpen, close);
 
-  const displayName = user?.full_name || user?.name || user?.email || 'Super Admin';
-  const displayRole = user?.role_name || (user?.is_superadmin ? 'Super Admin' : 'Administrator');
+  const fullNameFromParts = [user?.first_name, user?.last_name].filter(Boolean).join(' ');
+  const displayName =
+    user?.full_name ||
+    user?.name ||
+    fullNameFromParts ||
+    user?.email ||
+    'Super Admin';
+  const displayRole =
+    user?.role_name ||
+    user?.role?.name ||
+    (user?.is_superadmin || user?.is_admin ? 'Super Admin' : 'Administrator');
   const displayEmail = user?.email || 'admin@kcglobed.com';
   const initials =
     displayName
       .split(' ')
-      .map((part) => part[0])
+      .filter(Boolean)
+      .map((part: string) => part[0])
       .join('')
       .substring(0, 2)
       .toUpperCase() || 'SA';
