@@ -5,9 +5,9 @@ import { useAppSelector } from '../hooks/useRedux';
 export const PrivateRoutes: React.FC = () => {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
 
-  // if (!isAuthenticated) {
-  //   return <Navigate to="/login" replace />;
-  // }
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
   return <Outlet />;
 };
