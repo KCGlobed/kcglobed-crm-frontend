@@ -42,11 +42,24 @@ const UserThumbnail = ({ row }: { row: User }) => {
 };
 
 const ManageUsers: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const {
+    data: users,
+    loading,
+    error,
+    total_results,
+    current_page,
+    page_size,
+  } = useAppSelector((state) => state.users);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [ordering, setOrdering] = useState<string>('');
   const [showFilter, setShowFilter] = useState(false);
   const { showModal } = useModal();
+  const isMounted = React.useRef(false);
+
+  const pageSize = page_size || 10;
 
   // Filter states matching userFilterConfig
   const [filters, setFilters] = useState({
@@ -59,10 +72,6 @@ const ManageUsers: React.FC = () => {
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const debouncedFilters = useDebounce(filters, 500);
 
-  const dispatch = useAppDispatch();
-  const { data: users, loading } = useAppSelector((state) => state.users);
-  const pageSize = 10;
-
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.name) count++;
@@ -73,18 +82,33 @@ const ManageUsers: React.FC = () => {
     return count;
   }, [filters, ordering]);
 
-  // Fetch users on mount
+  // Sync with current_page from Redux if it changes
   useEffect(() => {
-    dispatch(fetchUsers());
-  }, [dispatch]);
+    if (current_page && current_page !== currentPage) {
+      setCurrentPage(current_page);
+    }
+  }, [current_page]);
 
-  const userList = useMemo(() => users || [], [users]);
-  const totalCount = userList.length;
+  // Fetch users on page/pageSize change
+  useEffect(() => {
+    dispatch(fetchUsers({ page: currentPage, page_size: pageSize }));
+  }, [dispatch, currentPage, pageSize]);
 
   // Reset to page 1 on search or filter changes
   useEffect(() => {
-    setCurrentPage(1);
+    if (!isMounted.current) {
+      isMounted.current = true;
+      return;
+    }
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    } else {
+      dispatch(fetchUsers({ page: 1, page_size: pageSize }));
+    }
   }, [debouncedSearchTerm, debouncedFilters]);
+
+  const userList = useMemo(() => users || [], [users]);
+  const totalCount = total_results ?? userList.length;
 
   const handleFilterChange = (name: string, value: any) => {
     setFilters((prev) => ({ ...prev, [name]: value }));
@@ -111,11 +135,11 @@ const ManageUsers: React.FC = () => {
     handleSort(currentKey, direction);
   };
 
-  // Columns definition strictly aligned with backend response
+  // Columns definition strictly aligned with requirements & backend response
   const columns: ColumnDef[] = [
     {
       key: 'first_name',
-      title: 'User',
+      title: 'Name',
       render: (_: any, row: User) => {
         const fullName =
           [row.first_name, row.last_name].filter(Boolean).join(' ') || row.email || '-';
@@ -124,13 +148,30 @@ const ManageUsers: React.FC = () => {
             <UserThumbnail row={row} />
             <div className="flex flex-col min-w-0">
               <span className="font-semibold text-crmText text-sm truncate">{fullName}</span>
-              <span className="text-[11px] text-crmText-tertiary truncate">{row.email}</span>
             </div>
           </div>
         );
       },
       sortable: true,
-      width: '260px',
+      width: '220px',
+    },
+    {
+      key: 'email',
+      title: 'Email',
+      render: (_: any, row: User) => (
+        <span className="text-crmText-secondary text-xs truncate">{row.email || '-'}</span>
+      ),
+      sortable: true,
+      width: '200px',
+    },
+    {
+      key: 'phone1',
+      title: 'Phone',
+      render: (_: any, row: User) => (
+        <span className="text-crmText-secondary text-xs">{row.phone1 || row.phone || '-'}</span>
+      ),
+      sortable: true,
+      width: '140px',
     },
     {
       key: 'role',
@@ -138,39 +179,31 @@ const ManageUsers: React.FC = () => {
       render: (_: any, row: User) => {
         const roleName =
           typeof row.role === 'object' && row.role ? row.role.name : row.role_name || '-';
-        const roleSlug =
-          typeof row.role === 'object' && row.role ? row.role.slug : null;
         return (
-          <div className="flex flex-col">
-            <span className="font-semibold text-crmText text-sm">{roleName}</span>
-            {roleSlug && (
-              <span className="text-[11px] text-crmText-tertiary font-mono">{roleSlug}</span>
-            )}
-          </div>
+          <span className="font-semibold text-crmText text-sm">{roleName}</span>
         );
       },
       sortable: true,
-      width: '200px',
+      width: '160px',
     },
     {
-      key: 'is_admin',
-      title: 'Access',
-      render: (value: boolean) => (
-        <div className="flex items-center justify-center">
-          <span
-            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
-              value
-                ? 'bg-minor-soft text-minor-contrast border-minor/30'
-                : 'bg-major-tint text-crmText-secondary border-crmBorder'
-            }`}
-          >
-            {value ? 'Admin' : 'Staff'}
+      key: 'reports_to',
+      title: 'Reports To',
+      render: (_: any, row: User) => {
+        const reportsToName =
+          typeof row.reports_to === 'object' && row.reports_to
+            ? row.reports_to.name
+            : typeof row.reports_to_name === 'string'
+            ? row.reports_to_name
+            : null;
+        return (
+          <span className="text-crmText-secondary text-xs font-medium">
+            {reportsToName || '-'}
           </span>
-        </div>
-      ),
-      width: '130px',
-      align: 'center',
-      sortable: true,
+        );
+      },
+      sortable: false,
+      width: '160px',
     },
     {
       key: 'is_active',
@@ -188,7 +221,27 @@ const ManageUsers: React.FC = () => {
           </span>
         </div>
       ),
-      width: '130px',
+      width: '110px',
+      align: 'center',
+      sortable: true,
+    },
+    {
+      key: 'is_admin',
+      title: 'Admin',
+      render: (value: boolean) => (
+        <div className="flex items-center justify-center">
+          <span
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
+              value
+                ? 'bg-minor-soft text-minor-contrast border-minor/30'
+                : 'bg-major-tint text-crmText-secondary border-crmBorder'
+            }`}
+          >
+            {value ? 'Yes' : 'No'}
+          </span>
+        </div>
+      ),
+      width: '100px',
       align: 'center',
       sortable: true,
     },
@@ -225,7 +278,7 @@ const ManageUsers: React.FC = () => {
           />
         </div>
       ),
-      width: '120px',
+      width: '110px',
       align: 'right',
     },
   ];
@@ -313,6 +366,10 @@ const ManageUsers: React.FC = () => {
           pageSize={pageSize}
           totalCount={totalCount}
           loading={loading}
+          error={error}
+          onRetry={() => dispatch(fetchUsers({ page: currentPage, page_size: pageSize }))}
+          emptyTitle="No users found"
+          emptyDescription="There are no users to display at the moment."
           rowKey={(row: User) => row.uid ?? String(Math.random())}
           onPageChange={(page) => setCurrentPage(page)}
           onSort={handleSort as any}

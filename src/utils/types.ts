@@ -1,7 +1,19 @@
 // Generic API Response
+export interface PaginationInfo {
+  total_results?: number;
+  total_pages?: number;
+  current_page?: number;
+  next_page?: number | null;
+  previous_page?: number | null;
+  page_size?: number;
+}
+
 export interface ApiResponse<T = any> {
-  status_code: number;
-  message: string;
+  success?: boolean;
+  status_code?: number;
+  status?: string | number;
+  message?: string;
+  pagination?: PaginationInfo;
   data: T;
 }
 
@@ -155,23 +167,30 @@ export interface Role {
   created_by_name?: string | null;
 }
 
+// Reports To
+export interface ReportsTo {
+  uid?: string;
+  name?: string;
+  email?: string;
+}
+
 // User / Staff
 export interface User {
   uid?: string;
-  id?: number;
   email?: string;
   first_name?: string;
   last_name?: string;
-  full_name?: string;
-  phone?: string;
-  phone1?: string;
+  phone1?: string | null;
   role?: Role | number | string | null;
-  role_name?: string | null;
-  role_detail?: Role | null;
-  reports_to?: number | null;
-  reports_to_name?: string | null;
+  reports_to?: ReportsTo | number | null;
   is_active?: boolean;
   is_admin?: boolean;
+  id?: number;
+  full_name?: string;
+  phone?: string;
+  role_name?: string | null;
+  role_detail?: Role | null;
+  reports_to_name?: string | null;
   is_superadmin?: boolean;
   is_student?: boolean;
   date_joined?: string;

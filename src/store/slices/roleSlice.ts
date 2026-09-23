@@ -10,6 +10,7 @@ import {
 } from "../../services/apiServices";
 import type {
   Pagination,
+  PaginationInfo,
   Role,
   RoleAccess,
   RolePermission,
@@ -35,6 +36,12 @@ const initialState: RoleState = {
   next: null,
   loading: false,
   error: null,
+  total_results: 0,
+  total_pages: 1,
+  current_page: 1,
+  next_page: null,
+  previous_page: null,
+  page_size: 10,
   modules: [],
   modulesLoading: false,
   permissionsByModule: [],
@@ -46,24 +53,28 @@ const initialState: RoleState = {
   actionLoading: false,
 };
 
-export const fetchRoles = createAsyncThunk<Role[]>(
+export const fetchRoles = createAsyncThunk<
+  { data: Role[]; pagination?: PaginationInfo },
+  { page?: number; page_size?: number } | void
+>(
   "roles/fetchRoles",
-  async (_, { rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     try {
-      const response = await fetchRolesApi();
-      if (Array.isArray(response)) {
-        return response;
-      }
+      const response = await fetchRolesApi(params || undefined);
+      let data: Role[] = [];
       if (Array.isArray(response?.data)) {
-        return response.data;
+        data = response.data;
+      } else if (Array.isArray(response)) {
+        data = response;
+      } else if (Array.isArray(response?.results)) {
+        data = response.results;
+      } else if (Array.isArray(response?.data?.results)) {
+        data = response.data.results;
       }
-      if (Array.isArray(response?.results)) {
-        return response.results;
-      }
-      if (Array.isArray(response?.data?.results)) {
-        return response.data.results;
-      }
-      return [];
+      return {
+        data,
+        pagination: response?.pagination,
+      };
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to fetch roles");
     }
@@ -224,6 +235,9 @@ const roleSlice = createSlice({
     clearRoleError: (state) => {
       state.error = null;
     },
+    setCurrentPage: (state, action: PayloadAction<number>) => {
+      state.current_page = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -233,12 +247,19 @@ const roleSlice = createSlice({
       })
       .addCase(fetchRoles.fulfilled, (state, action) => {
         state.loading = false;
-        const list = Array.isArray(action.payload)
-          ? action.payload
-          : (action.payload as any)?.results || (action.payload as any)?.data || [];
-        state.data = Array.isArray(list) ? list : [];
-        state.count = state.data.length;
-        state.next = null;
+        state.data = action.payload.data;
+        if (action.payload.pagination) {
+          state.total_results = action.payload.pagination.total_results ?? action.payload.data.length;
+          state.total_pages = action.payload.pagination.total_pages ?? 1;
+          state.current_page = action.payload.pagination.current_page ?? 1;
+          state.next_page = action.payload.pagination.next_page ?? null;
+          state.previous_page = action.payload.pagination.previous_page ?? null;
+          state.page_size = action.payload.pagination.page_size ?? state.page_size;
+          state.count = action.payload.pagination.total_results ?? action.payload.data.length;
+        } else {
+          state.total_results = action.payload.data.length;
+          state.count = action.payload.data.length;
+        }
       })
       .addCase(fetchRoles.rejected, (state, action) => {
         state.loading = false;
@@ -375,5 +396,5 @@ const roleSlice = createSlice({
   },
 });
 
-export const { setSelectedRole, clearRoleError } = roleSlice.actions;
+export const { setSelectedRole, clearRoleError, setCurrentPage } = roleSlice.actions;
 export default roleSlice.reducer;

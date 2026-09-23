@@ -61,8 +61,17 @@ const ManageModules: React.FC = () => {
     const debouncedFilters = useDebounce(filters, 500);
 
     const dispatch = useAppDispatch();
-    const { data: modules, loading } = useAppSelector((state) => state.modules);
-    const pageSize = 10;
+    const {
+        data: modules,
+        loading,
+        error,
+        total_results,
+        current_page,
+        page_size,
+    } = useAppSelector((state) => state.modules);
+
+    const pageSize = page_size || 10;
+    const isMounted = React.useRef(false);
 
     const activeFilterCount = useMemo(() => {
         let count = 0;
@@ -74,10 +83,17 @@ const ManageModules: React.FC = () => {
         return count;
     }, [filters, ordering, startDate, endDate]);
 
-    // Fetch modules on mount
+    // Sync with Redux current_page if it changes
     useEffect(() => {
-        dispatch(fetchModules());
-    }, [dispatch]);
+        if (current_page && current_page !== currentPage) {
+            setCurrentPage(current_page);
+        }
+    }, [current_page]);
+
+    // Fetch modules when currentPage or pageSize changes
+    useEffect(() => {
+        dispatch(fetchModules({ page: currentPage, page_size: pageSize }));
+    }, [dispatch, currentPage, pageSize]);
 
     // Resolve a parent id to its module name using the loaded list
     const parentNameById = useMemo(() => {
@@ -89,11 +105,19 @@ const ManageModules: React.FC = () => {
     }, [modules]);
 
     const moduleList = useMemo(() => modules || [], [modules]);
-    const totalCount = moduleList.length;
+    const totalCount = total_results ?? moduleList.length;
 
     // Reset to first page when search or filters change
     useEffect(() => {
-        setCurrentPage(1);
+        if (!isMounted.current) {
+            isMounted.current = true;
+            return;
+        }
+        if (currentPage !== 1) {
+            setCurrentPage(1);
+        } else {
+            dispatch(fetchModules({ page: 1, page_size: pageSize }));
+        }
     }, [debouncedSearchTerm, debouncedFilters, startDate, endDate]);
 
     const handleFilterChange = (name: string, value: any) => {
@@ -336,6 +360,10 @@ const ManageModules: React.FC = () => {
                     pageSize={pageSize}
                     totalCount={totalCount}
                     loading={loading}
+                    error={error}
+                    onRetry={() => dispatch(fetchModules({ page: currentPage, page_size: pageSize }))}
+                    emptyTitle="No modules found"
+                    emptyDescription="There are no modules to display at the moment."
                     rowKey={(row: Module) => row.id ?? row.code ?? row.name ?? Math.random()}
                     onPageChange={(page) => setCurrentPage(page)}
                     onSort={handleSort}
