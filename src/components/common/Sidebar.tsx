@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import {
-  BarChart3,
   ChevronDown,
   ChevronLeft,
   ChevronUp,
-  GraduationCap,
   LayoutDashboard,
-  Layers,
   LogOut,
-  MessageSquare,
-  PieChart,
-  ShieldCheck,
   User as UserIcon,
   Users,
   X,
+  SettingsIcon,
 } from 'lucide-react';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
@@ -25,7 +20,6 @@ interface SidebarProps {
   onSelectPage?: (page: string) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
-  /** Drawer state below the `lg` breakpoint. */
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
 }
@@ -59,7 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const location = useLocation();
 
   const { user } = useAppSelector((state) => state.auth);
-  const { data: roles } = useAppSelector((state) => state.roles);
+  // const { data: roles } = useAppSelector((state) => state.roles);
   const { data: users } = useAppSelector((state) => state.users);
 
   // Submenu accordion & user profile dropdown states (Instalearn pattern)
@@ -120,19 +114,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <LayoutDashboard size={19} />,
     },
     {
-      id: 'module',
-      label: 'Module',
-      path: '/modules',
-      icon: <Layers size={19} />,
-    },
-    {
-      id: 'roles',
-      label: 'Roles & Permissions',
-      path: '/roles',
-      badge: roles && roles.length > 0 ? `${roles.length}` : undefined,
-      icon: <ShieldCheck size={19} />,
-    },
-    {
       id: 'users',
       label: 'Users & Staff',
       path: '/users',
@@ -140,38 +121,47 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <Users size={19} />,
     },
     {
-      id: 'leads',
-      label: 'Leads & Pipeline',
-      icon: <BarChart3 size={19} />,
+      id: 'settings',
+      label: 'Settings',
+      icon: <SettingsIcon size={19} />,
       submenu: [
-        { id: 'leads', name: 'All Leads', path: '/leads' },
-        { id: 'pipeline', name: 'Pipeline View', path: '/leads/pipeline' },
+        { id: 'module',name: 'Module',path: '/modules'},
+        { id: 'roles',name: 'Roles & Permissions',path: '/roles'},
       ],
     },
-    {
-      id: 'admissions',
-      label: 'Admissions',
-      icon: <GraduationCap size={19} />,
-      submenu: [
-        { id: 'admissions', name: 'All Admissions', path: '/admissions' },
-        { id: 'applications', name: 'Applications', path: '/admissions/applications' },
-      ],
-    },
-    {
-      id: 'followups',
-      label: 'Follow-ups & Notes',
-      path: '/followups',
-      icon: <MessageSquare size={19} />,
-    },
-    {
-      id: 'reports',
-      label: 'Reports & Export',
-      icon: <PieChart size={19} />,
-      submenu: [
-        { id: 'reports', name: 'Reports Overview', path: '/reports' },
-        { id: 'reports-export', name: 'Export Data', path: '/reports/export' },
-      ],
-    },
+    // {
+    //   id: 'leads',
+    //   label: 'Leads & Pipeline',
+    //   icon: <BarChart3 size={19} />,
+    //   submenu: [
+    //     { id: 'leads', name: 'All Leads', path: '/leads' },
+    //     { id: 'pipeline', name: 'Pipeline View', path: '/leads/pipeline' },
+    //   ],
+    // },
+    // {
+    //   id: 'admissions',
+    //   label: 'Admissions',
+    //   icon: <GraduationCap size={19} />,
+    //   submenu: [
+    //     { id: 'admissions', name: 'All Admissions', path: '/admissions' },
+    //     { id: 'applications', name: 'Applications', path: '/admissions/applications' },
+    //   ],
+    // },
+    // {
+    //   id: 'followups',
+    //   label: 'Follow-ups & Notes',
+    //   path: '/followups',
+    //   icon: <MessageSquare size={19} />,
+    // },
+    // {
+    //   id: 'reports',
+    //   label: 'Reports & Export',
+    //   icon: <PieChart size={19} />,
+    //   submenu: [
+    //     { id: 'reports', name: 'Reports Overview', path: '/reports' },
+    //     { id: 'reports-export', name: 'Export Data', path: '/reports/export' },
+    //   ],
+    // },
   ];
 
   // Auto-expand submenu if current path matches any of its children
