@@ -223,7 +223,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <div className={`flex items-baseline gap-1.5 font-outfit leading-none ${isCollapsed ? 'lg:hidden' : ''}`}>
               <span className="text-[1.1rem] font-bold tracking-tight text-crmText">KC Globed</span>
-              <span className="text-[1.1rem] font-extrabold tracking-tight text-minor-contrast">CRM</span>
+              <span className="text-[1.1rem] font-extrabold tracking-tight text-secondary">CRM</span>
             </div>
           </div>
 
@@ -301,7 +301,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         {!isCollapsed && (
                           <div className="ml-auto flex items-center gap-1.5 pl-2 shrink-0">
                             {item.badge && (
-                              <span className="rounded-full bg-minor-soft px-2 py-0.5 text-[0.72rem] font-bold text-minor-contrast">
+                              <span className="rounded-full bg-secondary-soft px-2 py-0.5 text-[0.72rem] font-bold text-secondary-contrast border border-secondary/25">
                                 {item.badge}
                               </span>
                             )}
@@ -376,7 +376,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       {!isCollapsed && item.badge && (
                         <span
                           className={`ml-auto rounded-full px-2 py-0.5 text-[0.72rem] font-bold ${
-                            isActive ? 'bg-white/25 text-white' : 'bg-minor-soft text-minor-contrast'
+                            isActive ? 'bg-white/25 text-white' : 'bg-secondary-soft text-secondary-contrast border border-secondary/25'
                           }`}
                         >
                           {item.badge}
@@ -406,7 +406,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
               <div className={`min-w-0 text-left ${isCollapsed ? 'lg:hidden' : ''}`}>
                 <div className="truncate text-xs font-bold text-crmText">{displayName}</div>
-                <div className="truncate text-[10px] font-semibold text-minor-contrast">
+                <div className="truncate text-[10px] font-semibold text-secondary-contrast">
                   {displayRole}
                 </div>
               </div>

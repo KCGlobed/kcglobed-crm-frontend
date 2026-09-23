@@ -141,7 +141,7 @@ function DynamicServerTable<T extends object>({
         style={{ maxHeight }}
       >
         <table className="w-full border-separate border-spacing-0" style={{ minWidth }}>
-          <thead className="bg-major-muted">
+          <thead className="bg-primary">
             <tr>
               {columns.map((col) => {
                 const isSorted = activeSort.key === col.key;
@@ -149,8 +149,8 @@ function DynamicServerTable<T extends object>({
                   <th
                     key={String(col.key)}
                     aria-sort={isSorted ? (activeSort.direction === 'asc' ? 'ascending' : 'descending') : undefined}
-                    className={`sticky top-0 z-10 select-none border-b border-crmBorder bg-major-muted px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-crmText-secondary ${
-                      col.sortable ? 'cursor-pointer transition-colors hover:text-minor-contrast' : 'cursor-default'
+                    className={`sticky top-0 z-10 select-none border-b border-primary-hover bg-primary px-4 py-3.5 text-[11px] font-bold uppercase tracking-wider text-white ${
+                      col.sortable ? 'cursor-pointer transition-colors hover:text-secondary' : 'cursor-default'
                     }`}
                     style={cellStyle(col)}
                     onClick={() => col.sortable && handleSort(col.key)}
@@ -162,15 +162,15 @@ function DynamicServerTable<T extends object>({
                           <FiChevronUp
                             className={`h-3.5 w-3.5 transition-all duration-200 ${
                               isSorted && activeSort.direction === 'asc'
-                                ? 'scale-110 text-minor-contrast'
-                                : 'text-crmText-tertiary/50'
+                                ? 'scale-110 text-secondary'
+                                : 'text-white/40'
                             }`}
                           />
                           <FiChevronDown
                             className={`h-3.5 w-3.5 transition-all duration-200 ${
                               isSorted && activeSort.direction === 'desc'
-                                ? 'scale-110 text-minor-contrast'
-                                : 'text-crmText-tertiary/50'
+                                ? 'scale-110 text-secondary'
+                                : 'text-white/40'
                             }`}
                           />
                         </div>
@@ -288,8 +288,8 @@ function DynamicServerTable<T extends object>({
                     aria-current={currentPage === pageNum ? 'page' : undefined}
                     className={`h-[34px] min-w-[34px] cursor-pointer rounded-lg text-xs font-bold transition-all ${
                       currentPage === pageNum
-                        ? 'bg-minor text-white shadow-crm-accent'
-                        : 'text-crmText-secondary hover:bg-major-muted'
+                        ? 'bg-secondary text-white font-bold shadow-crm-secondary'
+                        : 'text-crmText-secondary hover:bg-major-muted hover:text-crmText'
                     }`}
                   >
                     {pageNum}
@@ -305,8 +305,8 @@ function DynamicServerTable<T extends object>({
                     type="button"
                     className={`h-[34px] min-w-[34px] cursor-pointer rounded-lg text-xs font-bold transition-all ${
                       currentPage === totalPages
-                        ? 'bg-minor text-white shadow-crm-accent'
-                        : 'text-crmText-secondary hover:bg-major-muted'
+                        ? 'bg-secondary text-white font-bold shadow-crm-secondary'
+                        : 'text-crmText-secondary hover:bg-major-muted hover:text-crmText'
                     }`}
                   >
                     {totalPages}

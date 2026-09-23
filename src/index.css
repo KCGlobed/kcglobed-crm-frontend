@@ -19,30 +19,56 @@
 :root {
   /* Surfaces */
   --surface: #ffffff;
-  --surface-tint: #faf8fc;
-  --surface-muted: #f4f1f7;
+  --surface-tint: #f8f6fb;
+  --surface-muted: #f2eef8;
   --surface-raised: #ffffff;
 
   /* Borders */
-  --border-color: #ece6f2;
-  --border-strong: #ddd2e6;
+  --border-color: #ebe5f3;
+  --border-strong: #ded3eb;
 
   /* Text */
-  --text-primary: #1e1926;
-  --text-secondary: #5f576b;
-  --text-tertiary: #928a9e;
+  --text-primary: #1c1726;
+  --text-secondary: #5d536b;
+  --text-tertiary: #9285a2;
   --text-on-accent: #ffffff;
 
-  /* Brand accent - identical hue in both themes */
-  --accent: #701a75;
-  --accent-hover: #5d1461;
-  --accent-active: #4b1050;
-  --accent-light: #9b3fa0;
-  --accent-contrast: #701a75; /* accent text that must sit on a soft/neutral bg */
-  --accent-soft: #fbf2fc;
-  --accent-subtle: rgba(112, 26, 117, 0.08);
-  --accent-ring: rgba(112, 26, 117, 0.2);
-  --accent-glow: rgba(112, 26, 117, 0.35);
+  /* Brand Primary: rgb(61 31 115) = #3D1F73 */
+  --primary: rgb(61, 31, 115);
+  --primary-hover: #321860;
+  --primary-active: #251147;
+  --primary-light: #5a2ea8;
+  --primary-contrast: #3d1f73;
+  --primary-soft: rgba(61, 31, 115, 0.08);
+  --primary-subtle: rgba(61, 31, 115, 0.04);
+  --primary-ring: rgba(61, 31, 115, 0.22);
+  --primary-glow: rgba(61, 31, 115, 0.35);
+
+  /* Brand Secondary: rgb(251 176 59) = #FBB03B */
+  --secondary: rgb(251, 176, 59);
+  --secondary-hover: #ea9e29;
+  --secondary-active: #d68913;
+  --secondary-light: #fcd279;
+  --secondary-contrast: #b45309;
+  --secondary-soft: rgba(251, 176, 59, 0.14);
+  --secondary-subtle: rgba(251, 176, 59, 0.07);
+  --secondary-ring: rgba(251, 176, 59, 0.32);
+  --secondary-glow: rgba(251, 176, 59, 0.45);
+
+  /* Brand Tertiary: white = #ffffff */
+  --tertiary: #ffffff;
+  --tertiary-contrast: #1c1726;
+
+  /* Accent (maps to primary for complete backwards compatibility) */
+  --accent: var(--primary);
+  --accent-hover: var(--primary-hover);
+  --accent-active: var(--primary-active);
+  --accent-light: var(--primary-light);
+  --accent-contrast: var(--primary-contrast);
+  --accent-soft: var(--primary-soft);
+  --accent-subtle: var(--primary-subtle);
+  --accent-ring: var(--primary-ring);
+  --accent-glow: var(--primary-glow);
 
   /* Semantic feedback */
   --danger: #dc2626;
@@ -59,38 +85,65 @@
   --info-border: #bfdbfe;
 
   /* Elevation */
-  --shadow-sm-color: rgba(30, 25, 38, 0.05);
-  --shadow-md-color: rgba(112, 26, 117, 0.08);
-  --shadow-lg-color: rgba(112, 26, 117, 0.15);
-  --scrollbar-thumb: #ddd2e6;
+  --shadow-sm-color: rgba(28, 23, 38, 0.05);
+  --shadow-md-color: rgba(61, 31, 115, 0.08);
+  --shadow-lg-color: rgba(61, 31, 115, 0.15);
+  --scrollbar-thumb: #ded3eb;
 }
 
 /* --------------------------------------------------------------------------
    Runtime palette - dark mode
    -------------------------------------------------------------------------- */
 .dark {
-  --surface: #191521;
-  --surface-tint: #120f18;
-  --surface-muted: #231d2e;
-  --surface-raised: #1f1a29;
+  --surface: #171322;
+  --surface-tint: #100d17;
+  --surface-muted: #211b2f;
+  --surface-raised: #1d182b;
 
-  --border-color: #2e2739;
-  --border-strong: #3d3449;
+  --border-color: #2b233a;
+  --border-strong: #3f3354;
 
-  --text-primary: #f5f2f8;
-  --text-secondary: #b3a9bf;
-  --text-tertiary: #8b8096;
+  --text-primary: #f6f3fb;
+  --text-secondary: #b3a7c6;
+  --text-tertiary: #887b9e;
   --text-on-accent: #ffffff;
 
-  --accent: #701a75;
-  --accent-hover: #8a2790;
-  --accent-active: #9b3fa0;
-  --accent-light: #c07fc9;
-  --accent-contrast: #d8a6df; /* readable accent text on dark surfaces */
-  --accent-soft: rgba(112, 26, 117, 0.22);
-  --accent-subtle: rgba(160, 63, 153, 0.14);
-  --accent-ring: rgba(192, 127, 201, 0.28);
-  --accent-glow: rgba(112, 26, 117, 0.55);
+  /* Brand Primary in dark mode */
+  --primary: rgb(61, 31, 115);
+  --primary-hover: #4e2893;
+  --primary-active: #5c30ad;
+  --primary-light: #8352e8;
+  --primary-contrast: #c4a5fd; /* crisp, readable lavender text on dark surfaces */
+  --primary-soft: rgba(97, 49, 180, 0.24);
+  --primary-subtle: rgba(97, 49, 180, 0.12);
+  --primary-ring: rgba(139, 92, 246, 0.35);
+  --primary-glow: rgba(61, 31, 115, 0.65);
+
+  /* Brand Secondary in dark mode */
+  --secondary: rgb(251, 176, 59);
+  --secondary-hover: #fcd34d;
+  --secondary-active: #fde68a;
+  --secondary-light: #fef3c7;
+  --secondary-contrast: #fbbf24; /* crisp, readable warm gold text on dark surfaces */
+  --secondary-soft: rgba(251, 176, 59, 0.2);
+  --secondary-subtle: rgba(251, 176, 59, 0.1);
+  --secondary-ring: rgba(251, 176, 59, 0.4);
+  --secondary-glow: rgba(251, 176, 59, 0.6);
+
+  /* Brand Tertiary in dark mode */
+  --tertiary: #ffffff;
+  --tertiary-contrast: #f6f3fb;
+
+  /* Accent (maps to primary in dark mode) */
+  --accent: var(--primary);
+  --accent-hover: var(--primary-hover);
+  --accent-active: var(--primary-active);
+  --accent-light: var(--primary-light);
+  --accent-contrast: var(--primary-contrast);
+  --accent-soft: var(--primary-soft);
+  --accent-subtle: var(--primary-subtle);
+  --accent-ring: var(--primary-ring);
+  --accent-glow: var(--primary-glow);
 
   --danger: #f87171;
   --danger-bg: rgba(220, 38, 38, 0.14);
@@ -108,7 +161,7 @@
   --shadow-sm-color: rgba(0, 0, 0, 0.35);
   --shadow-md-color: rgba(0, 0, 0, 0.45);
   --shadow-lg-color: rgba(0, 0, 0, 0.55);
-  --scrollbar-thumb: #3d3449;
+  --scrollbar-thumb: #3f3354;
 }
 
 /* --------------------------------------------------------------------------
@@ -127,16 +180,42 @@
   --color-surface-muted: var(--surface-muted);
   --color-surface-raised: var(--surface-raised);
 
-  /* Accent (minor scale) */
-  --color-minor: var(--accent);
-  --color-minor-hover: var(--accent-hover);
-  --color-minor-active: var(--accent-active);
-  --color-minor-light: var(--accent-light);
-  --color-minor-contrast: var(--accent-contrast);
-  --color-minor-soft: var(--accent-soft);
-  --color-minor-subtle: var(--accent-subtle);
-  --color-minor-ring: var(--accent-ring);
-  --color-minor-glow: var(--accent-glow);
+  /* Primary (rgb(61 31 115)) */
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-primary-light: var(--primary-light);
+  --color-primary-contrast: var(--primary-contrast);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-primary-ring: var(--primary-ring);
+  --color-primary-glow: var(--primary-glow);
+
+  /* Secondary (rgb(251 176 59)) */
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-active: var(--secondary-active);
+  --color-secondary-light: var(--secondary-light);
+  --color-secondary-contrast: var(--secondary-contrast);
+  --color-secondary-soft: var(--secondary-soft);
+  --color-secondary-subtle: var(--secondary-subtle);
+  --color-secondary-ring: var(--secondary-ring);
+  --color-secondary-glow: var(--secondary-glow);
+
+  /* Tertiary (white) */
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-contrast: var(--tertiary-contrast);
+
+  /* Accent (minor scale) aliased to Primary */
+  --color-minor: var(--primary);
+  --color-minor-hover: var(--primary-hover);
+  --color-minor-active: var(--primary-active);
+  --color-minor-light: var(--primary-light);
+  --color-minor-contrast: var(--primary-contrast);
+  --color-minor-soft: var(--primary-soft);
+  --color-minor-subtle: var(--primary-subtle);
+  --color-minor-ring: var(--primary-ring);
+  --color-minor-glow: var(--primary-glow);
 
   /* Text - both camelCase and kebab-case spellings stay valid */
   --color-crmText: var(--text-primary);
@@ -185,8 +264,10 @@
   --shadow-crm-sm: 0 1px 2px 0 var(--shadow-sm-color);
   --shadow-crm-md: 0 4px 16px -2px var(--shadow-md-color), 0 2px 6px -1px var(--shadow-sm-color);
   --shadow-crm-lg: 0 20px 45px -10px var(--shadow-lg-color), 0 0 1px 1px var(--shadow-md-color);
-  --shadow-crm-accent: 0 10px 25px -5px var(--accent-glow);
-  --shadow-accent: 0 10px 25px -5px var(--accent-glow);
+  --shadow-crm-accent: 0 10px 25px -5px var(--primary-glow);
+  --shadow-accent: 0 10px 25px -5px var(--primary-glow);
+  --shadow-crm-primary: 0 10px 25px -5px var(--primary-glow);
+  --shadow-crm-secondary: 0 10px 25px -5px var(--secondary-glow);
   --shadow-crm-card: 0 1px 2px 0 var(--shadow-sm-color), 0 8px 24px -12px var(--shadow-md-color);
 }
 
@@ -239,18 +320,55 @@
     overflow-x: hidden;
   }
 
-  /* Surfaces glide between themes instead of snapping */
-  body,
-  aside,
-  header,
-  main,
-  table,
-  th,
-  td,
-  input,
-  select,
-  textarea {
-    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+  /* Smooth, unified View Transition crossfade for theme switches */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 260ms;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Ant Design controls adapt to dark mode surfaces */
+  .dark .ant-picker {
+    background-color: var(--surface) !important;
+    border-color: var(--border-color) !important;
+  }
+  .dark .ant-picker-input > input {
+    color: var(--text-primary) !important;
+  }
+  .dark .ant-picker-input > input::placeholder {
+    color: var(--text-tertiary) !important;
+  }
+  .dark .ant-picker-separator {
+    color: var(--text-tertiary) !important;
+  }
+  .dark .ant-picker-panel-container {
+    background-color: var(--surface-raised) !important;
+    border: 1px solid var(--border-color) !important;
+  }
+  .dark .ant-picker-header {
+    color: var(--text-primary) !important;
+    border-bottom-color: var(--border-color) !important;
+  }
+  .dark .ant-picker-header button {
+    color: var(--text-secondary) !important;
+  }
+  .dark .ant-picker-content th {
+    color: var(--text-tertiary) !important;
+  }
+  .dark .ant-picker-cell {
+    color: var(--text-secondary) !important;
+  }
+  .dark .ant-picker-cell-in-view {
+    color: var(--text-primary) !important;
+  }
+  .dark .ant-picker-cell-in-view.ant-picker-cell-in-range::before {
+    background: var(--accent-soft) !important;
+  }
+  .dark .ant-picker-cell-in-view.ant-picker-cell-range-start .ant-picker-cell-inner,
+  .dark .ant-picker-cell-in-view.ant-picker-cell-range-end .ant-picker-cell-inner,
+  .dark .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner {
+    background: var(--accent) !important;
+    color: #ffffff !important;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -356,3 +474,62 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* ==========================================================================
+   React International Phone Theme Integration
+   ========================================================================== */
+:root {
+  --react-international-phone-height: 42px;
+  --react-international-phone-border-radius: 12px;
+  --react-international-phone-border-color: var(--border-color);
+  --react-international-phone-background-color: var(--surface);
+  --react-international-phone-text-color: var(--text-primary);
+  --react-international-phone-selected-dropdown-item-background-color: var(--surface-muted);
+  --react-international-phone-selected-dropdown-item-text-color: var(--text-primary);
+  --react-international-phone-country-selector-background-color-hover: var(--surface-muted);
+  --react-international-phone-dropdown-item-background-color: var(--surface);
+  --react-international-phone-dropdown-item-text-color: var(--text-primary);
+  --react-international-phone-dropdown-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+  --react-international-phone-font-size: 14px;
+}
+
+.react-international-phone-input-container {
+  width: 100%;
+}
+
+.react-international-phone-input-container .react-international-phone-input {
+  width: 100% !important;
+  flex: 1 1 0% !important;
+  border-left: none !important;
+  border-top-right-radius: 12px !important;
+  border-bottom-right-radius: 12px !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
+  transition: all 150ms ease;
+}
+
+.react-international-phone-input-container .react-international-phone-country-selector-button {
+  border-top-left-radius: 12px !important;
+  border-bottom-left-radius: 12px !important;
+  padding-left: 10px !important;
+  padding-right: 8px !important;
+  border-right: 1px solid var(--border-color) !important;
+  transition: all 150ms ease;
+}
+
+.react-international-phone-input-container:focus-within .react-international-phone-country-selector-button,
+.react-international-phone-input-container:focus-within .react-international-phone-input {
+  border-color: var(--primary) !important;
+}
+
+.react-international-phone-input-container.has-error .react-international-phone-country-selector-button,
+.react-international-phone-input-container.has-error .react-international-phone-input {
+  border-color: #ef4444 !important;
+}
+
+.react-international-phone-country-selector-dropdown {
+  border-radius: 12px !important;
+  border: 1px solid var(--border-color) !important;
+  z-index: 50 !important;
+}
+

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type BadgeTone = 'success' | 'danger' | 'warning' | 'info' | 'neutral' | 'brand';
+export type BadgeTone = 'success' | 'danger' | 'warning' | 'info' | 'neutral' | 'brand' | 'primary' | 'secondary';
 
 interface StatusBadgeProps {
   children: React.ReactNode;
@@ -20,7 +20,9 @@ const toneClasses: Record<BadgeTone, string> = {
   warning: 'bg-crmWarning-bg text-crmWarning border-crmWarning-border',
   info: 'bg-crmInfo-bg text-crmInfo border-crmInfo-border',
   neutral: 'bg-major-muted text-crmText-secondary border-crmBorder',
-  brand: 'bg-minor-soft text-minor-contrast border-minor/20',
+  brand: 'bg-primary-soft text-primary-contrast border-primary/20',
+  primary: 'bg-primary-soft text-primary-contrast border-primary/20',
+  secondary: 'bg-secondary-soft text-secondary-contrast border-secondary/25',
 };
 
 /** One pill style for every status, count and tag in the CRM. */

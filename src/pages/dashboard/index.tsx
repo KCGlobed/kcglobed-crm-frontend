@@ -9,12 +9,14 @@ const shortcuts = [
     label: 'Roles & Permissions',
     description: 'Define access levels for every team member.',
     icon: <ShieldCheck size={20} />,
+    iconClass: 'border-primary/20 bg-primary-soft text-primary-contrast',
   },
   {
     to: '/users',
     label: 'Users & Staff',
     description: 'Manage staff accounts and role assignments.',
     icon: <Users size={20} />,
+    iconClass: 'border-secondary/25 bg-secondary-soft text-secondary-contrast',
   },
 ];
 
@@ -34,9 +36,9 @@ function Dashboard() {
             key={shortcut.to}
             type="button"
             onClick={() => navigate(shortcut.to)}
-            className="flex cursor-pointer items-start gap-4 rounded-2xl border border-crmBorder bg-major p-5 text-left shadow-crm-card transition-all hover:-translate-y-0.5 hover:border-minor/25 hover:shadow-crm-md"
+            className="flex cursor-pointer items-start gap-4 rounded-2xl border border-crmBorder bg-major p-5 text-left shadow-crm-card transition-all hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-crm-md"
           >
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-minor/20 bg-minor-soft text-minor-contrast">
+            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${shortcut.iconClass}`}>
               {shortcut.icon}
             </span>
             <span className="min-w-0">

@@ -30,10 +30,10 @@ const UserThumbnail = ({ row }: { row: User }) => {
   const initial = (row.first_name?.[0] || row.email?.[0] || 'U').toUpperCase();
   return (
     <div
-      className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${
+      className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${
         row.is_admin
-          ? 'border-purple-200 bg-purple-50 text-purple-700'
-          : 'border-minor/20 bg-minor-soft text-minor-contrast'
+          ? 'border-primary/30 bg-primary-soft text-primary-contrast'
+          : 'border-crmBorder bg-major-tint text-crmText-secondary'
       }`}
     >
       <span>{initial}</span>
@@ -78,96 +78,8 @@ const ManageUsers: React.FC = () => {
     dispatch(fetchUsers());
   }, [dispatch]);
 
-  // Client-side filtering & sorting matching backend data
-  const filteredUsers = useMemo(() => {
-    let list = [...(users || [])];
-
-    // Search filter across first_name, last_name, email, role
-    if (debouncedSearchTerm) {
-      const term = debouncedSearchTerm.toLowerCase();
-      list = list.filter((u) => {
-        const fullName = `${u.first_name || ''} ${u.last_name || ''}`.trim().toLowerCase();
-        const roleObj = typeof u.role === 'object' && u.role !== null ? u.role : null;
-        const roleName = (roleObj?.name || u.role_name || '').toLowerCase();
-        const roleSlug = (roleObj?.slug || '').toLowerCase();
-        const email = (u.email || '').toLowerCase();
-        return (
-          fullName.includes(term) ||
-          email.includes(term) ||
-          roleName.includes(term) ||
-          roleSlug.includes(term)
-        );
-      });
-    }
-
-    // Explicit field filters
-    if (debouncedFilters.name) {
-      const nameTerm = debouncedFilters.name.toLowerCase();
-      list = list.filter((u) => {
-        const fullName = `${u.first_name || ''} ${u.last_name || ''}`.trim().toLowerCase();
-        return fullName.includes(nameTerm);
-      });
-    }
-
-    if (debouncedFilters.email) {
-      const emailTerm = debouncedFilters.email.toLowerCase();
-      list = list.filter((u) => (u.email || '').toLowerCase().includes(emailTerm));
-    }
-
-    if (debouncedFilters.role) {
-      const roleTerm = debouncedFilters.role.toLowerCase();
-      list = list.filter((u) => {
-        const roleObj = typeof u.role === 'object' && u.role !== null ? u.role : null;
-        const roleName = (roleObj?.name || u.role_name || '').toLowerCase();
-        const roleSlug = (roleObj?.slug || '').toLowerCase();
-        return roleName.includes(roleTerm) || roleSlug.includes(roleTerm);
-      });
-    }
-
-    if (debouncedFilters.status && debouncedFilters.status !== 'all') {
-      const shouldBeActive = debouncedFilters.status === 'active';
-      list = list.filter((u) => !!u.is_active === shouldBeActive);
-    }
-
-    // Sorting
-    if (ordering) {
-      const isDesc = ordering.startsWith('-');
-      const field = isDesc ? ordering.substring(1) : ordering;
-
-      list.sort((a: any, b: any) => {
-        let valA: any;
-        let valB: any;
-
-        if (field === 'role') {
-          valA = typeof a.role === 'object' && a.role ? a.role.name : a.role_name || '';
-          valB = typeof b.role === 'object' && b.role ? b.role.name : b.role_name || '';
-        } else if (field === 'first_name' || field === 'name') {
-          valA = `${a.first_name || ''} ${a.last_name || ''}`.trim();
-          valB = `${b.first_name || ''} ${b.last_name || ''}`.trim();
-        } else {
-          valA = a[field] ?? '';
-          valB = b[field] ?? '';
-        }
-
-        if (typeof valA === 'string') {
-          return isDesc ? valB.localeCompare(valA) : valA.localeCompare(valB);
-        }
-        if (typeof valA === 'boolean') {
-          return isDesc ? (valB === valA ? 0 : valB ? 1 : -1) : (valA === valB ? 0 : valA ? 1 : -1);
-        }
-        return isDesc ? (valB > valA ? 1 : -1) : (valA > valB ? 1 : -1);
-      });
-    }
-
-    return list;
-  }, [users, debouncedSearchTerm, debouncedFilters, ordering]);
-
-  // Pagination calculation
-  const totalCount = filteredUsers.length;
-  const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredUsers.slice(startIndex, startIndex + pageSize);
-  }, [filteredUsers, currentPage, pageSize]);
+  const userList = useMemo(() => users || [], [users]);
+  const totalCount = userList.length;
 
   // Reset to page 1 on search or filter changes
   useEffect(() => {
@@ -211,8 +123,8 @@ const ManageUsers: React.FC = () => {
           <div className="flex items-center gap-3">
             <UserThumbnail row={row} />
             <div className="flex flex-col min-w-0">
-              <span className="font-semibold text-gray-900 text-sm truncate">{fullName}</span>
-              <span className="text-[11px] text-gray-500 truncate">{row.email}</span>
+              <span className="font-semibold text-crmText text-sm truncate">{fullName}</span>
+              <span className="text-[11px] text-crmText-tertiary truncate">{row.email}</span>
             </div>
           </div>
         );
@@ -230,9 +142,9 @@ const ManageUsers: React.FC = () => {
           typeof row.role === 'object' && row.role ? row.role.slug : null;
         return (
           <div className="flex flex-col">
-            <span className="font-semibold text-gray-900 text-sm">{roleName}</span>
+            <span className="font-semibold text-crmText text-sm">{roleName}</span>
             {roleSlug && (
-              <span className="text-[11px] text-gray-500 font-mono">{roleSlug}</span>
+              <span className="text-[11px] text-crmText-tertiary font-mono">{roleSlug}</span>
             )}
           </div>
         );
@@ -248,8 +160,8 @@ const ManageUsers: React.FC = () => {
           <span
             className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
               value
-                ? 'bg-purple-50 text-purple-700 border-purple-200'
-                : 'bg-gray-100 text-gray-700 border-gray-200'
+                ? 'bg-minor-soft text-minor-contrast border-minor/30'
+                : 'bg-major-tint text-crmText-secondary border-crmBorder'
             }`}
           >
             {value ? 'Admin' : 'Staff'}
@@ -268,8 +180,8 @@ const ManageUsers: React.FC = () => {
           <span
             className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
               value
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-red-50 text-red-700 border-red-200'
+                ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border'
+                : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border'
             }`}
           >
             {value ? 'Active' : 'Inactive'}
@@ -321,7 +233,7 @@ const ManageUsers: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 w-full h-[calc(100vh-6rem)] max-w-full min-w-0 animate-in fade-in duration-500">
       {/* Top Action Bar */}
-      <div className="flex flex-col bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-gray-100 relative">
+      <div className="flex flex-col bg-major rounded-2xl shadow-crm-card border border-crmBorder relative">
         <div className="flex flex-wrap items-center justify-between px-4 py-3 gap-3">
           <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap">
             <button
@@ -329,22 +241,22 @@ const ManageUsers: React.FC = () => {
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${
                 showFilter || activeFilterCount > 0
                   ? 'border-minor/30 text-minor-contrast bg-minor-soft'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  : 'border-crmBorder text-crmText-secondary hover:border-crmBorder-strong hover:bg-major-tint'
               }`}
             >
               <Filter
                 size={16}
-                className={showFilter || activeFilterCount > 0 ? 'text-minor-contrast' : 'text-gray-400'}
+                className={showFilter || activeFilterCount > 0 ? 'text-minor-contrast' : 'text-crmText-tertiary'}
               />
               <span>Filter</span>
               <ChevronDown
                 size={14}
-                className={`text-gray-500 transition-transform duration-200 ${
+                className={`text-crmText-secondary transition-transform duration-200 ${
                   showFilter ? 'rotate-180' : ''
                 }`}
               />
               {activeFilterCount > 0 && (
-                <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-minor text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+                <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-secondary text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
                   {activeFilterCount}
                 </span>
               )}
@@ -359,7 +271,7 @@ const ManageUsers: React.FC = () => {
           />
 
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
-            <span className="text-xs font-semibold text-gray-500 mr-1">
+            <span className="text-xs font-semibold text-crmText-secondary mr-1">
               Total: {totalCount} users
             </span>
             <button
@@ -393,9 +305,9 @@ const ManageUsers: React.FC = () => {
       </div>
 
       {/* Main Table Content */}
-      <div className="flex flex-col bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] overflow-hidden border border-gray-100 w-full max-w-full min-w-0">
+      <div className="flex flex-col bg-major rounded-2xl shadow-crm-card overflow-hidden border border-crmBorder w-full max-w-full min-w-0">
         <DynamicServerTable
-          data={paginatedData}
+          data={userList}
           columns={columns as any}
           currentPage={currentPage}
           pageSize={pageSize}

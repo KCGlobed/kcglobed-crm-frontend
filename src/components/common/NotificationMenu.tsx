@@ -7,11 +7,11 @@ import type { NotificationItem, NotificationKind } from '../../utils/types';
 const kindStyles: Record<NotificationKind, { icon: React.ReactNode; className: string }> = {
   lead: {
     icon: <UserPlus size={15} />,
-    className: 'bg-minor-soft text-minor-contrast border-minor/20',
+    className: 'bg-primary-soft text-primary-contrast border-primary/20',
   },
   task: {
     icon: <ClipboardList size={15} />,
-    className: 'bg-crmWarning-bg text-crmWarning border-crmWarning-border',
+    className: 'bg-secondary-soft text-secondary-contrast border-secondary/25',
   },
   user: {
     icon: <Users size={15} />,
@@ -52,13 +52,13 @@ export const NotificationMenu: React.FC = () => {
         title="Notifications"
         className={`relative flex h-9 w-9 items-center justify-center rounded-xl border transition-all ${
           isOpen
-            ? 'border-minor/30 bg-minor-soft text-minor-contrast'
-            : 'border-crmBorder bg-major-tint text-crmText-secondary hover:border-minor/30 hover:bg-minor-soft hover:text-minor-contrast'
+            ? 'border-primary/30 bg-primary-soft text-primary-contrast'
+            : 'border-crmBorder bg-major-tint text-crmText-secondary hover:border-primary/30 hover:bg-primary-soft hover:text-primary-contrast'
         }`}
       >
         <Bell size={17} />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-major bg-minor px-1 text-[10px] font-bold leading-none text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-major bg-secondary px-1 text-[10px] font-bold leading-none text-white shadow-sm">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

@@ -130,25 +130,25 @@ export const DateRangeDropdown: React.FC<DateRangeDropdownProps> = ({
                 <select
                     value={selectedPreset}
                     onChange={(e) => handlePresetChange(e.target.value)}
-                    className="appearance-none bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 rounded-xl px-3.5 py-2 pr-8 text-sm font-semibold text-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all cursor-pointer"
+                    className="appearance-none bg-major border border-crmBorder hover:border-crmBorder-strong hover:bg-major-tint rounded-xl px-3.5 py-2 pr-8 text-sm font-semibold text-crmText-secondary focus:outline-none focus:ring-2 focus:ring-minor-ring transition-all cursor-pointer"
                 >
-                    <option value="all">All Time</option>
-                    <option value="this_month">This Month</option>
-                    <option value="last_month">Last Month</option>
-                    <option value="this_week">This Week</option>
-                    <option value="last_week">Last Week</option>
-                    <option value="today">Today</option>
-                    <option value="custom">Custom Date</option>
+                    <option value="all" className="bg-major text-crmText">All Time</option>
+                    <option value="this_month" className="bg-major text-crmText">This Month</option>
+                    <option value="last_month" className="bg-major text-crmText">Last Month</option>
+                    <option value="this_week" className="bg-major text-crmText">This Week</option>
+                    <option value="last_week" className="bg-major text-crmText">Last Week</option>
+                    <option value="today" className="bg-major text-crmText">Today</option>
+                    <option value="custom" className="bg-major text-crmText">Custom Date</option>
                 </select>
                 <ChevronDown
                     size={14}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-crmText-secondary pointer-events-none"
                 />
             </div>
 
             {/* Formatted Date Range beside the dropdown (without any X button) */}
             {formattedDateRange && selectedPreset !== 'custom' && (
-                <span className="text-xs font-semibold text-gray-600 select-none">
+                <span className="text-xs font-semibold text-crmText-secondary select-none">
                     {formattedDateRange}
                 </span>
             )}

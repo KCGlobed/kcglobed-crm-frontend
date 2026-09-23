@@ -30,10 +30,10 @@ interface ColumnDef {
 const ModuleThumbnail = ({ row }: { row: Module }) => {
     return (
         <div
-            className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${
+            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${
                 row.parent == null
-                    ? 'border-indigo-100 bg-indigo-50 text-indigo-700'
-                    : 'border-gray-200 bg-gray-50 text-gray-600'
+                    ? 'border-primary/30 bg-primary-soft text-primary-contrast'
+                    : 'border-crmBorder bg-major-tint text-crmText-secondary'
             }`}
         >
             <span>{row.name ? row.name.charAt(0).toUpperCase() : 'M'}</span>
@@ -88,80 +88,8 @@ const ManageModules: React.FC = () => {
         return map;
     }, [modules]);
 
-    // Client-side filtering & sorting matching backend data
-    const filteredModules = useMemo(() => {
-        let list = [...(modules || [])];
-
-        // Search
-        if (debouncedSearchTerm) {
-            const term = debouncedSearchTerm.toLowerCase();
-            list = list.filter(
-                (m) =>
-                    m.name?.toLowerCase().includes(term) ||
-                    m.code?.toLowerCase().includes(term) ||
-                    (m.description || '').toLowerCase().includes(term)
-            );
-        }
-
-        // Filters
-        if (debouncedFilters.name) {
-            const term = debouncedFilters.name.toLowerCase();
-            list = list.filter((m) => m.name?.toLowerCase().includes(term));
-        }
-
-        if (debouncedFilters.code) {
-            const term = debouncedFilters.code.toLowerCase();
-            list = list.filter((m) => m.code?.toLowerCase().includes(term));
-        }
-
-        if (debouncedFilters.status === 'active') {
-            list = list.filter((m) => m.is_active);
-        } else if (debouncedFilters.status === 'deactive') {
-            list = list.filter((m) => !m.is_active);
-        }
-
-        // Date range filter
-        if (startDate) {
-            const startMoment = moment(startDate).startOf('day');
-            list = list.filter((m) => m.created_at && moment(m.created_at).isSameOrAfter(startMoment));
-        }
-
-        if (endDate) {
-            const endMoment = moment(endDate).endOf('day');
-            list = list.filter((m) => m.created_at && moment(m.created_at).isSameOrBefore(endMoment));
-        }
-
-        // Ordering / sort
-        if (ordering) {
-            const isDesc = ordering.startsWith('-');
-            const key = ordering.replace(/^-/, '') as keyof Module;
-            list.sort((a, b) => {
-                const rawA = a[key];
-                const rawB = b[key];
-
-                if (rawA == null && rawB == null) return 0;
-                if (rawA == null) return isDesc ? 1 : -1;
-                if (rawB == null) return isDesc ? -1 : 1;
-
-                if (typeof rawA === 'string' && typeof rawB === 'string') {
-                    const cmp = rawA.localeCompare(rawB);
-                    return isDesc ? -cmp : cmp;
-                }
-
-                if (rawA < rawB) return isDesc ? 1 : -1;
-                if (rawA > rawB) return isDesc ? -1 : 1;
-                return 0;
-            });
-        }
-
-        return list;
-    }, [modules, debouncedSearchTerm, debouncedFilters, startDate, endDate, ordering]);
-
-    const totalCount = filteredModules.length;
-    const paginatedData = useMemo(() => {
-        const start = (currentPage - 1) * pageSize;
-        return filteredModules.slice(start, start + pageSize);
-    }, [filteredModules, currentPage, pageSize]);
+    const moduleList = useMemo(() => modules || [], [modules]);
+    const totalCount = moduleList.length;
 
     // Reset to first page when search or filters change
     useEffect(() => {
@@ -203,8 +131,8 @@ const ManageModules: React.FC = () => {
                 <div className="flex items-center gap-3">
                     <ModuleThumbnail row={row} />
                     <div className="flex flex-col">
-                        <span className="font-semibold text-gray-900 text-sm whitespace-nowrap">{row.name}</span>
-                        <span className="text-[11px] text-gray-500 font-mono whitespace-nowrap">{row.code}</span>
+                        <span className="font-semibold text-crmText text-sm whitespace-nowrap">{row.name}</span>
+                        <span className="text-[11px] text-crmText-tertiary font-mono whitespace-nowrap">{row.code}</span>
                     </div>
                 </div>
             ),
@@ -216,7 +144,7 @@ const ManageModules: React.FC = () => {
             title: 'Description',
             render: (value: string) => (
                 <div
-                    className={`text-xs w-full max-w-xs line-clamp-2 ${value ? 'text-gray-600' : 'text-gray-400 italic'}`}
+                    className={`text-xs w-full max-w-xs line-clamp-2 ${value ? 'text-crmText-secondary' : 'text-crmText-tertiary italic'}`}
                     title={value || 'No description provided.'}
                 >
                     {value || 'No description provided.'}
@@ -232,8 +160,8 @@ const ManageModules: React.FC = () => {
                 <span
                     className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
                         value == null
-                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                            : 'bg-gray-100 text-gray-700 border-gray-200'
+                            ? 'bg-minor-soft text-minor-contrast border-minor/30'
+                            : 'bg-major-tint text-crmText-secondary border-crmBorder'
                     }`}
                 >
                     {value == null ? 'Top level' : parentNameById.get(value) || `#${value}`}
@@ -247,7 +175,7 @@ const ManageModules: React.FC = () => {
             key: 'sort_order',
             title: 'Sort Order',
             render: (value: number) => (
-                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200 whitespace-nowrap">
+                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-major-tint text-crmText-secondary border border-crmBorder whitespace-nowrap">
                     {value ?? '-'}
                 </span>
             ),
@@ -260,8 +188,8 @@ const ManageModules: React.FC = () => {
             title: 'Created On',
             render: (value: string) => (
                 <div className="flex flex-col">
-                    <span className="text-gray-800 text-xs font-semibold">{value ? moment(value).format('MMM DD, YYYY') : '-'}</span>
-                    <span className="text-gray-400 text-[10px] uppercase font-bold">{value ? moment(value).format('hh:mm A') : ''}</span>
+                    <span className="text-crmText text-xs font-semibold">{value ? moment(value).format('MMM DD, YYYY') : '-'}</span>
+                    <span className="text-crmText-tertiary text-[10px] uppercase font-bold">{value ? moment(value).format('hh:mm A') : ''}</span>
                 </div>
             ),
             sortable: true,
@@ -274,8 +202,8 @@ const ManageModules: React.FC = () => {
                 <span
                     className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                         value
-                            ? 'bg-green-100 text-green-700 border-green-200'
-                            : 'bg-red-100 text-red-700 border-red-200'
+                            ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border'
+                            : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border'
                     }`}
                 >
                     {value ? 'Active' : 'Inactive'}
@@ -326,7 +254,7 @@ const ManageModules: React.FC = () => {
     return (
         <div className="flex flex-col gap-4 w-full h-[calc(100vh-6rem)] max-w-full min-w-0 animate-in fade-in duration-500">
             {/* Premium Top Action Bar */}
-            <div className="flex flex-col bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-gray-100 relative">
+            <div className="flex flex-col bg-major rounded-2xl shadow-crm-card border border-crmBorder relative">
                 <div className="flex flex-wrap items-center justify-between px-4 py-3 gap-3">
                     <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap">
                         <button
@@ -334,17 +262,17 @@ const ManageModules: React.FC = () => {
                             className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${
                                 showFilter || activeFilterCount > 0
                                     ? 'border-minor/30 text-minor-contrast bg-minor-soft'
-                                    : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                                    : 'border-crmBorder text-crmText-secondary hover:border-crmBorder-strong hover:bg-major-tint'
                             }`}
                         >
-                            <Filter size={16} className={showFilter || activeFilterCount > 0 ? "text-minor-contrast" : "text-gray-400"} />
+                            <Filter size={16} className={showFilter || activeFilterCount > 0 ? "text-minor-contrast" : "text-crmText-tertiary"} />
                             <span>Filter</span>
                             <ChevronDown
                                 size={14}
-                                className={`text-gray-500 transition-transform duration-200 ${showFilter ? 'rotate-180' : ''}`}
+                                className={`text-crmText-secondary transition-transform duration-200 ${showFilter ? 'rotate-180' : ''}`}
                             />
                             {activeFilterCount > 0 && (
-                                <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-minor text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+                                <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-secondary text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
                                     {activeFilterCount}
                                 </span>
                             )}
@@ -400,9 +328,9 @@ const ManageModules: React.FC = () => {
             </div>
 
             {/* Main Table Content */}
-            <div className="flex flex-col bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] overflow-hidden border border-gray-100 w-full max-w-full min-w-0">
+            <div className="flex flex-col bg-major rounded-2xl shadow-crm-card overflow-hidden border border-crmBorder w-full max-w-full min-w-0">
                 <DynamicServerTable
-                    data={paginatedData}
+                    data={moduleList}
                     columns={columns as any}
                     currentPage={currentPage}
                     pageSize={pageSize}

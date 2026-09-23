@@ -65,8 +65,8 @@ const ModuleView: React.FC<ModuleViewProps> = ({ moduleData }) => {
               {module.is_active ? 'Active' : 'Inactive'}
             </span>
             {selectedModuleLoading && (
-              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold text-minor bg-minor/10 border border-minor/20 animate-pulse ml-auto">
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-minor animate-ping" />
+              <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold text-primary bg-primary-soft border border-primary/20 animate-pulse ml-auto">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-secondary animate-ping" />
                 Syncing
               </span>
             )}
