@@ -3,21 +3,19 @@ import { Filter, Plus, ChevronDown } from 'lucide-react';
 import DynamicServerTable from '../../components/components/Table/Table';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
-import { fetchRoles, updateRoleStatus, deleteRole } from '../../store/slices/roleSlice';
+import { fetchModules } from '../../store/slices/moduleSlice';
 import useDebounce from '../../hooks/useDebounce';
 import moment from 'moment';
-import RoleForm from '../../components/components/Forms/RoleForm';
 import { useModal } from '../../context/ModalContext';
-import toast from 'react-hot-toast';
 import GlassButton from '../../components/components/Button/Button';
-import { FiEdit, FiTrash, FiEye } from 'react-icons/fi';
-import DeleteConfirmationModal from '../../components/components/Modal/DeleteModal';
-import RoleView from '../../components/components/View/RoleView';
+import { FiEye, FiEdit } from 'react-icons/fi';
+import ModuleForm from '../../components/components/Forms/ModuleForm';
+import ModuleView from '../../components/components/View/ModuleView';
 import SearchInput from '../../components/components/common/SearchInput';
 import DateRangeDropdown from '../../components/components/common/DateRangeDropdown';
 import DynamicFilter from '../../components/components/common/DynamicFilter';
-import { roleFilterConfig } from '../../utils/filterConfiguration';
-import type { Role } from '../../utils/types';
+import { moduleFilterConfig } from '../../utils/filterConfiguration';
+import type { Module } from '../../utils/types';
 
 // Interface matching the Table component's column requirement
 interface ColumnDef {
@@ -29,21 +27,21 @@ interface ColumnDef {
     sortable?: boolean;
 }
 
-const RoleThumbnail = ({ row }: { row: Role }) => {
+const ModuleThumbnail = ({ row }: { row: Module }) => {
     return (
         <div
             className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${
-                row.is_system
-                    ? 'border-amber-200 bg-amber-50 text-amber-700'
-                    : 'border-indigo-100 bg-indigo-50 text-indigo-700'
+                row.parent == null
+                    ? 'border-indigo-100 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-200 bg-gray-50 text-gray-600'
             }`}
         >
-            <span>{row.name ? row.name.charAt(0).toUpperCase() : 'R'}</span>
+            <span>{row.name ? row.name.charAt(0).toUpperCase() : 'M'}</span>
         </div>
     );
 };
 
-const ManageRoles: React.FC = () => {
+const ManageModules: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
     const [ordering, setOrdering] = useState<string>('');
@@ -53,7 +51,7 @@ const ManageRoles: React.FC = () => {
     // Filter states
     const [filters, setFilters] = useState({
         name: '',
-        description: '',
+        code: '',
         status: 'all' as 'all' | 'active' | 'deactive',
     });
     const [startDate, setStartDate] = useState<string>('');
@@ -63,71 +61,80 @@ const ManageRoles: React.FC = () => {
     const debouncedFilters = useDebounce(filters, 500);
 
     const dispatch = useAppDispatch();
-    const { data: roles, loading } = useAppSelector((state) => state.roles);
+    const { data: modules, loading } = useAppSelector((state) => state.modules);
     const pageSize = 10;
 
     const activeFilterCount = useMemo(() => {
         let count = 0;
         if (filters.name) count++;
-        if (filters.description) count++;
+        if (filters.code) count++;
         if (filters.status && filters.status !== 'all') count++;
         if (ordering) count++;
         if (startDate || endDate) count++;
         return count;
     }, [filters, ordering, startDate, endDate]);
 
-    // Fetch roles on mount
+    // Fetch modules on mount
     useEffect(() => {
-        dispatch(fetchRoles());
+        dispatch(fetchModules());
     }, [dispatch]);
 
+    // Resolve a parent id to its module name using the loaded list
+    const parentNameById = useMemo(() => {
+        const map = new Map<number, string>();
+        (modules || []).forEach((m) => {
+            if (m.id != null) map.set(m.id, m.name || `#${m.id}`);
+        });
+        return map;
+    }, [modules]);
+
     // Client-side filtering & sorting matching backend data
-    const filteredRoles = useMemo(() => {
-        let list = [...(roles || [])];
+    const filteredModules = useMemo(() => {
+        let list = [...(modules || [])];
 
         // Search
         if (debouncedSearchTerm) {
             const term = debouncedSearchTerm.toLowerCase();
             list = list.filter(
-                (r) =>
-                    r.name?.toLowerCase().includes(term) ||
-                    r.slug?.toLowerCase().includes(term) ||
-                    (r.description || '').toLowerCase().includes(term)
+                (m) =>
+                    m.name?.toLowerCase().includes(term) ||
+                    m.code?.toLowerCase().includes(term) ||
+                    (m.description || '').toLowerCase().includes(term)
             );
         }
 
         // Filters
         if (debouncedFilters.name) {
             const term = debouncedFilters.name.toLowerCase();
-            list = list.filter((r) => r.name?.toLowerCase().includes(term));
+            list = list.filter((m) => m.name?.toLowerCase().includes(term));
         }
 
-        if (debouncedFilters.description) {
-            const term = debouncedFilters.description.toLowerCase();
-            list = list.filter((r) => (r.description || '').toLowerCase().includes(term));
+        if (debouncedFilters.code) {
+            const term = debouncedFilters.code.toLowerCase();
+            list = list.filter((m) => m.code?.toLowerCase().includes(term));
         }
 
         if (debouncedFilters.status === 'active') {
-            list = list.filter((r) => r.is_active);
+            list = list.filter((m) => m.is_active);
         } else if (debouncedFilters.status === 'deactive') {
-            list = list.filter((r) => !r.is_active);
+            list = list.filter((m) => !m.is_active);
         }
 
         // Date range filter
         if (startDate) {
             const startMoment = moment(startDate).startOf('day');
-            list = list.filter((r) => r.created_at && moment(r.created_at).isSameOrAfter(startMoment));
+            list = list.filter((m) => m.created_at && moment(m.created_at).isSameOrAfter(startMoment));
         }
 
         if (endDate) {
             const endMoment = moment(endDate).endOf('day');
-            list = list.filter((r) => r.created_at && moment(r.created_at).isSameOrBefore(endMoment));
+            list = list.filter((m) => m.created_at && moment(m.created_at).isSameOrBefore(endMoment));
         }
 
         // Ordering / sort
         if (ordering) {
             const isDesc = ordering.startsWith('-');
-            const key = ordering.replace(/^-/, '') as keyof Role;
+            const key = ordering.replace(/^-/, '') as keyof Module;
             list.sort((a, b) => {
                 const rawA = a[key];
                 const rawB = b[key];
@@ -148,13 +155,13 @@ const ManageRoles: React.FC = () => {
         }
 
         return list;
-    }, [roles, debouncedSearchTerm, debouncedFilters, startDate, endDate, ordering]);
+    }, [modules, debouncedSearchTerm, debouncedFilters, startDate, endDate, ordering]);
 
-    const totalCount = filteredRoles.length;
+    const totalCount = filteredModules.length;
     const paginatedData = useMemo(() => {
         const start = (currentPage - 1) * pageSize;
-        return filteredRoles.slice(start, start + pageSize);
-    }, [filteredRoles, currentPage, pageSize]);
+        return filteredModules.slice(start, start + pageSize);
+    }, [filteredModules, currentPage, pageSize]);
 
     // Reset to first page when search or filters change
     useEffect(() => {
@@ -168,7 +175,7 @@ const ManageRoles: React.FC = () => {
     const clearFilters = () => {
         setFilters({
             name: '',
-            description: '',
+            code: '',
             status: 'all',
         });
         setSearchTerm('');
@@ -191,13 +198,13 @@ const ManageRoles: React.FC = () => {
     const columns: ColumnDef[] = [
         {
             key: 'name',
-            title: 'Role',
-            render: (_: any, row: Role) => (
+            title: 'Module',
+            render: (_: any, row: Module) => (
                 <div className="flex items-center gap-3">
-                    <RoleThumbnail row={row} />
+                    <ModuleThumbnail row={row} />
                     <div className="flex flex-col">
                         <span className="font-semibold text-gray-900 text-sm whitespace-nowrap">{row.name}</span>
-                        <span className="text-[11px] text-gray-500 font-mono whitespace-nowrap">{row.slug}</span>
+                        <span className="text-[11px] text-gray-500 font-mono whitespace-nowrap">{row.code}</span>
                     </div>
                 </div>
             ),
@@ -216,43 +223,36 @@ const ManageRoles: React.FC = () => {
                 </div>
             ),
             sortable: true,
-            width: '240px',
+            width: '280px',
         },
         {
-            key: 'is_system',
-            title: 'Type',
-            render: (_: any, row: Role) => (
-                <div className="flex items-center gap-1.5 justify-center flex-wrap">
-                    <span
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
-                            row.is_system
-                                ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                : 'bg-gray-100 text-gray-700 border-gray-200'
-                        }`}
-                    >
-                        {row.is_system ? 'System' : 'Custom'}
-                    </span>
-                    {row.is_default && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 uppercase tracking-wider whitespace-nowrap">
-                            Default
-                        </span>
-                    )}
-                </div>
+            key: 'parent',
+            title: 'Parent',
+            render: (value: number | null) => (
+                <span
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
+                        value == null
+                            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            : 'bg-gray-100 text-gray-700 border-gray-200'
+                    }`}
+                >
+                    {value == null ? 'Top level' : parentNameById.get(value) || `#${value}`}
+                </span>
             ),
-            width: '130px',
+            width: '140px',
             align: 'center',
             sortable: true,
         },
         {
-            key: 'user_count',
-            title: 'Users',
+            key: 'sort_order',
+            title: 'Sort Order',
             render: (value: number) => (
                 <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200 whitespace-nowrap">
-                    {value ?? 0} {value === 1 ? 'user' : 'users'}
+                    {value ?? '-'}
                 </span>
             ),
             sortable: true,
-            width: '100px',
+            width: '110px',
             align: 'center',
         },
         {
@@ -268,36 +268,18 @@ const ManageRoles: React.FC = () => {
             width: '130px',
         },
         {
-            key: 'updated_at',
-            title: 'Updated On',
-            render: (value: string) => (
-                <div className="flex flex-col">
-                    <span className="text-gray-700 text-xs font-medium">{value ? moment(value).format('MMM DD, YYYY') : '-'}</span>
-                    <span className="text-gray-400 text-[10px] uppercase">{value ? moment(value).format('hh:mm A') : ''}</span>
-                </div>
-            ),
-            sortable: true,
-            width: '130px',
-        },
-        {
             key: 'is_active',
             title: 'Status',
-            render: (value: boolean, row: Role) => (
-                <button
-                    onClick={() => {
-                        dispatch(updateRoleStatus({ id: row.id, is_active: !value }))
-                            .unwrap()
-                            .then(() => toast.success(`Role ${!value ? 'activated' : 'deactivated'} successfully`))
-                            .catch((err: any) => toast.error(err || 'Failed to update status'));
-                    }}
-                    className={`px-3 cursor-pointer py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95 hover:shadow-sm ${
+            render: (value: boolean) => (
+                <span
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                         value
-                            ? 'bg-green-100 text-green-700 border border-green-200 hover:bg-green-200'
-                            : 'bg-red-100 text-red-700 border border-red-200 hover:bg-red-200'
+                            ? 'bg-green-100 text-green-700 border-green-200'
+                            : 'bg-red-100 text-red-700 border-red-200'
                     }`}
                 >
                     {value ? 'Active' : 'Inactive'}
-                </button>
+                </span>
             ),
             width: '100px',
             align: 'center',
@@ -306,16 +288,16 @@ const ManageRoles: React.FC = () => {
         {
             key: 'id',
             title: 'Actions',
-            render: (_: any, row: Role) => (
-                <div className="flex items-center justify-end gap-3 pr-2">
+            render: (_: any, row: Module) => (
+                <div className="flex items-center justify-end gap-2 pr-2">
                     <GlassButton
                         icon={<FiEye />}
                         color="blue"
                         title="View"
                         onClick={() =>
                             showModal({
-                                title: 'Role Details',
-                                content: <RoleView roleData={row} />,
+                                title: 'Module Details',
+                                content: <ModuleView moduleData={row} />,
                                 type: 'success',
                                 size: 'xl',
                             })
@@ -327,41 +309,16 @@ const ManageRoles: React.FC = () => {
                         title="Edit"
                         onClick={() =>
                             showModal({
-                                title: `Edit Role: ${row.name}`,
-                                content: <RoleForm roleData={row} />,
-                                type: 'success',
-                                size: 'xl',
+                                title: `Edit Module: ${row.name || row.code}`,
+                                content: <ModuleForm moduleData={row} />,
+                                type: 'custom',
+                                size: 'lg',
                             })
                         }
                     />
-                    {!row.is_system && (
-                        <GlassButton
-                            icon={<FiTrash className="text-base" />}
-                            color="red"
-                            title="Delete"
-                            onClick={() => {
-                                showModal({
-                                    title: 'Delete Role',
-                                    content: (
-                                        <DeleteConfirmationModal
-                                            id={row.id ?? 0}
-                                            name={row.name ?? 'Role'}
-                                            onDelete={async () => {
-                                                if (row.id != null) {
-                                                    await dispatch(deleteRole(row.id)).unwrap();
-                                                }
-                                            }}
-                                        />
-                                    ),
-                                    type: 'custom',
-                                    size: 'md',
-                                });
-                            }}
-                        />
-                    )}
                 </div>
             ),
-            width: '130px',
+            width: '120px',
             align: 'right',
         },
     ];
@@ -407,7 +364,7 @@ const ManageRoles: React.FC = () => {
                     <SearchInput
                         value={searchTerm}
                         onChange={setSearchTerm}
-                        placeholder="Search roles..."
+                        placeholder="Search modules..."
                         className="mx-4"
                     />
 
@@ -416,15 +373,15 @@ const ManageRoles: React.FC = () => {
                             className="flex items-center gap-1.5 px-4 py-2 bg-minor hover:bg-minor-hover text-white rounded-xl text-xs font-bold hover:shadow-lg transition-all active:scale-95 shadow-minor/20 shadow-sm cursor-pointer border-none"
                             onClick={() =>
                                 showModal({
-                                    title: "Add Role",
-                                    content: <RoleForm />,
+                                    title: "Add Module",
+                                    content: <ModuleForm />,
                                     type: 'custom',
                                     size: 'lg',
                                 })
                             }
                         >
                             <Plus size={18} strokeWidth={2.5} />
-                            Add Role
+                            Add Module
                         </button>
                     </div>
                 </div>
@@ -432,7 +389,7 @@ const ManageRoles: React.FC = () => {
                 {/* Inline General Filter Section */}
                 <DynamicFilter
                     show={showFilter}
-                    config={roleFilterConfig}
+                    config={moduleFilterConfig}
                     values={filters}
                     onChange={handleFilterChange}
                     onClear={clearFilters}
@@ -451,7 +408,7 @@ const ManageRoles: React.FC = () => {
                     pageSize={pageSize}
                     totalCount={totalCount}
                     loading={loading}
-                    rowKey={(row: Role) => row.id ?? row.slug ?? row.name ?? Math.random()}
+                    rowKey={(row: Module) => row.id ?? row.code ?? row.name ?? Math.random()}
                     onPageChange={(page) => setCurrentPage(page)}
                     onSort={handleSort}
                     className="rounded-none border-none shadow-none"
@@ -462,5 +419,5 @@ const ManageRoles: React.FC = () => {
     );
 };
 
-export const RolesPage = ManageRoles;
-export default ManageRoles;
+export const ModulesPage = ManageModules;
+export default ManageModules;

@@ -1,3 +1,10 @@
+// Generic API Response
+export interface ApiResponse<T = any> {
+  status_code: number;
+  message: string;
+  data: T;
+}
+
 // Pagination
 export interface Pagination<T> {
   data?: T[];
@@ -22,17 +29,22 @@ export interface LoginCred {
 }
 
 export interface AuthUser {
-  uid: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  role: {
-    id: number;
-    name: string;
-    slug: string;
+  uid?: string;
+  id?: number;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
+  name?: string;
+  role?: {
+    id?: number;
+    name?: string;
+    slug?: string;
   };
-  is_active: boolean;
-  is_admin: boolean;
+  role_name?: string;
+  is_active?: boolean;
+  is_admin?: boolean;
+  is_superadmin?: boolean;
 }
 
 export interface AuthAccess {
@@ -45,27 +57,20 @@ export interface AuthAccess {
   permissions: Record<string, unknown>;
 }
 
-export interface LoginResponse {
-  status_code: number;
-  message: string;
-  data: {
-    access_token: string;
-    refresh_token: string;
-    user: AuthUser;
-    access: AuthAccess;
-  };
-}
+export type LoginResponse = ApiResponse<{
+  access_token: string;
+  refresh_token: string;
+  user: AuthUser;
+  access: AuthAccess;
+}>;
 
 export interface AuthState {
   isAuthenticated: boolean;
   token: string | null;
   loading: boolean;
   error: string | null;
-  /** Optional profile details, read defensively by the header/sidebar. */
   user?: AuthUser | null;
-  /** User access/permissions */
   access?: AuthAccess | null;
-  /** Optional API origin used by some legacy screens. */
   baseUrl?: string | null;
 }
 
@@ -76,7 +81,7 @@ export interface ThemeState {
   mode: ThemeMode;
 }
 
-// Notifications (UI-only until a notifications API exists)
+// Notifications
 export type NotificationKind = "lead" | "task" | "user" | "system";
 
 export interface NotificationItem {
@@ -102,75 +107,77 @@ export interface ModulePermissionsGroup {
   permissions: PermissionDetail[];
 }
 
+// Module
+export interface Module {
+  id?: number;
+  name?: string;
+  code?: string;
+  module_code?: string;
+  description?: string;
+  parent?: number | null;
+  sort_order?: number;
+  is_active?: boolean;
+  created_at?: string;
+}
+
 // Role
-export interface RoleItem {
-  id: number;
-  name: string;
-  slug: string;
-  description: string;
-  is_active: boolean;
-  is_system: boolean;
-  permission_codes: string[];
-  permissions_detail?: PermissionDetail[];
+export interface RolePermission {
+  module?: string;
+  module_name?: string;
+  parent?: string | null;
+  can_view?: boolean;
+  can_add?: boolean;
+  can_change?: boolean;
+  can_delete?: boolean;
+  can_export?: boolean;
+}
+
+export interface RoleAccess {
+  role?: Role;
+  full_access?: boolean;
+  permissions?: RolePermission[];
+}
+
+export interface Role {
+  id?: number;
+  name?: string;
+  slug?: string;
+  description?: string;
+  is_system?: boolean;
+  is_default?: boolean;
+  is_active?: boolean;
   user_count?: number;
-  created_by_name?: string | null;
   created_at?: string;
   updated_at?: string;
-}
-
-export interface RolesListApiResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: RoleItem[];
-}
-
-export interface CreateRolePayload {
-  name: string;
-  description: string;
-  permissions: string[];
-}
-
-export interface UpdateRolePermissionsPayload {
-  id: number;
-  permissions: string[];
-}
-
-export interface UpdateRoleStatusPayload {
-  id: number;
-  is_active: boolean;
+  permissions?: RolePermission[];
+  permission_codes?: string[];
+  permissions_detail?: PermissionDetail[];
+  created_by_name?: string | null;
 }
 
 // User / Staff
-export interface UserItem {
-  id: number;
-  email: string;
-  full_name: string;
-  phone: string;
-  is_superadmin: boolean;
-  is_student: boolean;
-  role: number | null;
-  role_name: string | null;
-  role_detail?: RoleItem | null;
-  reports_to: number | null;
-  reports_to_name: string | null;
-  is_active: boolean;
-  date_joined: string;
-  last_login: string | null;
-}
-
-export interface UsersListApiResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: UserItem[];
-}
-
-export interface CreateUserPayload {
-  email: string;
-  full_name: string;
+export interface User {
+  uid?: string;
+  id?: number;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  full_name?: string;
   phone?: string;
-  role: number;
+  phone1?: string;
+  role?: Role | number | string | null;
+  role_name?: string | null;
+  role_detail?: Role | null;
+  reports_to?: number | null;
+  reports_to_name?: string | null;
+  is_active?: boolean;
+  is_admin?: boolean;
+  is_superadmin?: boolean;
+  is_student?: boolean;
+  date_joined?: string;
+  last_login?: string | null;
   password?: string;
   confirm_password?: string;
 }
+
+

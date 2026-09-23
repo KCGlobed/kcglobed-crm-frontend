@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { useAppDispatch, useAppSelector } from "./useRedux";
+import { useAppDispatch } from "./useAppDispatch";
+import { useAppSelector } from "./useRedux";
 import {
   THEME_STORAGE_KEY,
   applyThemeToDocument,

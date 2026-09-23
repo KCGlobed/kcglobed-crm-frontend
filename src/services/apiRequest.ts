@@ -2,7 +2,10 @@ import { BASE_URL } from "../utils/constants";
 import { getToken } from "../utils/tokenStorage";
 import tryRefreshToken from "./tokenService";
 
-export async function apiRequest<T>(
+// Map tracking concurrent in-flight GET requests to prevent duplicate network calls
+const inFlightGetRequests = new Map<string, Promise<any>>();
+
+async function executeRequest<T>(
   url: string,
   method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
   body?: any,
@@ -30,7 +33,7 @@ export async function apiRequest<T>(
     const refreshed = await tryRefreshToken();
 
     if (refreshed) {
-      return apiRequest<T>(url, method, body, false);
+      return executeRequest<T>(url, method, body, false);
     } else {
       console.error("Token refresh failed, please log in again.");
       localStorage.clear();
@@ -61,4 +64,28 @@ export async function apiRequest<T>(
   }
 
   return response as any;
+}
+
+export async function apiRequest<T>(
+  url: string,
+  method: "GET" | "POST" | "PUT" | "DELETE" | "PATCH",
+  body?: any,
+  retry: boolean = true
+): Promise<T> {
+  // Deduplicate concurrent in-flight GET requests
+  if (method === "GET") {
+    const existing = inFlightGetRequests.get(url);
+    if (existing) {
+      return existing as Promise<T>;
+    }
+
+    const promise = executeRequest<T>(url, method, body, retry).finally(() => {
+      inFlightGetRequests.delete(url);
+    });
+
+    inFlightGetRequests.set(url, promise);
+    return promise;
+  }
+
+  return executeRequest<T>(url, method, body, retry);
 }

@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { useAppDispatch, useAppSelector } from '../../hooks/useRedux';
+import { useAppDispatch } from '../../hooks/useAppDispatch';
+import { useAppSelector } from '../../hooks/useRedux';
 import { loginUser } from '../../store/slices/authSlice';
 import kcglobedLogo from '../../assets/kcglobed-logo.svg';
 

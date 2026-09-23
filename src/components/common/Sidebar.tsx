@@ -1,18 +1,23 @@
-import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import {
   BarChart3,
+  ChevronDown,
   ChevronLeft,
+  ChevronUp,
   GraduationCap,
   LayoutDashboard,
+  Layers,
   LogOut,
   MessageSquare,
   PieChart,
   ShieldCheck,
+  User as UserIcon,
   Users,
   X,
 } from 'lucide-react';
-import { useAppDispatch, useAppSelector } from '../../hooks/useRedux';
+import { useAppDispatch } from '../../hooks/useAppDispatch';
+import { useAppSelector } from '../../hooks/useRedux';
 import { logout } from '../../store/slices/authSlice';
 
 interface SidebarProps {
@@ -23,6 +28,22 @@ interface SidebarProps {
   /** Drawer state below the `lg` breakpoint. */
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
+}
+
+interface SubMenuItem {
+  id: string;
+  name: string;
+  path: string;
+  badge?: string;
+}
+
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  path?: string;
+  badge?: string;
+  submenu?: SubMenuItem[];
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -36,55 +57,146 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+
   const { user } = useAppSelector((state) => state.auth);
   const { data: roles } = useAppSelector((state) => state.roles);
   const { data: users } = useAppSelector((state) => state.users);
+
+  // Submenu accordion & user profile dropdown states (Instalearn pattern)
+  const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   // Derive current page either from prop or URL pathname
   const currentPath = location?.pathname ? location.pathname.replace(/^\//, '') : '';
   const currentPage = activePage || currentPath || 'dashboard';
 
-  const displayName: string = user?.full_name || user?.email || user?.name || 'Super Admin';
-  const displayRole: string = user?.role_name || (user?.is_superadmin ? 'Super Admin' : 'Staff');
+  const fullNameFromParts = [user?.first_name, user?.last_name].filter(Boolean).join(' ');
+  const displayName: string =
+    user?.full_name ||
+    user?.name ||
+    fullNameFromParts ||
+    user?.email ||
+    'Super Admin';
+  const displayRole: string =
+    user?.role_name ||
+    user?.role?.name ||
+    (user?.is_superadmin || user?.is_admin ? 'Super Admin' : 'Staff');
   const userInitials =
     displayName
       .split(' ')
-      .map((n) => n[0])
+      .filter(Boolean)
+      .map((n: string) => n[0])
       .join('')
       .substring(0, 2)
       .toUpperCase() || 'SA';
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={19} /> },
-    {
-      id: 'roles',
-      label: 'Roles & Permissions',
-      badge: roles && roles.length > 0 ? `${roles.length}` : undefined,
-      icon: <ShieldCheck size={19} />,
-    },
-    {
-      id: 'users',
-      label: 'Users & Staff',
-      badge: users && users.length > 0 ? `${users.length}` : undefined,
-      icon: <Users size={19} />,
-    },
-    { id: 'leads', label: 'Leads & Pipeline', icon: <BarChart3 size={19} /> },
-    { id: 'admissions', label: 'Admissions', icon: <GraduationCap size={19} /> },
-    { id: 'followups', label: 'Follow-ups & Notes', icon: <MessageSquare size={19} /> },
-    { id: 'reports', label: 'Reports & Export', icon: <PieChart size={19} /> },
-  ];
+  const toggleSubmenu = (id: string) => {
+    if (isCollapsed) {
+      onToggleCollapse(); // expand sidebar if collapsed so user can see submenu
+    }
+    setOpenSubmenu(openSubmenu === id ? null : id);
+  };
 
-  const handleNavClick = (id: string) => {
+  const handleNavClick = (id: string, path?: string) => {
     if (onSelectPage) {
       onSelectPage(id);
     }
-    navigate(`/${id}`);
+    navigate(path || `/${id}`);
     onCloseMobile?.();
   };
 
   const handleLogout = () => {
     dispatch(logout());
     navigate('/login');
+    onCloseMobile?.();
+  };
+
+  // CRM Navigation items structured with Instalearn's accordion submenu pattern
+  const navItems: NavItem[] = [
+    {
+      id: 'dashboard',
+      label: 'Dashboard',
+      path: '/dashboard',
+      icon: <LayoutDashboard size={19} />,
+    },
+    {
+      id: 'module',
+      label: 'Module',
+      path: '/modules',
+      icon: <Layers size={19} />,
+    },
+    {
+      id: 'roles',
+      label: 'Roles & Permissions',
+      path: '/roles',
+      badge: roles && roles.length > 0 ? `${roles.length}` : undefined,
+      icon: <ShieldCheck size={19} />,
+    },
+    {
+      id: 'users',
+      label: 'Users & Staff',
+      path: '/users',
+      badge: users && users.length > 0 ? `${users.length}` : undefined,
+      icon: <Users size={19} />,
+    },
+    {
+      id: 'leads',
+      label: 'Leads & Pipeline',
+      icon: <BarChart3 size={19} />,
+      submenu: [
+        { id: 'leads', name: 'All Leads', path: '/leads' },
+        { id: 'pipeline', name: 'Pipeline View', path: '/leads/pipeline' },
+      ],
+    },
+    {
+      id: 'admissions',
+      label: 'Admissions',
+      icon: <GraduationCap size={19} />,
+      submenu: [
+        { id: 'admissions', name: 'All Admissions', path: '/admissions' },
+        { id: 'applications', name: 'Applications', path: '/admissions/applications' },
+      ],
+    },
+    {
+      id: 'followups',
+      label: 'Follow-ups & Notes',
+      path: '/followups',
+      icon: <MessageSquare size={19} />,
+    },
+    {
+      id: 'reports',
+      label: 'Reports & Export',
+      icon: <PieChart size={19} />,
+      submenu: [
+        { id: 'reports', name: 'Reports Overview', path: '/reports' },
+        { id: 'reports-export', name: 'Export Data', path: '/reports/export' },
+      ],
+    },
+  ];
+
+  // Auto-expand submenu if current path matches any of its children
+  useEffect(() => {
+    navItems.forEach((item) => {
+      if (
+        item.submenu?.some(
+          (sub) =>
+            location.pathname === sub.path ||
+            currentPath === sub.id ||
+            currentPage === sub.id
+        )
+      ) {
+        setOpenSubmenu(item.id);
+      }
+    });
+  }, [location.pathname, currentPath, currentPage]);
+
+  const isSubmenuActive = (item: NavItem) => {
+    return !!item.submenu?.some(
+      (sub) =>
+        location.pathname === sub.path ||
+        currentPath === sub.id ||
+        currentPage === sub.id
+    );
   };
 
   return (
@@ -111,7 +223,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         >
           <div
             className="flex cursor-pointer select-none items-center gap-3 overflow-hidden whitespace-nowrap border-none bg-transparent p-0 text-inherit no-underline outline-none transition-opacity hover:opacity-90"
-            onClick={() => handleNavClick('dashboard')}
+            onClick={() => handleNavClick('dashboard', '/dashboard')}
             role="button"
             tabIndex={0}
             title="KC Globed CRM - Go to Dashboard"
@@ -125,7 +237,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          {/* Collapse (desktop) */}
+          {/* Desktop Collapse / Expand Toggle Button */}
           <button
             type="button"
             className="hidden h-[30px] w-[30px] min-w-[30px] shrink-0 cursor-pointer items-center justify-center rounded-lg border border-crmBorder bg-major-tint text-crmText-secondary transition-all hover:border-minor/30 hover:bg-minor-soft hover:text-minor-contrast lg:flex"
@@ -151,8 +263,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Navigation Menu */}
-        <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+        {/* Navigation Menu (Scrollable) */}
+        <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-3 sidebar-scroll">
           <div
             className={`whitespace-nowrap px-3 py-2 text-[0.7rem] font-bold uppercase tracking-wider text-crmText-tertiary ${
               isCollapsed ? 'lg:hidden' : ''
@@ -160,68 +272,195 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             Core Modules
           </div>
-          <nav className="flex flex-col gap-1">
+
+          <nav className="flex flex-col space-y-1">
             {navItems.map((item) => {
-              const isActive = currentPage === item.id || currentPath === item.id;
+              const hasSubmenu = !!item.submenu && item.submenu.length > 0;
+              const isSubActive = isSubmenuActive(item);
+              const isActive =
+                currentPage === item.id ||
+                currentPath === item.id ||
+                location.pathname === item.path ||
+                isSubActive;
+              const isSubOpen = openSubmenu === item.id;
+
               return (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`flex w-full cursor-pointer items-center gap-3.5 whitespace-nowrap rounded-xl border-none px-3.5 py-2.5 text-left font-sans text-sm font-semibold transition-all ${
-                    isActive
-                      ? 'bg-minor text-white shadow-crm-accent'
-                      : 'bg-transparent text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
-                  } ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
-                  onClick={() => handleNavClick(item.id)}
-                  title={isCollapsed ? item.label : undefined}
-                  aria-current={isActive ? 'page' : undefined}
-                >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center transition-colors">
-                    {item.icon}
-                  </span>
-                  <span className={isCollapsed ? 'lg:hidden' : ''}>{item.label}</span>
-                  {item.badge && (
-                    <span
-                      className={`ml-auto rounded-full px-2 py-0.5 text-[0.72rem] font-bold ${
-                        isActive ? 'bg-white/25 text-white' : 'bg-minor-soft text-minor-contrast'
-                      } ${isCollapsed ? 'lg:hidden' : ''}`}
+                <div key={item.id}>
+                  {hasSubmenu ? (
+                    <>
+                      {/* Parent Item with Accordion Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => toggleSubmenu(item.id)}
+                        className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-sans text-sm font-semibold transition-all ${
+                          isActive
+                            ? 'bg-minor-soft text-minor-contrast'
+                            : 'bg-transparent text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
+                        } ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
+                        title={isCollapsed ? item.label : undefined}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                            {item.icon}
+                          </span>
+                          <span className={`truncate text-sm ${isCollapsed ? 'lg:hidden' : ''}`}>
+                            {item.label}
+                          </span>
+                        </div>
+
+                        {!isCollapsed && (
+                          <div className="ml-auto flex items-center gap-1.5 pl-2 shrink-0">
+                            {item.badge && (
+                              <span className="rounded-full bg-minor-soft px-2 py-0.5 text-[0.72rem] font-bold text-minor-contrast">
+                                {item.badge}
+                              </span>
+                            )}
+                            {isSubOpen ? (
+                              <ChevronUp size={14} className="text-crmText-tertiary" />
+                            ) : (
+                              <ChevronDown size={14} className="text-crmText-tertiary" />
+                            )}
+                          </div>
+                        )}
+                      </button>
+
+                      {/* Accordion Submenu Items */}
+                      {!isCollapsed && isSubOpen && (
+                        <div className="ml-6 mt-1 mb-2 flex flex-col space-y-1 border-l-2 border-crmBorder pl-2.5">
+                          {item.submenu?.map((subItem) => {
+                            const isChildActive =
+                              location.pathname === subItem.path ||
+                              currentPath === subItem.id ||
+                              currentPage === subItem.id;
+
+                            return (
+                              <Link
+                                key={subItem.id}
+                                to={subItem.path}
+                                onClick={() => handleNavClick(subItem.id, subItem.path)}
+                                className={`flex items-center justify-between rounded-lg p-2 text-xs font-medium transition-colors ${
+                                  isChildActive
+                                    ? 'bg-minor text-white font-semibold shadow-sm'
+                                    : 'text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
+                                }`}
+                              >
+                                <span className="truncate">{subItem.name}</span>
+                                {subItem.badge && (
+                                  <span
+                                    className={`ml-1.5 rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
+                                      isChildActive
+                                        ? 'bg-white/20 text-white'
+                                        : 'bg-crmBorder text-crmText-secondary'
+                                    }`}
+                                  >
+                                    {subItem.badge}
+                                  </span>
+                                )}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    /* Regular Single Link Item */
+                    <button
+                      type="button"
+                      className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-sans text-sm font-semibold transition-all ${
+                        isActive
+                          ? 'bg-minor text-white shadow-crm-accent'
+                          : 'bg-transparent text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
+                      } ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
+                      onClick={() => handleNavClick(item.id, item.path)}
+                      title={isCollapsed ? item.label : undefined}
+                      aria-current={isActive ? 'page' : undefined}
                     >
-                      {item.badge}
-                    </span>
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                          {item.icon}
+                        </span>
+                        <span className={`truncate text-sm ${isCollapsed ? 'lg:hidden' : ''}`}>
+                          {item.label}
+                        </span>
+                      </div>
+                      {!isCollapsed && item.badge && (
+                        <span
+                          className={`ml-auto rounded-full px-2 py-0.5 text-[0.72rem] font-bold ${
+                            isActive ? 'bg-white/25 text-white' : 'bg-minor-soft text-minor-contrast'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
               );
             })}
           </nav>
         </div>
 
-        {/* Authenticated User Footer */}
-        <div className="border-t border-crmBorder bg-major p-3.5">
-          <div
-            className={`flex items-center gap-3 rounded-xl border border-crmBorder bg-major-tint p-2 ${
-              isCollapsed ? 'lg:justify-center' : ''
+        {/* Authenticated User Footer with Instalearn-style Dropdown */}
+        <div className="border-t border-crmBorder bg-major p-3.5 relative">
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className={`flex w-full cursor-pointer items-center justify-between rounded-xl border border-crmBorder bg-major-tint p-2 transition-all hover:border-minor/30 hover:bg-minor-soft ${
+              isCollapsed ? 'lg:justify-center lg:p-2' : ''
             }`}
             title={`Logged in as ${displayName}`}
           >
-            <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-minor to-minor-hover text-sm font-bold text-white shadow-crm-sm">
-              {userInitials}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-minor to-minor-hover text-xs font-bold text-white shadow-crm-sm">
+                {userInitials}
+              </div>
+              <div className={`min-w-0 text-left ${isCollapsed ? 'lg:hidden' : ''}`}>
+                <div className="truncate text-xs font-bold text-crmText">{displayName}</div>
+                <div className="truncate text-[10px] font-semibold text-minor-contrast">
+                  {displayRole}
+                </div>
+              </div>
             </div>
-            <div className={`min-w-0 flex-1 ${isCollapsed ? 'lg:hidden' : ''}`}>
-              <div className="truncate text-xs font-bold text-crmText">{displayName}</div>
-              <div className="truncate text-[10px] font-semibold text-minor-contrast">{displayRole}</div>
-            </div>
-            <button
-              type="button"
-              className={`flex cursor-pointer items-center justify-center rounded-md border-none bg-transparent p-1.5 text-crmText-tertiary transition-colors hover:bg-crmDanger-bg hover:text-crmDanger ${
-                isCollapsed ? 'lg:hidden' : ''
+
+            {!isCollapsed && (
+              <div className="ml-1 text-crmText-tertiary">
+                {isDropdownOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+              </div>
+            )}
+          </button>
+
+          {/* User Dropdown Menu */}
+          {isDropdownOpen && (
+            <div
+              className={`absolute bottom-full mb-2 z-50 rounded-xl border border-crmBorder bg-major p-1.5 shadow-crm-lg animate-in fade-in slide-in-from-bottom-2 duration-150 ${
+                isCollapsed ? 'left-2 w-44' : 'left-3.5 right-3.5'
               }`}
-              onClick={handleLogout}
-              title="Logout of CRM session"
-              aria-label="Logout"
             >
-              <LogOut size={17} />
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  navigate('/users');
+                  onCloseMobile?.();
+                }}
+                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-crmText transition-colors hover:bg-minor-soft hover:text-minor-contrast"
+              >
+                <UserIcon size={15} className="text-crmText-tertiary" />
+                <span>Profile</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  handleLogout();
+                }}
+                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-crmDanger transition-colors hover:bg-crmDanger-bg"
+              >
+                <LogOut size={15} className="text-crmDanger" />
+                <span>Logout</span>
+              </button>
+            </div>
+          )}
         </div>
       </aside>
     </>

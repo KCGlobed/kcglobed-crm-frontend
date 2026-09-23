@@ -6,7 +6,7 @@ import PublicRoutes from './publicRoutes';
 import LoginPage from '../pages/login';
 import AppLayout from '../components/common/AppLayout';
 import RolesPage from '../pages/roles';
-import RolesListPage from '../pages/roles/RolesListPage';
+import ModulesPage from '../pages/module';
 import UsersPage from '../pages/users';
 import NotFoundPage from '../pages/notFound';
 import DashboardPage from '../pages/dashboard';
@@ -24,8 +24,8 @@ export const AppRoutes: React.FC = () => {
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/roles" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/roles" element={<RolesListPage />} />
-          <Route path="/roles-old" element={<RolesPage />} />
+          <Route path="/modules" element={<ModulesPage />} />
+          <Route path="/roles" element={<RolesPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

@@ -26,9 +26,13 @@ const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
       await onDelete(id);
       toast.success(`${autoLabel} deleted successfully!`);
       hideModal();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Delete failed:", error);
-      toast.error(`Failed to delete ${autoLabel}. Please try again.`);
+      const errorMessage =
+        typeof error === "string"
+          ? error
+          : error?.message || `Failed to delete ${autoLabel}. Please try again.`;
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
