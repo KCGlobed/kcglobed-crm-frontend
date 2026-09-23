@@ -63,8 +63,17 @@ const ManageRoles: React.FC = () => {
     const debouncedFilters = useDebounce(filters, 500);
 
     const dispatch = useAppDispatch();
-    const { data: roles, loading } = useAppSelector((state) => state.roles);
-    const pageSize = 10;
+    const {
+        data: roles,
+        loading,
+        error,
+        total_results,
+        current_page,
+        page_size,
+    } = useAppSelector((state) => state.roles);
+
+    const pageSize = page_size || 10;
+    const isMounted = React.useRef(false);
 
     const activeFilterCount = useMemo(() => {
         let count = 0;
@@ -76,10 +85,17 @@ const ManageRoles: React.FC = () => {
         return count;
     }, [filters, ordering, startDate, endDate]);
 
-    // Fetch roles on mount
+    // Sync with Redux current_page if it changes
     useEffect(() => {
-        dispatch(fetchRoles());
-    }, [dispatch]);
+        if (current_page && current_page !== currentPage) {
+            setCurrentPage(current_page);
+        }
+    }, [current_page]);
+
+    // Fetch roles when currentPage or pageSize changes
+    useEffect(() => {
+        dispatch(fetchRoles({ page: currentPage, page_size: pageSize }));
+    }, [dispatch, currentPage, pageSize]);
 
     const roleList = useMemo(() => {
         if (Array.isArray(roles)) return roles;
@@ -87,11 +103,19 @@ const ManageRoles: React.FC = () => {
         if (Array.isArray((roles as any)?.data)) return (roles as any).data;
         return [];
     }, [roles]);
-    const totalCount = roleList.length;
+    const totalCount = total_results ?? roleList.length;
 
     // Reset to first page when search or filters change
     useEffect(() => {
-        setCurrentPage(1);
+        if (!isMounted.current) {
+            isMounted.current = true;
+            return;
+        }
+        if (currentPage !== 1) {
+            setCurrentPage(1);
+        } else {
+            dispatch(fetchRoles({ page: 1, page_size: pageSize }));
+        }
     }, [debouncedSearchTerm, debouncedFilters, startDate, endDate]);
 
     const handleFilterChange = (name: string, value: any) => {
@@ -384,6 +408,10 @@ const ManageRoles: React.FC = () => {
                     pageSize={pageSize}
                     totalCount={totalCount}
                     loading={loading}
+                    error={error}
+                    onRetry={() => dispatch(fetchRoles({ page: currentPage, page_size: pageSize }))}
+                    emptyTitle="No roles found"
+                    emptyDescription="There are no roles to display at the moment."
                     rowKey={(row: Role) => row.id ?? row.slug ?? row.name ?? Math.random()}
                     onPageChange={(page) => setCurrentPage(page)}
                     onSort={handleSort}

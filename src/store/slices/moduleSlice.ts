@@ -5,7 +5,7 @@ import {
   createModuleApi,
   updateModuleApi,
 } from "../../services/apiServices";
-import type { Pagination, Module } from "../../utils/types";
+import type { Pagination, PaginationInfo, Module } from "../../utils/types";
 
 interface ModuleState extends Pagination<Module> {
   selectedModule: Module | null;
@@ -18,17 +18,39 @@ const initialState: ModuleState = {
   next: null,
   loading: false,
   error: null,
+  total_results: 0,
+  total_pages: 1,
+  current_page: 1,
+  next_page: null,
+  previous_page: null,
+  page_size: 10,
   selectedModule: null,
   selectedModuleLoading: false,
   actionLoading: false,
 };
 
-export const fetchModules = createAsyncThunk<Module[]>(
+export const fetchModules = createAsyncThunk<
+  { data: Module[]; pagination?: PaginationInfo },
+  { page?: number; page_size?: number } | void
+>(
   "modules/fetchModules",
-  async (_, { rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     try {
-      const response = await fetchModulesApi();
-      return response.data ?? response;
+      const response = await fetchModulesApi(params || undefined);
+      let data: Module[] = [];
+      if (Array.isArray(response?.data)) {
+        data = response.data;
+      } else if (Array.isArray(response)) {
+        data = response;
+      } else if (Array.isArray(response?.results)) {
+        data = response.results;
+      } else if (Array.isArray(response?.data?.results)) {
+        data = response.data.results;
+      }
+      return {
+        data,
+        pagination: response?.pagination,
+      };
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to fetch modules");
     }
@@ -93,6 +115,9 @@ const moduleSlice = createSlice({
     clearModuleError: (state) => {
       state.error = null;
     },
+    setCurrentPage: (state, action: PayloadAction<number>) => {
+      state.current_page = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -103,12 +128,19 @@ const moduleSlice = createSlice({
       })
       .addCase(fetchModules.fulfilled, (state, action) => {
         state.loading = false;
-        const payload = action.payload;
-        state.data = Array.isArray(payload)
-          ? payload
-          : (payload as any)?.results || [];
-        state.count = state.data?.length ?? 0;
-        state.next = null;
+        state.data = action.payload.data;
+        if (action.payload.pagination) {
+          state.total_results = action.payload.pagination.total_results ?? action.payload.data.length;
+          state.total_pages = action.payload.pagination.total_pages ?? 1;
+          state.current_page = action.payload.pagination.current_page ?? 1;
+          state.next_page = action.payload.pagination.next_page ?? null;
+          state.previous_page = action.payload.pagination.previous_page ?? null;
+          state.page_size = action.payload.pagination.page_size ?? state.page_size;
+          state.count = action.payload.pagination.total_results ?? action.payload.data.length;
+        } else {
+          state.total_results = action.payload.data.length;
+          state.count = action.payload.data.length;
+        }
       })
       .addCase(fetchModules.rejected, (state, action) => {
         state.loading = false;
@@ -184,5 +216,5 @@ const moduleSlice = createSlice({
   },
 });
 
-export const { setSelectedModule, clearModuleError } = moduleSlice.actions;
+export const { setSelectedModule, clearModuleError, setCurrentPage } = moduleSlice.actions;
 export default moduleSlice.reducer;

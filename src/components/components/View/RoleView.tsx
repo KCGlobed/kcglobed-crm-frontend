@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAppDispatch } from '../../../hooks/useAppDispatch';
 import { useAppSelector } from '../../../hooks/useRedux';
 import { fetchRoleById, fetchRolePermissions } from '../../../store/slices/roleSlice';
-import { FiCheck, FiMinus } from 'react-icons/fi';
+import { FiCheck, FiMinus, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { ShieldCheck, Users, Layers } from 'lucide-react';
 import type { Role, RolePermission } from '../../../utils/types';
 import moment from 'moment';
@@ -49,6 +49,14 @@ const RoleView: React.FC<RoleViewProps> = ({ roleData }) => {
 
   const fullAccess = !!rolePermissions?.full_access;
   const permissions = useMemo(() => rolePermissions?.permissions || [], [rolePermissions]);
+  const [permPage, setPermPage] = useState(1);
+  const permPageSize = 5;
+
+  const totalPermPages = Math.ceil(permissions.length / permPageSize) || 1;
+  const paginatedPermissions = useMemo(() => {
+    const start = (permPage - 1) * permPageSize;
+    return permissions.slice(start, start + permPageSize);
+  }, [permissions, permPage, permPageSize]);
 
   return (
     <div className="w-full space-y-5">
@@ -153,7 +161,7 @@ const RoleView: React.FC<RoleViewProps> = ({ roleData }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-crmBorder">
-                {permissions.map((perm) => (
+                {paginatedPermissions.map((perm) => (
                   <tr key={perm.module} className="hover:bg-major-tint transition-colors">
                     <td className="px-3.5 py-2.5">
                       <div className="text-xs font-semibold text-crmText">
@@ -180,6 +188,37 @@ const RoleView: React.FC<RoleViewProps> = ({ roleData }) => {
                 ))}
               </tbody>
             </table>
+            {permissions.length > permPageSize && (
+              <div className="flex items-center justify-between px-3 py-2 border-t border-crmBorder bg-major-tint">
+                <span className="text-[11px] text-crmText-tertiary">
+                  Showing {(permPage - 1) * permPageSize + 1} to{' '}
+                  {Math.min(permPage * permPageSize, permissions.length)} of {permissions.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPermPage((p) => Math.max(1, p - 1))}
+                    disabled={permPage === 1}
+                    className="p-1 rounded text-crmText-secondary hover:bg-major-muted disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Previous page"
+                  >
+                    <FiChevronLeft size={16} />
+                  </button>
+                  <span className="px-2 text-xs font-semibold text-crmText">
+                    {permPage} / {totalPermPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPermPage((p) => Math.min(totalPermPages, p + 1))}
+                    disabled={permPage === totalPermPages}
+                    className="p-1 rounded text-crmText-secondary hover:bg-major-muted disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Next page"
+                  >
+                    <FiChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

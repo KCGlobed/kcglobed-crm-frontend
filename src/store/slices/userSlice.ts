@@ -5,7 +5,7 @@ import {
   createUserApi,
   updateUserRoleApi,
 } from "../../services/apiServices";
-import type { Pagination, User } from "../../utils/types";
+import type { Pagination, PaginationInfo, User } from "../../utils/types";
 
 
 interface UserState extends Pagination<User> {
@@ -19,17 +19,34 @@ const initialState: UserState = {
   next: null,
   loading: false,
   error: null,
+  total_results: 0,
+  total_pages: 1,
+  current_page: 1,
+  next_page: null,
+  previous_page: null,
+  page_size: 10,
   selectedUser: null,
   selectedUserLoading: false,
   actionLoading: false,
 };
 
-export const fetchUsers = createAsyncThunk<User[]>(
+export const fetchUsers = createAsyncThunk<
+  { data: User[]; pagination?: PaginationInfo },
+  { page?: number; page_size?: number } | void
+>(
   "users/fetchUsers",
-  async (_, { rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     try {
-      const response = await fetchUsersApi();
-      return response.data;
+      const response = await fetchUsersApi(params || undefined);
+      const data = Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response)
+          ? response
+          : response?.results || [];
+      return {
+        data,
+        pagination: response?.pagination,
+      };
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to fetch users");
     }
@@ -122,6 +139,9 @@ const userSlice = createSlice({
     clearUserError: (state) => {
       state.error = null;
     },
+    setCurrentPage: (state, action) => {
+      state.current_page = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -132,9 +152,19 @@ const userSlice = createSlice({
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = Array.isArray(action.payload)
-          ? action.payload
-          : (action.payload as any)?.results || [];
+        state.data = action.payload.data;
+        if (action.payload.pagination) {
+          state.total_results = action.payload.pagination.total_results ?? action.payload.data.length;
+          state.total_pages = action.payload.pagination.total_pages ?? 1;
+          state.current_page = action.payload.pagination.current_page ?? 1;
+          state.next_page = action.payload.pagination.next_page ?? null;
+          state.previous_page = action.payload.pagination.previous_page ?? null;
+          state.page_size = action.payload.pagination.page_size ?? state.page_size;
+          state.count = action.payload.pagination.total_results ?? action.payload.data.length;
+        } else {
+          state.total_results = action.payload.data.length;
+          state.count = action.payload.data.length;
+        }
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;
@@ -265,5 +295,5 @@ const userSlice = createSlice({
   },
 });
 
-export const { setSelectedUser, clearUserError } = userSlice.actions;
+export const { setSelectedUser, clearUserError, setCurrentPage } = userSlice.actions;
 export default userSlice.reducer;
