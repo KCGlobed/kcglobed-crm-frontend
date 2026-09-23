@@ -192,10 +192,14 @@ const ModuleForm: React.FC<ModuleFormProps> = ({ moduleData, onSuccess }) => {
       {/* Description */}
       <div>
         <label className="block text-xs font-semibold text-crmText mb-1.5">
-          Description
+          Description <span className="text-red-500">*</span>
         </label>
         <textarea
-          {...register('description')}
+          {...register('description', {
+            required: 'Description is required',
+            minLength: { value: 2, message: 'Description must be at least 2 characters' },
+            validate: (val) => val.trim().length > 0 || 'Description cannot be empty or only spaces',
+          })}
           placeholder="Brief description of this module's scope and purpose..."
           rows={3}
           className={`w-full px-3.5 py-2.5 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm resize-y ${
