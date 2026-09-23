@@ -47,9 +47,8 @@ const LoginPage = () => {
         {/* Left : login form                                                */}
         {/* ---------------------------------------------------------------- */}
         <div className="flex flex-col justify-center px-6 py-10 sm:px-10 sm:py-14 lg:px-14">
-          {/* Brand - the lockup keeps a light backing in dark mode so the
-              dark wordmark inside the SVG stays readable. */}
-          <div className="mb-10 w-fit rounded-xl dark:bg-white dark:px-3 dark:py-2">
+          {/* Brand - clean backdrop in dark mode with smooth radius */}
+          <div className="mb-10 w-fit rounded-2xl dark:bg-white/95 dark:px-3.5 dark:py-2.5 dark:shadow-[0_4px_24px_rgba(0,0,0,0.35)]">
             <img
               src={kcglobedLogo}
               alt="KC Globed"
@@ -153,7 +152,7 @@ const LoginPage = () => {
         {/* ---------------------------------------------------------------- */}
         {/* Right : CRM illustration                                         */}
         {/* ---------------------------------------------------------------- */}
-        <div className="relative hidden items-center justify-center overflow-hidden bg-gradient-to-br from-[#FBF5FC] via-[#F7EDF9] to-[#F3E4F6] p-10 lg:flex">
+        <div className="relative hidden items-center justify-center overflow-hidden bg-gradient-to-br from-[#FBF5FC] via-[#F7EDF9] to-[#F3E4F6] dark:from-[#181322] dark:via-[#130f1a] dark:to-[#0f0c15] p-10 lg:flex border-l border-crmBorder">
           <svg
             viewBox="0 0 520 460"
             role="img"
@@ -181,9 +180,9 @@ const LoginPage = () => {
             </defs>
 
             {/* Soft background shapes */}
-            <circle cx="432" cy="86" r="62" fill="#EFD9F3" opacity="0.65" />
-            <circle cx="74" cy="392" r="48" fill="#E6C9EC" opacity="0.6" />
-            <circle cx="256" cy="228" r="180" fill="#F6E9F8" opacity="0.5" />
+            <circle cx="432" cy="86" r="62" className="fill-[#EFD9F3] dark:fill-[#38163f] opacity-65 dark:opacity-25" />
+            <circle cx="74" cy="392" r="48" className="fill-[#E6C9EC] dark:fill-[#2e1234] opacity-60 dark:opacity-20" />
+            <circle cx="256" cy="228" r="180" className="fill-[#F6E9F8] dark:fill-[#220d28] opacity-50 dark:opacity-20" />
 
             {/* Main dashboard card */}
             <g filter="url(#loginCardShadow)">
@@ -193,17 +192,16 @@ const LoginPage = () => {
                 width="352"
                 height="250"
                 rx="20"
-                fill="#FFFFFF"
-                stroke="#EEDCF1"
+                className="fill-white dark:fill-[#1f1a29] stroke-[#EEDCF1] dark:stroke-[#3d3449]"
                 strokeWidth="1.5"
               />
             </g>
 
             {/* Dashboard header */}
-            <rect x="80" y="94" width="96" height="10" rx="5" fill="#701A75" />
-            <rect x="80" y="112" width="62" height="8" rx="4" fill="#D9BBE0" />
-            <rect x="322" y="94" width="62" height="22" rx="11" fill="#F7EDF9" />
-            <rect x="334" y="102" width="38" height="6" rx="3" fill="#C79AD1" />
+            <rect x="80" y="94" width="96" height="10" rx="5" className="fill-[#701A75] dark:fill-[#9b3fa0]" />
+            <rect x="80" y="112" width="62" height="8" rx="4" className="fill-[#D9BBE0] dark:fill-[#5f576b]" />
+            <rect x="322" y="94" width="62" height="22" rx="11" className="fill-[#F7EDF9] dark:fill-[#2b2236]" />
+            <rect x="334" y="102" width="38" height="6" rx="3" className="fill-[#C79AD1] dark:fill-[#8b8096]" />
 
             {/* KPI tiles */}
             {[
@@ -218,8 +216,7 @@ const LoginPage = () => {
                   width="96"
                   height="54"
                   rx="10"
-                  fill="#FAF3FC"
-                  stroke="#F2E4F5"
+                  className="fill-[#FAF3FC] dark:fill-[#261f30] stroke-[#F2E4F5] dark:stroke-[#3d3449]"
                 />
                 <rect
                   x={tile.x + 12}
@@ -235,7 +232,7 @@ const LoginPage = () => {
                   width="54"
                   height="6"
                   rx="3"
-                  fill="#D9BBE0"
+                  className="fill-[#D9BBE0] dark:fill-[#5f576b]"
                 />
               </g>
             ))}
@@ -247,8 +244,7 @@ const LoginPage = () => {
               width="304"
               height="96"
               rx="12"
-              fill="#FFFFFF"
-              stroke="#F2E4F5"
+              className="fill-white dark:fill-[#1f1a29] stroke-[#F2E4F5] dark:stroke-[#3d3449]"
             />
             {[
               { x: 114, h: 34, accent: false },
@@ -266,10 +262,11 @@ const LoginPage = () => {
                 width="20"
                 height={bar.h}
                 rx="6"
-                fill={bar.accent ? 'url(#loginBarGrad)' : '#EBD8F0'}
+                fill={bar.accent ? 'url(#loginBarGrad)' : undefined}
+                className={bar.accent ? undefined : 'fill-[#EBD8F0] dark:fill-[#3d3449]'}
               />
             ))}
-            <rect x="100" y="288" width="264" height="2" rx="1" fill="#F2E4F5" />
+            <rect x="100" y="288" width="264" height="2" rx="1" className="fill-[#F2E4F5] dark:fill-[#3d3449]" />
 
             {/* Analytics card */}
             <g filter="url(#loginCardShadow)">
@@ -279,13 +276,12 @@ const LoginPage = () => {
                 width="150"
                 height="120"
                 rx="16"
-                fill="#FFFFFF"
-                stroke="#EEDCF1"
+                className="fill-white dark:fill-[#1f1a29] stroke-[#EEDCF1] dark:stroke-[#3d3449]"
                 strokeWidth="1.5"
               />
             </g>
             <g transform="rotate(-90 374 84)">
-              <circle cx="374" cy="84" r="26" fill="none" stroke="#F1E1F5" strokeWidth="11" />
+              <circle cx="374" cy="84" r="26" fill="none" className="stroke-[#F1E1F5] dark:stroke-[#2e2739]" strokeWidth="11" />
               <circle
                 cx="374"
                 cy="84"
@@ -321,7 +317,7 @@ const LoginPage = () => {
                   width={legend.w}
                   height="6"
                   rx="3"
-                  fill="#EADDEE"
+                  className="fill-[#EADDEE] dark:fill-[#5f576b]"
                 />
               </g>
             ))}
@@ -334,17 +330,16 @@ const LoginPage = () => {
                 width="210"
                 height="132"
                 rx="16"
-                fill="#FFFFFF"
-                stroke="#EEDCF1"
+                className="fill-white dark:fill-[#1f1a29] stroke-[#EEDCF1] dark:stroke-[#3d3449]"
                 strokeWidth="1.5"
               />
             </g>
-            <rect x="44" y="304" width="66" height="9" rx="4.5" fill="#701A75" />
-            <rect x="188" y="304" width="26" height="9" rx="4.5" fill="#E3C7EA" />
+            <rect x="44" y="304" width="66" height="9" rx="4.5" className="fill-[#701A75] dark:fill-[#9b3fa0]" />
+            <rect x="188" y="304" width="26" height="9" rx="4.5" className="fill-[#E3C7EA] dark:fill-[#5f576b]" />
             {[
-              { cy: 336, avatar: '#701A75', pill: '#F1DFF5' },
-              { cy: 368, avatar: '#A855C0', pill: '#F6ECF9' },
-              { cy: 398, avatar: '#D2A5DB', pill: '#F6ECF9' },
+              { cy: 336, avatar: '#701A75' },
+              { cy: 368, avatar: '#A855C0' },
+              { cy: 398, avatar: '#D2A5DB' },
             ].map((lead) => (
               <g key={lead.cy}>
                 <circle cx="60" cy={lead.cy} r="13" fill={lead.avatar} />
@@ -353,9 +348,9 @@ const LoginPage = () => {
                   d={`M52.5 ${lead.cy + 9} a7.5 7.5 0 0 1 15 0 z`}
                   fill="#FFFFFF"
                 />
-                <rect x="82" y={lead.cy - 9} width="76" height="8" rx="4" fill="#EADDEE" />
-                <rect x="82" y={lead.cy + 3} width="50" height="6" rx="3" fill="#F4EAF7" />
-                <rect x="168" y={lead.cy - 8} width="42" height="16" rx="8" fill={lead.pill} />
+                <rect x="82" y={lead.cy - 9} width="76" height="8" rx="4" className="fill-[#EADDEE] dark:fill-[#3d3449]" />
+                <rect x="82" y={lead.cy + 3} width="50" height="6" rx="3" className="fill-[#F4EAF7] dark:fill-[#2d2438]" />
+                <rect x="168" y={lead.cy - 8} width="42" height="16" rx="8" className="fill-[#F1DFF5] dark:fill-[#30233b]" />
               </g>
             ))}
 

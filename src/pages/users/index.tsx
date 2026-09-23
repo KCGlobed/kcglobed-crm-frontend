@@ -30,10 +30,10 @@ const UserThumbnail = ({ row }: { row: User }) => {
   const initial = (row.first_name?.[0] || row.email?.[0] || 'U').toUpperCase();
   return (
     <div
-      className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${
+      className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${
         row.is_admin
-          ? 'border-purple-200 bg-purple-50 text-purple-700'
-          : 'border-minor/20 bg-minor-soft text-minor-contrast'
+          ? 'border-minor/30 bg-minor-soft text-minor-contrast'
+          : 'border-crmBorder bg-major-tint text-crmText-secondary'
       }`}
     >
       <span>{initial}</span>
@@ -211,8 +211,8 @@ const ManageUsers: React.FC = () => {
           <div className="flex items-center gap-3">
             <UserThumbnail row={row} />
             <div className="flex flex-col min-w-0">
-              <span className="font-semibold text-gray-900 text-sm truncate">{fullName}</span>
-              <span className="text-[11px] text-gray-500 truncate">{row.email}</span>
+              <span className="font-semibold text-crmText text-sm truncate">{fullName}</span>
+              <span className="text-[11px] text-crmText-tertiary truncate">{row.email}</span>
             </div>
           </div>
         );
@@ -230,9 +230,9 @@ const ManageUsers: React.FC = () => {
           typeof row.role === 'object' && row.role ? row.role.slug : null;
         return (
           <div className="flex flex-col">
-            <span className="font-semibold text-gray-900 text-sm">{roleName}</span>
+            <span className="font-semibold text-crmText text-sm">{roleName}</span>
             {roleSlug && (
-              <span className="text-[11px] text-gray-500 font-mono">{roleSlug}</span>
+              <span className="text-[11px] text-crmText-tertiary font-mono">{roleSlug}</span>
             )}
           </div>
         );
@@ -248,8 +248,8 @@ const ManageUsers: React.FC = () => {
           <span
             className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
               value
-                ? 'bg-purple-50 text-purple-700 border-purple-200'
-                : 'bg-gray-100 text-gray-700 border-gray-200'
+                ? 'bg-minor-soft text-minor-contrast border-minor/30'
+                : 'bg-major-tint text-crmText-secondary border-crmBorder'
             }`}
           >
             {value ? 'Admin' : 'Staff'}
@@ -268,8 +268,8 @@ const ManageUsers: React.FC = () => {
           <span
             className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
               value
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                : 'bg-red-50 text-red-700 border-red-200'
+                ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border'
+                : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border'
             }`}
           >
             {value ? 'Active' : 'Inactive'}
@@ -321,7 +321,7 @@ const ManageUsers: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 w-full h-[calc(100vh-6rem)] max-w-full min-w-0 animate-in fade-in duration-500">
       {/* Top Action Bar */}
-      <div className="flex flex-col bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] border border-gray-100 relative">
+      <div className="flex flex-col bg-major rounded-2xl shadow-crm-card border border-crmBorder relative">
         <div className="flex flex-wrap items-center justify-between px-4 py-3 gap-3">
           <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap">
             <button
@@ -329,17 +329,17 @@ const ManageUsers: React.FC = () => {
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${
                 showFilter || activeFilterCount > 0
                   ? 'border-minor/30 text-minor-contrast bg-minor-soft'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  : 'border-crmBorder text-crmText-secondary hover:border-crmBorder-strong hover:bg-major-tint'
               }`}
             >
               <Filter
                 size={16}
-                className={showFilter || activeFilterCount > 0 ? 'text-minor-contrast' : 'text-gray-400'}
+                className={showFilter || activeFilterCount > 0 ? 'text-minor-contrast' : 'text-crmText-tertiary'}
               />
               <span>Filter</span>
               <ChevronDown
                 size={14}
-                className={`text-gray-500 transition-transform duration-200 ${
+                className={`text-crmText-secondary transition-transform duration-200 ${
                   showFilter ? 'rotate-180' : ''
                 }`}
               />
@@ -359,7 +359,7 @@ const ManageUsers: React.FC = () => {
           />
 
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
-            <span className="text-xs font-semibold text-gray-500 mr-1">
+            <span className="text-xs font-semibold text-crmText-secondary mr-1">
               Total: {totalCount} users
             </span>
             <button
@@ -393,7 +393,7 @@ const ManageUsers: React.FC = () => {
       </div>
 
       {/* Main Table Content */}
-      <div className="flex flex-col bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] overflow-hidden border border-gray-100 w-full max-w-full min-w-0">
+      <div className="flex flex-col bg-major rounded-2xl shadow-crm-card overflow-hidden border border-crmBorder w-full max-w-full min-w-0">
         <DynamicServerTable
           data={paginatedData}
           columns={columns as any}

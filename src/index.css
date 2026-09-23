@@ -239,18 +239,55 @@
     overflow-x: hidden;
   }
 
-  /* Surfaces glide between themes instead of snapping */
-  body,
-  aside,
-  header,
-  main,
-  table,
-  th,
-  td,
-  input,
-  select,
-  textarea {
-    transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+  /* Smooth, unified View Transition crossfade for theme switches */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 260ms;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Ant Design controls adapt to dark mode surfaces */
+  .dark .ant-picker {
+    background-color: var(--surface) !important;
+    border-color: var(--border-color) !important;
+  }
+  .dark .ant-picker-input > input {
+    color: var(--text-primary) !important;
+  }
+  .dark .ant-picker-input > input::placeholder {
+    color: var(--text-tertiary) !important;
+  }
+  .dark .ant-picker-separator {
+    color: var(--text-tertiary) !important;
+  }
+  .dark .ant-picker-panel-container {
+    background-color: var(--surface-raised) !important;
+    border: 1px solid var(--border-color) !important;
+  }
+  .dark .ant-picker-header {
+    color: var(--text-primary) !important;
+    border-bottom-color: var(--border-color) !important;
+  }
+  .dark .ant-picker-header button {
+    color: var(--text-secondary) !important;
+  }
+  .dark .ant-picker-content th {
+    color: var(--text-tertiary) !important;
+  }
+  .dark .ant-picker-cell {
+    color: var(--text-secondary) !important;
+  }
+  .dark .ant-picker-cell-in-view {
+    color: var(--text-primary) !important;
+  }
+  .dark .ant-picker-cell-in-view.ant-picker-cell-in-range::before {
+    background: var(--accent-soft) !important;
+  }
+  .dark .ant-picker-cell-in-view.ant-picker-cell-range-start .ant-picker-cell-inner,
+  .dark .ant-picker-cell-in-view.ant-picker-cell-range-end .ant-picker-cell-inner,
+  .dark .ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner {
+    background: var(--accent) !important;
+    color: #ffffff !important;
   }
 
   @media (prefers-reduced-motion: reduce) {
