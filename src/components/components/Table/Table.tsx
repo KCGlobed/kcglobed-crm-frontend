@@ -137,11 +137,11 @@ function DynamicServerTable<T extends object>({
 
       {/* Table Scroll Container */}
       <div
-        className="relative w-full min-w-0 max-w-full overflow-auto [overscroll-behavior-x:none] [overscroll-behavior-y:contain] [scrollbar-gutter:stable]"
+        className="relative w-full min-w-0 max-w-full overflow-auto [overscroll-behavior-x:none] [overscroll-behavior-y:contain]"
         style={{ maxHeight }}
       >
         <table className="w-full border-separate border-spacing-0" style={{ minWidth }}>
-          <thead>
+          <thead className="bg-major-muted">
             <tr>
               {columns.map((col) => {
                 const isSorted = activeSort.key === col.key;
