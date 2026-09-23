@@ -32,7 +32,7 @@ const ModuleThumbnail = ({ row }: { row: Module }) => {
         <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${
                 row.parent == null
-                    ? 'border-minor/30 bg-minor-soft text-minor-contrast'
+                    ? 'border-primary/30 bg-primary-soft text-primary-contrast'
                     : 'border-crmBorder bg-major-tint text-crmText-secondary'
             }`}
         >
@@ -88,80 +88,8 @@ const ManageModules: React.FC = () => {
         return map;
     }, [modules]);
 
-    // Client-side filtering & sorting matching backend data
-    const filteredModules = useMemo(() => {
-        let list = [...(modules || [])];
-
-        // Search
-        if (debouncedSearchTerm) {
-            const term = debouncedSearchTerm.toLowerCase();
-            list = list.filter(
-                (m) =>
-                    m.name?.toLowerCase().includes(term) ||
-                    m.code?.toLowerCase().includes(term) ||
-                    (m.description || '').toLowerCase().includes(term)
-            );
-        }
-
-        // Filters
-        if (debouncedFilters.name) {
-            const term = debouncedFilters.name.toLowerCase();
-            list = list.filter((m) => m.name?.toLowerCase().includes(term));
-        }
-
-        if (debouncedFilters.code) {
-            const term = debouncedFilters.code.toLowerCase();
-            list = list.filter((m) => m.code?.toLowerCase().includes(term));
-        }
-
-        if (debouncedFilters.status === 'active') {
-            list = list.filter((m) => m.is_active);
-        } else if (debouncedFilters.status === 'deactive') {
-            list = list.filter((m) => !m.is_active);
-        }
-
-        // Date range filter
-        if (startDate) {
-            const startMoment = moment(startDate).startOf('day');
-            list = list.filter((m) => m.created_at && moment(m.created_at).isSameOrAfter(startMoment));
-        }
-
-        if (endDate) {
-            const endMoment = moment(endDate).endOf('day');
-            list = list.filter((m) => m.created_at && moment(m.created_at).isSameOrBefore(endMoment));
-        }
-
-        // Ordering / sort
-        if (ordering) {
-            const isDesc = ordering.startsWith('-');
-            const key = ordering.replace(/^-/, '') as keyof Module;
-            list.sort((a, b) => {
-                const rawA = a[key];
-                const rawB = b[key];
-
-                if (rawA == null && rawB == null) return 0;
-                if (rawA == null) return isDesc ? 1 : -1;
-                if (rawB == null) return isDesc ? -1 : 1;
-
-                if (typeof rawA === 'string' && typeof rawB === 'string') {
-                    const cmp = rawA.localeCompare(rawB);
-                    return isDesc ? -cmp : cmp;
-                }
-
-                if (rawA < rawB) return isDesc ? 1 : -1;
-                if (rawA > rawB) return isDesc ? -1 : 1;
-                return 0;
-            });
-        }
-
-        return list;
-    }, [modules, debouncedSearchTerm, debouncedFilters, startDate, endDate, ordering]);
-
-    const totalCount = filteredModules.length;
-    const paginatedData = useMemo(() => {
-        const start = (currentPage - 1) * pageSize;
-        return filteredModules.slice(start, start + pageSize);
-    }, [filteredModules, currentPage, pageSize]);
+    const moduleList = useMemo(() => modules || [], [modules]);
+    const totalCount = moduleList.length;
 
     // Reset to first page when search or filters change
     useEffect(() => {
@@ -344,7 +272,7 @@ const ManageModules: React.FC = () => {
                                 className={`text-crmText-secondary transition-transform duration-200 ${showFilter ? 'rotate-180' : ''}`}
                             />
                             {activeFilterCount > 0 && (
-                                <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-minor text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+                                <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-secondary text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
                                     {activeFilterCount}
                                 </span>
                             )}
@@ -402,7 +330,7 @@ const ManageModules: React.FC = () => {
             {/* Main Table Content */}
             <div className="flex flex-col bg-major rounded-2xl shadow-crm-card overflow-hidden border border-crmBorder w-full max-w-full min-w-0">
                 <DynamicServerTable
-                    data={paginatedData}
+                    data={moduleList}
                     columns={columns as any}
                     currentPage={currentPage}
                     pageSize={pageSize}

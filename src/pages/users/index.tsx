@@ -32,7 +32,7 @@ const UserThumbnail = ({ row }: { row: User }) => {
     <div
       className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${
         row.is_admin
-          ? 'border-minor/30 bg-minor-soft text-minor-contrast'
+          ? 'border-primary/30 bg-primary-soft text-primary-contrast'
           : 'border-crmBorder bg-major-tint text-crmText-secondary'
       }`}
     >
@@ -78,96 +78,8 @@ const ManageUsers: React.FC = () => {
     dispatch(fetchUsers());
   }, [dispatch]);
 
-  // Client-side filtering & sorting matching backend data
-  const filteredUsers = useMemo(() => {
-    let list = [...(users || [])];
-
-    // Search filter across first_name, last_name, email, role
-    if (debouncedSearchTerm) {
-      const term = debouncedSearchTerm.toLowerCase();
-      list = list.filter((u) => {
-        const fullName = `${u.first_name || ''} ${u.last_name || ''}`.trim().toLowerCase();
-        const roleObj = typeof u.role === 'object' && u.role !== null ? u.role : null;
-        const roleName = (roleObj?.name || u.role_name || '').toLowerCase();
-        const roleSlug = (roleObj?.slug || '').toLowerCase();
-        const email = (u.email || '').toLowerCase();
-        return (
-          fullName.includes(term) ||
-          email.includes(term) ||
-          roleName.includes(term) ||
-          roleSlug.includes(term)
-        );
-      });
-    }
-
-    // Explicit field filters
-    if (debouncedFilters.name) {
-      const nameTerm = debouncedFilters.name.toLowerCase();
-      list = list.filter((u) => {
-        const fullName = `${u.first_name || ''} ${u.last_name || ''}`.trim().toLowerCase();
-        return fullName.includes(nameTerm);
-      });
-    }
-
-    if (debouncedFilters.email) {
-      const emailTerm = debouncedFilters.email.toLowerCase();
-      list = list.filter((u) => (u.email || '').toLowerCase().includes(emailTerm));
-    }
-
-    if (debouncedFilters.role) {
-      const roleTerm = debouncedFilters.role.toLowerCase();
-      list = list.filter((u) => {
-        const roleObj = typeof u.role === 'object' && u.role !== null ? u.role : null;
-        const roleName = (roleObj?.name || u.role_name || '').toLowerCase();
-        const roleSlug = (roleObj?.slug || '').toLowerCase();
-        return roleName.includes(roleTerm) || roleSlug.includes(roleTerm);
-      });
-    }
-
-    if (debouncedFilters.status && debouncedFilters.status !== 'all') {
-      const shouldBeActive = debouncedFilters.status === 'active';
-      list = list.filter((u) => !!u.is_active === shouldBeActive);
-    }
-
-    // Sorting
-    if (ordering) {
-      const isDesc = ordering.startsWith('-');
-      const field = isDesc ? ordering.substring(1) : ordering;
-
-      list.sort((a: any, b: any) => {
-        let valA: any;
-        let valB: any;
-
-        if (field === 'role') {
-          valA = typeof a.role === 'object' && a.role ? a.role.name : a.role_name || '';
-          valB = typeof b.role === 'object' && b.role ? b.role.name : b.role_name || '';
-        } else if (field === 'first_name' || field === 'name') {
-          valA = `${a.first_name || ''} ${a.last_name || ''}`.trim();
-          valB = `${b.first_name || ''} ${b.last_name || ''}`.trim();
-        } else {
-          valA = a[field] ?? '';
-          valB = b[field] ?? '';
-        }
-
-        if (typeof valA === 'string') {
-          return isDesc ? valB.localeCompare(valA) : valA.localeCompare(valB);
-        }
-        if (typeof valA === 'boolean') {
-          return isDesc ? (valB === valA ? 0 : valB ? 1 : -1) : (valA === valB ? 0 : valA ? 1 : -1);
-        }
-        return isDesc ? (valB > valA ? 1 : -1) : (valA > valB ? 1 : -1);
-      });
-    }
-
-    return list;
-  }, [users, debouncedSearchTerm, debouncedFilters, ordering]);
-
-  // Pagination calculation
-  const totalCount = filteredUsers.length;
-  const paginatedData = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredUsers.slice(startIndex, startIndex + pageSize);
-  }, [filteredUsers, currentPage, pageSize]);
+  const userList = useMemo(() => users || [], [users]);
+  const totalCount = userList.length;
 
   // Reset to page 1 on search or filter changes
   useEffect(() => {
@@ -344,7 +256,7 @@ const ManageUsers: React.FC = () => {
                 }`}
               />
               {activeFilterCount > 0 && (
-                <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-minor text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+                <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-secondary text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
                   {activeFilterCount}
                 </span>
               )}
@@ -395,7 +307,7 @@ const ManageUsers: React.FC = () => {
       {/* Main Table Content */}
       <div className="flex flex-col bg-major rounded-2xl shadow-crm-card overflow-hidden border border-crmBorder w-full max-w-full min-w-0">
         <DynamicServerTable
-          data={paginatedData}
+          data={userList}
           columns={columns as any}
           currentPage={currentPage}
           pageSize={pageSize}

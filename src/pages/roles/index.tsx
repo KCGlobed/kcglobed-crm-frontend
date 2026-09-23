@@ -34,8 +34,8 @@ const RoleThumbnail = ({ row }: { row: Role }) => {
         <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${
                 row.is_system
-                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-500'
-                    : 'border-minor/30 bg-minor-soft text-minor-contrast'
+                    ? 'border-secondary/30 bg-secondary-soft text-secondary-contrast'
+                    : 'border-primary/30 bg-primary-soft text-primary-contrast'
             }`}
         >
             <span>{row.name ? row.name.charAt(0).toUpperCase() : 'R'}</span>
@@ -81,80 +81,13 @@ const ManageRoles: React.FC = () => {
         dispatch(fetchRoles());
     }, [dispatch]);
 
-    // Client-side filtering & sorting matching backend data
-    const filteredRoles = useMemo(() => {
-        let list = [...(roles || [])];
-
-        // Search
-        if (debouncedSearchTerm) {
-            const term = debouncedSearchTerm.toLowerCase();
-            list = list.filter(
-                (r) =>
-                    r.name?.toLowerCase().includes(term) ||
-                    r.slug?.toLowerCase().includes(term) ||
-                    (r.description || '').toLowerCase().includes(term)
-            );
-        }
-
-        // Filters
-        if (debouncedFilters.name) {
-            const term = debouncedFilters.name.toLowerCase();
-            list = list.filter((r) => r.name?.toLowerCase().includes(term));
-        }
-
-        if (debouncedFilters.description) {
-            const term = debouncedFilters.description.toLowerCase();
-            list = list.filter((r) => (r.description || '').toLowerCase().includes(term));
-        }
-
-        if (debouncedFilters.status === 'active') {
-            list = list.filter((r) => r.is_active);
-        } else if (debouncedFilters.status === 'deactive') {
-            list = list.filter((r) => !r.is_active);
-        }
-
-        // Date range filter
-        if (startDate) {
-            const startMoment = moment(startDate).startOf('day');
-            list = list.filter((r) => r.created_at && moment(r.created_at).isSameOrAfter(startMoment));
-        }
-
-        if (endDate) {
-            const endMoment = moment(endDate).endOf('day');
-            list = list.filter((r) => r.created_at && moment(r.created_at).isSameOrBefore(endMoment));
-        }
-
-        // Ordering / sort
-        if (ordering) {
-            const isDesc = ordering.startsWith('-');
-            const key = ordering.replace(/^-/, '') as keyof Role;
-            list.sort((a, b) => {
-                const rawA = a[key];
-                const rawB = b[key];
-
-                if (rawA == null && rawB == null) return 0;
-                if (rawA == null) return isDesc ? 1 : -1;
-                if (rawB == null) return isDesc ? -1 : 1;
-
-                if (typeof rawA === 'string' && typeof rawB === 'string') {
-                    const cmp = rawA.localeCompare(rawB);
-                    return isDesc ? -cmp : cmp;
-                }
-
-                if (rawA < rawB) return isDesc ? 1 : -1;
-                if (rawA > rawB) return isDesc ? -1 : 1;
-                return 0;
-            });
-        }
-
-        return list;
-    }, [roles, debouncedSearchTerm, debouncedFilters, startDate, endDate, ordering]);
-
-    const totalCount = filteredRoles.length;
-    const paginatedData = useMemo(() => {
-        const start = (currentPage - 1) * pageSize;
-        return filteredRoles.slice(start, start + pageSize);
-    }, [filteredRoles, currentPage, pageSize]);
+    const roleList = useMemo(() => {
+        if (Array.isArray(roles)) return roles;
+        if (Array.isArray((roles as any)?.results)) return (roles as any).results;
+        if (Array.isArray((roles as any)?.data)) return (roles as any).data;
+        return [];
+    }, [roles]);
+    const totalCount = roleList.length;
 
     // Reset to first page when search or filters change
     useEffect(() => {
@@ -226,7 +159,7 @@ const ManageRoles: React.FC = () => {
                     <span
                         className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
                             row.is_system
-                                ? 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+                                ? 'bg-secondary-soft text-secondary-contrast border-secondary/30'
                                 : 'bg-major-tint text-crmText-secondary border-crmBorder'
                         }`}
                     >
@@ -387,7 +320,7 @@ const ManageRoles: React.FC = () => {
                                 className={`text-crmText-secondary transition-transform duration-200 ${showFilter ? 'rotate-180' : ''}`}
                             />
                             {activeFilterCount > 0 && (
-                                <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-minor text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+                                <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-secondary text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
                                     {activeFilterCount}
                                 </span>
                             )}
@@ -445,7 +378,7 @@ const ManageRoles: React.FC = () => {
             {/* Main Table Content */}
             <div className="flex flex-col bg-major rounded-2xl shadow-crm-card overflow-hidden border border-crmBorder w-full max-w-full min-w-0">
                 <DynamicServerTable
-                    data={paginatedData}
+                    data={roleList}
                     columns={columns as any}
                     currentPage={currentPage}
                     pageSize={pageSize}

@@ -51,7 +51,19 @@ export const fetchRoles = createAsyncThunk<Role[]>(
   async (_, { rejectWithValue }) => {
     try {
       const response = await fetchRolesApi();
-      return response.data;
+      if (Array.isArray(response)) {
+        return response;
+      }
+      if (Array.isArray(response?.data)) {
+        return response.data;
+      }
+      if (Array.isArray(response?.results)) {
+        return response.results;
+      }
+      if (Array.isArray(response?.data?.results)) {
+        return response.data.results;
+      }
+      return [];
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to fetch roles");
     }
@@ -221,7 +233,10 @@ const roleSlice = createSlice({
       })
       .addCase(fetchRoles.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload || [];
+        const list = Array.isArray(action.payload)
+          ? action.payload
+          : (action.payload as any)?.results || (action.payload as any)?.data || [];
+        state.data = Array.isArray(list) ? list : [];
         state.count = state.data.length;
         state.next = null;
       })

@@ -56,7 +56,7 @@ const UserView: React.FC<UserViewProps> = ({ userData }) => {
               {user.is_active ? 'Active' : 'Inactive'}
             </span>
             {user.is_admin && (
-              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-purple-50 text-purple-700 border-purple-200">
+              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-primary-soft text-primary-contrast border-primary/30">
                 Admin
               </span>
             )}

@@ -70,7 +70,7 @@ const RoleView: React.FC<RoleViewProps> = ({ roleData }) => {
               {role.is_active ? 'Active' : 'Inactive'}
             </span>
             {role.is_system && (
-              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-crmWarning-bg text-crmWarning border-crmWarning-border">
+              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-secondary-soft text-secondary-contrast border-secondary/25">
                 System
               </span>
             )}
