@@ -101,11 +101,10 @@ const LoginPage = () => {
                       message: 'Please enter a valid email address',
                     },
                   })}
-                  className={`h-12 w-full rounded-xl border bg-major pl-11 pr-4 text-[15px] text-crmText outline-none transition placeholder:text-crmText-tertiary ${
-                    errors.email
+                  className={`h-12 w-full rounded-xl border bg-major pl-11 pr-4 text-[15px] text-crmText outline-none transition placeholder:text-crmText-tertiary ${errors.email
                       ? 'border-red-500 focus:ring-4 focus:ring-red-500/20'
                       : 'border-crmBorder hover:border-crmBorder-strong focus:border-primary focus:ring-4 focus:ring-primary-ring'
-                  }`}
+                    }`}
                 />
               </div>
               {errors.email && (
@@ -134,15 +133,14 @@ const LoginPage = () => {
                   {...register('password', {
                     required: 'Password is required',
                     minLength: {
-                      value: 6,
+                      value: 5,
                       message: 'Password must be at least 6 characters',
                     },
                   })}
-                  className={`h-12 w-full rounded-xl border bg-major pl-11 pr-12 text-[15px] text-crmText outline-none transition placeholder:text-crmText-tertiary ${
-                    errors.password
+                  className={`h-12 w-full rounded-xl border bg-major pl-11 pr-12 text-[15px] text-crmText outline-none transition placeholder:text-crmText-tertiary ${errors.password
                       ? 'border-red-500 focus:ring-4 focus:ring-red-500/20'
                       : 'border-crmBorder hover:border-crmBorder-strong focus:border-primary focus:ring-4 focus:ring-primary-ring'
-                  }`}
+                    }`}
                 />
                 <button
                   type="button"
