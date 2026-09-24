@@ -201,13 +201,13 @@ export interface User {
 }
 
 export interface ReportingNode {
-  uid: string;
-  name: string;
-  email: string;
-  role: string;
-  is_active: boolean;
-  team_count: number;
-  team: ReportingNode[];
+  uid?: string;
+  name?: string;
+  email?: string;
+  role?: string;
+  is_active?: boolean;
+  team_count?: number;
+  team?: ReportingNode[];
 }
 
 export interface ReportingOption {

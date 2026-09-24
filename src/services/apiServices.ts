@@ -105,8 +105,8 @@ export const deactivateUserApi = async (userUid: string): Promise<any> => {
 };
 
 // ----------------Reporting service------- //
-export const fetchReportingTreeApi = async (): Promise<any> => {
-  return await apiRequest("/access/users/reporting-tree/", "GET");
+export const fetchReportingTreeByUserApi = async (userUid: string): Promise<any> => {
+  return await apiRequest(`/access/users/reporting-tree/?user=${userUid}`, "GET");
 };
 
 
