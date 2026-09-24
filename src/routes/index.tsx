@@ -11,6 +11,7 @@ import UsersPage from '../pages/users';
 import ReportingPage from '../pages/reporting';
 import NotFoundPage from '../pages/notFound';
 import DashboardPage from '../pages/dashboard';
+import ReportingManagementPage from '../pages/reportingManager';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -29,6 +30,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/reporting" element={<ReportingPage />} />
+          <Route path="/reporting-management" element={<ReportingManagementPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>

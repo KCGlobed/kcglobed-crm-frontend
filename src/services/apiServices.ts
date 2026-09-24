@@ -26,6 +26,10 @@ export const fetchRoleByIdApi = async (roleId: number): Promise<any> => {
   return await apiRequest(`/access/roles/${roleId}/`, "GET");
 };
 
+export const fetchRoleOptionsApi = async (): Promise<any> => {
+  return await apiRequest("/access/roles/options/", "GET");
+};
+
 export const createRoleApi = async (payload: any): Promise<any> => {
   return await apiRequest("/access/roles/", "POST", payload);
 };
@@ -85,10 +89,35 @@ export const createUserApi = async (payload: any): Promise<any> => {
 };
 
 export const updateUserRoleApi = async (userUid: string, payload: any): Promise<any> => {
-  return await apiRequest(`/access/users/${userUid}/role/`, "PATCH", payload);
+  return await apiRequest(`/access/users/${userUid}/`, "PATCH", payload);
+};
+
+export const updateUserReportsToApi = async (userUid: string, payload: { reports_to: string | null }): Promise<any> => {
+  return await apiRequest(`/access/users/${userUid}/`, "PATCH", payload);
+};
+
+export const activateUserApi = async (userUid: string): Promise<any> => {
+  return await apiRequest(`/access/users/${userUid}/activate/`, "PATCH");
+};
+
+export const deactivateUserApi = async (userUid: string): Promise<any> => {
+  return await apiRequest(`/access/users/${userUid}/deactivate/`, "PATCH");
 };
 
 // ----------------Reporting service------- //
 export const fetchReportingTreeApi = async (): Promise<any> => {
   return await apiRequest("/access/users/reporting-tree/", "GET");
 };
+
+
+//-----------------Reporting Management service------- //
+
+export const fetchReportingManagementOptionsApi = async (params?: { page?: number; page_size?: number }): Promise<any> => {
+  const query = new URLSearchParams();
+  if (params?.page) query.append("page", String(params.page));
+  if (params?.page_size) query.append("page_size", String(params.page_size));
+  const queryString = query.toString();
+  return await apiRequest(`/access/users/reporting-options/${queryString ? `?${queryString}` : ""}`, "GET");
+};
+
+

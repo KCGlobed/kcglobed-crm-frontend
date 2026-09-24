@@ -3,14 +3,15 @@ import { Filter, ChevronDown, Plus } from 'lucide-react';
 import DynamicServerTable from '../../components/components/Table/Table';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
-import { fetchUsers } from '../../store/slices/userSlice';
+import { fetchUsers, activateUser, deactivateUser } from '../../store/slices/userSlice';
 import useDebounce from '../../hooks/useDebounce';
 import { useModal } from '../../context/ModalContext';
-import GlassButton from '../../components/components/Button/Button';
-import { FiEye, FiEdit } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import UserView from '../../components/components/View/UserView';
 import UserForm from '../../components/components/Forms/UserForm';
 import UpdateRoleForm from '../../components/components/Forms/UpdateRoleForm';
+import UpdateReporterForm from '../../components/components/Forms/UpdateReporterForm';
+import StatusConfirmationModal from '../../components/components/Modal/StatusConfirmationModal';
 import SearchInput from '../../components/components/common/SearchInput';
 import DynamicFilter from '../../components/components/common/DynamicFilter';
 import { userFilterConfig } from '../../utils/filterConfiguration';
@@ -135,6 +136,48 @@ const ManageUsers: React.FC = () => {
     handleSort(currentKey, direction);
   };
 
+  const executeToggleStatus = async (user: User) => {
+    if (!user.uid) return;
+    try {
+      if (user.is_active) {
+        await dispatch(deactivateUser(user.uid)).unwrap();
+        toast.success('User deactivated successfully');
+      } else {
+        await dispatch(activateUser(user.uid)).unwrap();
+        toast.success('User activated successfully');
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to change user status');
+      throw err;
+    }
+  };
+
+  const getRoleBadgeClasses = (role: string) => {
+    const lower = role.toLowerCase();
+    if (lower.includes('super')) return 'bg-minor-soft text-minor-contrast border-minor/30';
+    if (lower.includes('admin')) return 'bg-indigo-100 text-indigo-700 border-indigo-200';
+    if (lower.includes('manager')) return 'bg-amber-100 text-amber-700 border-amber-200';
+    if (lower.includes('lead')) return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+    if (lower.includes('hr')) return 'bg-pink-100 text-pink-700 border-pink-200';
+    if (lower.includes('user')) return 'bg-slate-100 text-slate-700 border-slate-200';
+    return 'bg-cyan-100 text-cyan-700 border-cyan-200';
+  };
+
+  const handleToggleStatus = (user: User) => {
+    showModal({
+      title: user.is_active ? 'Deactivate User' : 'Activate User',
+      content: (
+        <StatusConfirmationModal
+          name={user.first_name || user.email || 'User'}
+          isActive={!!user.is_active}
+          onConfirm={() => executeToggleStatus(user)}
+        />
+      ),
+      type: 'custom',
+      size: 'md',
+    });
+  };
+
   // Columns definition strictly aligned with requirements & backend response
   const columns: ColumnDef[] = [
     {
@@ -144,10 +187,20 @@ const ManageUsers: React.FC = () => {
         const fullName =
           [row.first_name, row.last_name].filter(Boolean).join(' ') || row.email || '-';
         return (
-          <div className="flex items-center gap-3">
+          <div 
+            className="flex items-center gap-3 cursor-pointer hover:bg-major-tint p-1 -ml-1 rounded-lg transition-colors group"
+            onClick={() =>
+              showModal({
+                title: 'User Details',
+                content: <UserView userData={row} />,
+                type: 'success',
+                size: 'lg',
+              })
+            }
+          >
             <UserThumbnail row={row} />
             <div className="flex flex-col min-w-0">
-              <span className="font-semibold text-crmText text-sm truncate">{fullName}</span>
+              <span className="font-semibold text-crmText text-sm truncate group-hover:text-minor transition-colors">{fullName}</span>
             </div>
           </div>
         );
@@ -180,7 +233,21 @@ const ManageUsers: React.FC = () => {
         const roleName =
           typeof row.role === 'object' && row.role ? row.role.name : row.role_name || '-';
         return (
-          <span className="font-semibold text-crmText text-sm">{roleName}</span>
+          <div className="flex items-center">
+            <span 
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity active:scale-95 ${getRoleBadgeClasses(roleName)}`}
+              onClick={() =>
+                showModal({
+                  title: 'Update User Role',
+                  content: <UpdateRoleForm userData={row} />,
+                  type: 'success',
+                  size: 'md',
+                })
+              }
+            >
+              {roleName}
+            </span>
+          </div>
         );
       },
       sortable: true,
@@ -197,7 +264,17 @@ const ManageUsers: React.FC = () => {
             ? row.reports_to_name
             : null;
         return (
-          <span className="text-crmText-secondary text-xs font-medium">
+          <span 
+            className="text-crmText-secondary text-xs font-medium cursor-pointer hover:text-minor hover:underline decoration-minor/30 underline-offset-4 transition-all"
+            onClick={() =>
+              showModal({
+                title: 'Update Reporting Manager',
+                content: <UpdateReporterForm userData={row} />,
+                type: 'success',
+                size: 'md',
+              })
+            }
+          >
             {reportsToName || '-'}
           </span>
         );
@@ -208,13 +285,14 @@ const ManageUsers: React.FC = () => {
     {
       key: 'is_active',
       title: 'Status',
-      render: (value: boolean) => (
+      render: (value: boolean, row: User) => (
         <div className="flex items-center justify-center">
           <span
-            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
+            onClick={() => handleToggleStatus(row)}
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap cursor-pointer hover:shadow-sm transition-all active:scale-95 ${
               value
-                ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border'
-                : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border'
+                ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border hover:bg-crmSuccess-bg/80'
+                : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border hover:bg-crmDanger-bg/80'
             }`}
           >
             {value ? 'Active' : 'Inactive'}
@@ -244,42 +322,6 @@ const ManageUsers: React.FC = () => {
       width: '100px',
       align: 'center',
       sortable: true,
-    },
-    {
-      key: 'actions',
-      title: 'Actions',
-      render: (_: any, row: User) => (
-        <div className="flex items-center justify-end gap-2 pr-2">
-          <GlassButton
-            icon={<FiEye />}
-            color="blue"
-            title="View User"
-            onClick={() =>
-              showModal({
-                title: 'User Details',
-                content: <UserView userData={row} />,
-                type: 'success',
-                size: 'lg',
-              })
-            }
-          />
-          <GlassButton
-            icon={<FiEdit />}
-            color="green"
-            title="Update Role"
-            onClick={() =>
-              showModal({
-                title: 'Update User Role',
-                content: <UpdateRoleForm userData={row} />,
-                type: 'success',
-                size: 'md',
-              })
-            }
-          />
-        </div>
-      ),
-      width: '110px',
-      align: 'right',
     },
   ];
 

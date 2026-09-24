@@ -7,9 +7,10 @@ import { useAppDispatch } from '../../../hooks/useAppDispatch';
 import { useAppSelector } from '../../../hooks/useRedux';
 import { createUser, fetchUsers } from '../../../store/slices/userSlice';
 import { fetchRoles } from '../../../store/slices/roleSlice';
+import { fetchReportingManagementOptions } from '../../../store/slices/reportingMangementSlice';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff } from 'lucide-react';
-import type { User, Role } from '../../../utils/types';
+import type { User, Role, ReportingOption } from '../../../utils/types';
 
 interface UserFormProps {
   userData?: User;
@@ -21,6 +22,7 @@ type UserFormValues = {
   email: string;
   phone1: string;
   role: string;
+  reports_to: string | null;
   password?: string;
 };
 
@@ -28,6 +30,7 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
   const dispatch = useAppDispatch();
   const { hideModal } = useModal();
   const { data: roles, loading: rolesLoading } = useAppSelector((state) => state.roles);
+  const { data: reportingUsers, loading: reportingLoading } = useAppSelector((state) => state.reportingManagement);
 
   const isEdit = !!userData;
   const [showPassword, setShowPassword] = useState(false);
@@ -47,12 +50,29 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
     }
   }, [dispatch, roleList]);
 
+  // Fetch reporting options if not already in store
+  useEffect(() => {
+    if (!reportingUsers || reportingUsers.length === 0) {
+      dispatch(fetchReportingManagementOptions({ page_size: 1000 }));
+    }
+  }, [dispatch, reportingUsers]);
+
   const initialRoleId = (() => {
     if (typeof userData?.role === 'object' && userData?.role?.id != null) {
       return String(userData.role.id);
     }
     if (typeof userData?.role === 'number' || typeof userData?.role === 'string') {
       return String(userData.role);
+    }
+    return '';
+  })();
+
+  const initialReportsTo = (() => {
+    if (typeof userData?.reports_to === 'object' && userData?.reports_to?.uid != null) {
+      return String(userData.reports_to.uid);
+    }
+    if (typeof userData?.reports_to === 'number' || typeof userData?.reports_to === 'string') {
+      return String(userData.reports_to);
     }
     return '';
   })();
@@ -70,6 +90,7 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
       email: userData?.email || '',
       phone1: userData?.phone1 || userData?.phone || '',
       role: initialRoleId,
+      reports_to: initialReportsTo,
       password: '',
     },
   });
@@ -82,6 +103,7 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
         email: userData.email || '',
         phone1: userData.phone1 || userData.phone || '',
         role: initialRoleId,
+        reports_to: initialReportsTo,
         password: '',
       });
     }
@@ -98,6 +120,7 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
         last_name: data.last_name.trim(),
         phone1: formattedPhone,
         role: data.role,
+        reports_to: data.reports_to || null,
       };
 
       if (data.password) {
@@ -271,40 +294,65 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
         </div>
       </div>
 
-      {/* Password */}
-      {!isEdit && (
+      {/* Reports To & Password */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-semibold text-crmText mb-1.5">
-            Password <span className="text-red-500">*</span>
-          </label>
-          <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              {...register('password', {
-                required: 'Password is required',
-                minLength: { value: 6, message: 'Password must be at least 6 characters' },
-              })}
-              placeholder="Enter account password"
-              className={`w-full px-3.5 py-2.5 pr-10 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm ${
-                errors.password
-                  ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
-                  : 'border-crmBorder focus:border-primary focus:ring-2 focus:ring-primary-ring'
-              }`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              tabIndex={-1}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-crmText-tertiary hover:text-crmText transition-colors p-0.5 bg-transparent border-none cursor-pointer"
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-          {errors.password && (
-            <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
-          )}
+          <label className="block text-xs font-semibold text-crmText mb-1.5">Reports To</label>
+          <select
+            {...register('reports_to')}
+            disabled={reportingLoading}
+            className="w-full px-3.5 py-2.5 bg-major border border-crmBorder rounded-xl text-sm text-crmText outline-none focus:border-primary focus:ring-2 focus:ring-primary-ring transition-all shadow-sm appearance-none"
+            style={{
+              backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%236b7280\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")',
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 0.75rem center',
+              backgroundSize: '1rem',
+            }}
+          >
+            <option value="">{reportingLoading ? 'Loading managers...' : 'Select manager (Optional)'}</option>
+            {reportingUsers?.map((opt: ReportingOption) => (
+              <option key={opt.uid} value={opt.uid}>
+                {opt.name || opt.email} ({opt.role})
+              </option>
+            ))}
+          </select>
         </div>
-      )}
+
+        {/* Password */}
+        {!isEdit && (
+          <div>
+            <label className="block text-xs font-semibold text-crmText mb-1.5">
+              Password <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                {...register('password', {
+                  required: 'Password is required',
+                  minLength: { value: 6, message: 'Password must be at least 6 characters' },
+                })}
+                placeholder="Enter account password"
+                className={`w-full px-3.5 py-2.5 pr-10 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm ${
+                  errors.password
+                    ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
+                    : 'border-crmBorder focus:border-primary focus:ring-2 focus:ring-primary-ring'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-crmText-tertiary hover:text-crmText transition-colors p-0.5 bg-transparent border-none cursor-pointer"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {errors.password && (
+              <p className="mt-1 text-xs text-red-500">{errors.password.message}</p>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Actions */}
       <div className="flex justify-end gap-3 pt-3 border-t border-crmBorder">

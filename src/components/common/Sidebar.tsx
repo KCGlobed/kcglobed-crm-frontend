@@ -120,6 +120,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: users && users.length > 0 ? `${users.length}` : undefined,
       icon: <Users size={19} />,
     },
+
     {
       id: 'reporting',
       label: 'Reporting and Deactivate',
@@ -131,8 +132,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Settings',
       icon: <SettingsIcon size={19} />,
       submenu: [
-        { id: 'module',name: 'Module',path: '/modules'},
-        { id: 'roles',name: 'Roles & Permissions',path: '/roles'},
+        { id: 'module', name: 'Module', path: '/modules' },
+        { id: 'roles', name: 'Roles & Permissions', path: '/roles' },
       ],
     },
     // {
@@ -207,15 +208,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col justify-between border-r border-crmBorder bg-major transition-[transform,width] duration-300 lg:static lg:translate-x-0 ${
-          isMobileOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${isCollapsed ? 'lg:w-[82px]' : 'lg:w-[270px]'} w-[270px]`}
+        className={`fixed inset-y-0 left-0 z-50 flex shrink-0 flex-col justify-between border-r border-crmBorder bg-major transition-[transform,width] duration-300 lg:static lg:translate-x-0 ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+          } ${isCollapsed ? 'lg:w-[82px]' : 'lg:w-[270px]'} w-[270px]`}
       >
         {/* Brand Header */}
         <div
-          className={`flex min-h-[64px] items-center justify-between gap-3 border-b border-crmBorder ${
-            isCollapsed ? 'lg:flex-col lg:justify-center lg:p-4' : ''
-          } px-5 py-3.5`}
+          className={`flex min-h-[64px] items-center justify-between gap-3 border-b border-crmBorder ${isCollapsed ? 'lg:flex-col lg:justify-center lg:p-4' : ''
+            } px-5 py-3.5`}
         >
           <div
             className="flex cursor-pointer select-none items-center gap-3 overflow-hidden whitespace-nowrap border-none bg-transparent p-0 text-inherit no-underline outline-none transition-opacity hover:opacity-90"
@@ -262,9 +261,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Navigation Menu (Scrollable) */}
         <div className="flex flex-1 flex-col gap-1 overflow-y-auto p-3 sidebar-scroll">
           <div
-            className={`whitespace-nowrap px-3 py-2 text-[0.7rem] font-bold uppercase tracking-wider text-crmText-tertiary ${
-              isCollapsed ? 'lg:hidden' : ''
-            }`}
+            className={`whitespace-nowrap px-3 py-2 text-[0.7rem] font-bold uppercase tracking-wider text-crmText-tertiary ${isCollapsed ? 'lg:hidden' : ''
+              }`}
           >
             Core Modules
           </div>
@@ -288,11 +286,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <button
                         type="button"
                         onClick={() => toggleSubmenu(item.id)}
-                        className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-sans text-sm font-semibold transition-all ${
-                          isActive
-                            ? 'bg-minor-soft text-minor-contrast'
-                            : 'bg-transparent text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
-                        } ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
+                        className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-sans text-sm font-semibold transition-all ${isActive
+                          ? 'bg-minor-soft text-minor-contrast'
+                          : 'bg-transparent text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
+                          } ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
                         title={isCollapsed ? item.label : undefined}
                       >
                         <div className="flex items-center gap-3.5 min-w-0">
@@ -334,20 +331,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                 key={subItem.id}
                                 to={subItem.path}
                                 onClick={() => handleNavClick(subItem.id, subItem.path)}
-                                className={`flex items-center justify-between rounded-lg p-2 text-xs font-medium transition-colors ${
-                                  isChildActive
-                                    ? 'bg-minor text-white font-semibold shadow-sm'
-                                    : 'text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
-                                }`}
+                                className={`flex items-center justify-between rounded-lg p-2 text-xs font-medium transition-colors ${isChildActive
+                                  ? 'bg-minor text-white font-semibold shadow-sm'
+                                  : 'text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
+                                  }`}
                               >
                                 <span className="truncate">{subItem.name}</span>
                                 {subItem.badge && (
                                   <span
-                                    className={`ml-1.5 rounded-full px-1.5 py-0.2 text-[9px] font-bold ${
-                                      isChildActive
-                                        ? 'bg-white/20 text-white'
-                                        : 'bg-crmBorder text-crmText-secondary'
-                                    }`}
+                                    className={`ml-1.5 rounded-full px-1.5 py-0.2 text-[9px] font-bold ${isChildActive
+                                      ? 'bg-white/20 text-white'
+                                      : 'bg-crmBorder text-crmText-secondary'
+                                      }`}
                                   >
                                     {subItem.badge}
                                   </span>
@@ -362,11 +357,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     /* Regular Single Link Item */
                     <button
                       type="button"
-                      className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-sans text-sm font-semibold transition-all ${
-                        isActive
-                          ? 'bg-minor text-white shadow-crm-accent'
-                          : 'bg-transparent text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
-                      } ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
+                      className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-sans text-sm font-semibold transition-all ${isActive
+                        ? 'bg-minor text-white shadow-crm-accent'
+                        : 'bg-transparent text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
+                        } ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
                       onClick={() => handleNavClick(item.id, item.path)}
                       title={isCollapsed ? item.label : undefined}
                       aria-current={isActive ? 'page' : undefined}
@@ -381,9 +375,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                       {!isCollapsed && item.badge && (
                         <span
-                          className={`ml-auto rounded-full px-2 py-0.5 text-[0.72rem] font-bold ${
-                            isActive ? 'bg-white/25 text-white' : 'bg-secondary-soft text-secondary-contrast border border-secondary/25'
-                          }`}
+                          className={`ml-auto rounded-full px-2 py-0.5 text-[0.72rem] font-bold ${isActive ? 'bg-white/25 text-white' : 'bg-secondary-soft text-secondary-contrast border border-secondary/25'
+                            }`}
                         >
                           {item.badge}
                         </span>
@@ -401,9 +394,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className={`flex w-full cursor-pointer items-center justify-between rounded-xl border border-crmBorder bg-major-tint p-2 transition-all hover:border-minor/30 hover:bg-minor-soft ${
-              isCollapsed ? 'lg:justify-center lg:p-2' : ''
-            }`}
+            className={`flex w-full cursor-pointer items-center justify-between rounded-xl border border-crmBorder bg-major-tint p-2 transition-all hover:border-minor/30 hover:bg-minor-soft ${isCollapsed ? 'lg:justify-center lg:p-2' : ''
+              }`}
             title={`Logged in as ${displayName}`}
           >
             <div className="flex items-center gap-2.5 min-w-0">
@@ -428,9 +420,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* User Dropdown Menu */}
           {isDropdownOpen && (
             <div
-              className={`absolute bottom-full mb-2 z-50 rounded-xl border border-crmBorder bg-major p-1.5 shadow-crm-lg animate-in fade-in slide-in-from-bottom-2 duration-150 ${
-                isCollapsed ? 'left-2 w-44' : 'left-3.5 right-3.5'
-              }`}
+              className={`absolute bottom-full mb-2 z-50 rounded-xl border border-crmBorder bg-major p-1.5 shadow-crm-lg animate-in fade-in slide-in-from-bottom-2 duration-150 ${isCollapsed ? 'left-2 w-44' : 'left-3.5 right-3.5'
+                }`}
             >
               <button
                 type="button"

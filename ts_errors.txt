@@ -1,0 +1,571 @@
+src/components/components/DashboardHeader/index.tsx(5,32): error TS2307: Cannot find module '../../hooks/useAppDispatch' or its corresponding type declarations.
+src/components/components/DashboardHeader/index.tsx(6,24): error TS2307: Cannot find module '../../store/slices/authSlice' or its corresponding type declarations.
+src/components/components/EditEssayQuestion/index.tsx(3,48): error TS2307: Cannot find module '../../hooks/useRedux' or its corresponding type declarations.
+src/components/components/EditEssayQuestion/index.tsx(9,8): error TS2307: Cannot find module '../../store/slices/questionSlice' or its corresponding type declarations.
+src/components/components/EditEssayQuestion/index.tsx(10,32): error TS2307: Cannot find module '../../utils/types' or its corresponding type declarations.
+src/components/components/EditEssayQuestion/index.tsx(14,57): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/components/components/EditEssayQuestion/index.tsx(50,28): error TS7006: Parameter 'qa' implicitly has an 'any' type.
+src/components/components/EditEssayQuestion/index.tsx(50,32): error TS7006: Parameter 'idx' implicitly has an 'any' type.
+src/components/components/EssayTable/index.tsx(1,28): error TS2307: Cannot find module '../../utils/types' or its corresponding type declarations.
+src/components/components/Exhibit/index.tsx(2,32): error TS2307: Cannot find module '../../utils/types' or its corresponding type declarations.
+src/components/components/Exhibit/index.tsx(3,28): error TS2307: Cannot find module '../../services/apiRequest' or its corresponding type declarations.
+src/components/components/Exhibit/index.tsx(4,48): error TS2307: Cannot find module '../../hooks/useRedux' or its corresponding type declarations.
+src/components/components/Exhibit/index.tsx(5,43): error TS2307: Cannot find module '../../store/slices/exhibitSlice' or its corresponding type declarations.
+src/components/components/Exhibit/index.tsx(6,26): error TS2307: Cannot find module '../../context/AlertContext' or its corresponding type declarations.
+src/components/components/Exhibit/index.tsx(15,40): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/components/components/Exhibit/index.tsx(16,36): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/components/components/Exhibit/index.tsx(130,26): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/components/components/ImageCropper/components/CropControls.tsx(26,3): error TS6133: 'aspectRatio' is declared but its value is never read.
+src/components/components/ImageCropper/components/CropControls.tsx(27,3): error TS6133: 'onAspectRatioChange' is declared but its value is never read.
+src/components/components/ImageCropper/components/CropperModal.tsx(37,23): error TS6133: 'setJpegQuality' is declared but its value is never read.
+src/components/components/ImageCropper/hooks/useCropper.ts(115,9): error TS6133: 'adjustCropBoxOnZoom' is declared but its value is never read.
+src/components/components/MetaComponent/index.tsx(2,32): error TS2307: Cannot find module '../../hooks/useRedux' or its corresponding type declarations.
+src/components/components/MetaComponent/index.tsx(3,32): error TS2307: Cannot find module '../../hooks/useAppDispatch' or its corresponding type declarations.
+src/components/components/MetaComponent/index.tsx(4,28): error TS2307: Cannot find module '../../store/slices/metaSlice' or its corresponding type declarations.
+src/components/components/MetaComponent/index.tsx(5,32): error TS2307: Cannot find module '../../utils/types' or its corresponding type declarations.
+src/components/components/MetaComponent/index.tsx(27,36): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/components/components/MetaComponent/index.tsx(28,48): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/components/components/Modal/AddSubject.tsx(1,20): error TS2307: Cannot find module 'react-select' or its corresponding type declarations.
+src/components/components/Modal/AddSubject.tsx(3,49): error TS2307: Cannot find module '../../services/phaseTwoService' or its corresponding type declarations.
+src/components/components/Modal/AddSubject.tsx(5,31): error TS2307: Cannot find module '../../services/courseService' or its corresponding type declarations.
+src/components/components/Modal/AddSubject.tsx(6,26): error TS2307: Cannot find module '../../context/ModalContext' or its corresponding type declarations.
+src/components/components/MultiStepForm/index.tsx(2,32): error TS2307: Cannot find module '../../utils/types' or its corresponding type declarations.
+src/components/components/PreviewEssayEdit/index.tsx(1,32): error TS2307: Cannot find module '../../hooks/useRedux' or its corresponding type declarations.
+src/components/components/PreviewEssayEdit/index.tsx(2,32): error TS2307: Cannot find module '../../utils/types' or its corresponding type declarations.
+src/components/components/PreviewEssayEdit/index.tsx(7,59): error TS7006: Parameter 'state' implicitly has an 'any' type.
+src/components/components/PreviewEssayEdit/index.tsx(15,35): error TS7031: Binding element 'question' implicitly has an 'any' type.
+src/components/components/PreviewEssayEdit/index.tsx(15,45): error TS7031: Binding element 'answer' implicitly has an 'any' type.
+src/components/components/PreviewEssayEdit/index.tsx(15,53): error TS7031: Binding element 'id' implicitly has an 'any' type.
+src/components/components/ReportComponent/reportFilter.tsx(1,23): error TS6133: 'MultiValue' is declared but its value is never read.
+src/components/components/ReportComponent/reportFilter.tsx(1,41): error TS2307: Cannot find module 'react-select' or its corresponding type declarations.
+src/components/components/ReportComponent/reportFilter.tsx(17,29): error TS7006: Parameter 'base' implicitly has an 'any' type.
+src/components/components/ReportComponent/reportFilter.tsx(21,27): error TS7006: Parameter 'base' implicitly has an 'any' type.
+src/components/components/ReportComponent/reportFilter.tsx(25,30): error TS7006: Parameter 'base' implicitly has an 'any' type.
+src/components/components/TextEditor/context/SharedHistoryContext.tsx(9,33): error TS2307: Cannot find module '@lexical/react/LexicalHistoryPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/context/SharedHistoryContext.tsx(12,39): error TS2307: Cannot find module '@lexical/react/LexicalHistoryPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/context/ToolbarContext.tsx(11,40): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(11,33): error TS2307: Cannot find module '@lexical/react/LexicalAutoFocusPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(12,38): error TS2307: Cannot find module '@lexical/react/LexicalCharacterLimitPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(13,33): error TS2307: Cannot find module '@lexical/react/LexicalCheckListPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(14,35): error TS2307: Cannot find module '@lexical/react/LexicalClearEditorPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(15,37): error TS2307: Cannot find module '@lexical/react/LexicalClickableLinkPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(16,43): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(17,38): error TS2307: Cannot find module '@lexical/react/LexicalErrorBoundary' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(18,31): error TS2307: Cannot find module '@lexical/react/LexicalHashtagPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(19,31): error TS2307: Cannot find module '@lexical/react/LexicalHistoryPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(20,38): error TS2307: Cannot find module '@lexical/react/LexicalHorizontalRulePlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(21,28): error TS2307: Cannot find module '@lexical/react/LexicalListPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(22,33): error TS2307: Cannot find module '@lexical/react/LexicalPlainTextPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(23,32): error TS2307: Cannot find module '@lexical/react/LexicalRichTextPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(24,42): error TS2307: Cannot find module '@lexical/react/LexicalSelectionAlwaysOnDisplay' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(25,38): error TS2307: Cannot find module '@lexical/react/LexicalTabIndentationPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(26,29): error TS2307: Cannot find module '@lexical/react/LexicalTablePlugin' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(27,36): error TS2307: Cannot find module '@lexical/react/useLexicalEditable' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(28,29): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(77,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(78,63): error TS2307: Cannot find module '@lexical/html' or its corresponding type declarations.
+src/components/components/TextEditor/Editor.tsx(155,28): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/components/components/TextEditor/index.tsx(2,33): error TS2307: Cannot find module '@lexical/react/LexicalComposer' or its corresponding type declarations.
+src/components/components/TextEditor/index.tsx(5,54): error TS2307: Cannot find module '@lexical/rich-text' or its corresponding type declarations.
+src/components/components/TextEditor/index.tsx(6,54): error TS2307: Cannot find module '@lexical/list' or its corresponding type declarations.
+src/components/components/TextEditor/index.tsx(7,33): error TS2307: Cannot find module '@lexical/link' or its corresponding type declarations.
+src/components/components/TextEditor/index.tsx(22,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/index.tsx(23,43): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/index.tsx(24,44): error TS2307: Cannot find module '@lexical/selection' or its corresponding type declarations.
+src/components/components/TextEditor/index.tsx(31,32): error TS2307: Cannot find module '@lexical/react/LexicalOnChangePlugin' or its corresponding type declarations.
+src/components/components/TextEditor/index.tsx(32,40): error TS2307: Cannot find module '@lexical/html' or its corresponding type declarations.
+src/components/components/TextEditor/index.tsx(81,25): error TS7006: Parameter 'importNode' implicitly has an 'any' type.
+src/components/components/TextEditor/index.tsx(82,26): error TS18046: 'fn' is of type 'unknown'.
+src/components/components/TextEditor/index.tsx(88,24): error TS7006: Parameter 'element' implicitly has an 'any' type.
+src/components/components/TextEditor/index.tsx(103,28): error TS7006: Parameter 'child' implicitly has an 'any' type.
+src/components/components/TextEditor/index.tsx(103,35): error TS7006: Parameter 'parent' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/AutocompleteNode.tsx(16,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/AutocompleteNode.tsx(18,24): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/AutocompleteNode.tsx(41,38): error TS2339: Property '__text' does not exist on type 'AutocompleteNode'.
+src/components/components/TextEditor/nodes/AutocompleteNode.tsx(41,64): error TS2339: Property '__key' does not exist on type 'AutocompleteNode'.
+src/components/components/TextEditor/nodes/AutocompleteNode.tsx(54,7): error TS2339: Property 'updateFromJSON' does not exist on type 'AutocompleteNode'.
+src/components/components/TextEditor/nodes/AutocompleteNode.tsx(95,43): error TS2339: Property 'setMode' does not exist on type 'AutocompleteNode'.
+src/components/components/TextEditor/nodes/EmojiNode.tsx(15,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/EmojiNode.tsx(17,47): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/EmojiNode.tsx(34,49): error TS2339: Property '__text' does not exist on type 'EmojiNode'.
+src/components/components/TextEditor/nodes/EmojiNode.tsx(34,62): error TS2339: Property '__key' does not exist on type 'EmojiNode'.
+src/components/components/TextEditor/nodes/EmojiNode.tsx(64,7): error TS2339: Property 'updateFromJSON' does not exist on type 'EmojiNode'.
+src/components/components/TextEditor/nodes/EmojiNode.tsx(75,23): error TS2339: Property 'getLatest' does not exist on type 'EmojiNode'.
+src/components/components/TextEditor/nodes/EmojiNode.tsx(90,52): error TS2339: Property 'setMode' does not exist on type 'EmojiNode'.
+src/components/components/TextEditor/nodes/EquationComponent.tsx(11,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/EquationComponent.tsx(12,34): error TS2307: Cannot find module '@lexical/react/useLexicalEditable' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/EquationComponent.tsx(13,29): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/EquationComponent.tsx(22,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/EquationComponent.tsx(24,29): error TS2307: Cannot find module 'react-error-boundary' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/EquationComponent.tsx(55,18): error TS2339: Property 'selectNext' does not exist on type 'EquationNode'.
+src/components/components/TextEditor/nodes/EquationComponent.tsx(77,12): error TS7006: Parameter '_payload' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/EquationComponent.tsx(89,12): error TS7006: Parameter '_payload' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/EquationComponent.tsx(102,46): error TS7031: Binding element 'editorState' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/EquationComponent.tsx(128,34): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/EquationNode.tsx(17,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/EquationNode.tsx(20,19): error TS2307: Cannot find module 'katex' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/EquationNode.tsx(21,74): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/EquationNode.tsx(58,66): error TS2339: Property '__key' does not exist on type 'EquationNode'.
+src/components/components/TextEditor/nodes/EquationNode.tsx(71,7): error TS2339: Property 'updateFromJSON' does not exist on type 'EquationNode'.
+src/components/components/TextEditor/nodes/EquationNode.tsx(143,27): error TS2339: Property 'getWritable' does not exist on type 'EquationNode'.
+src/components/components/TextEditor/nodes/EquationNode.tsx(152,23): error TS2339: Property '__key' does not exist on type 'EquationNode'.
+src/components/components/TextEditor/nodes/ExcalidrawNode/ExcalidrawComponent.tsx(10,42): error TS2307: Cannot find module '@excalidraw/excalidraw/types' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/ExcalidrawNode/ExcalidrawComponent.tsx(11,28): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/ExcalidrawNode/ExcalidrawComponent.tsx(14,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/ExcalidrawNode/ExcalidrawComponent.tsx(15,34): error TS2307: Cannot find module '@lexical/react/useLexicalEditable' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/ExcalidrawNode/ExcalidrawComponent.tsx(16,39): error TS2307: Cannot find module '@lexical/react/useLexicalNodeSelection' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/ExcalidrawNode/ExcalidrawComponent.tsx(17,29): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/ExcalidrawNode/ExcalidrawComponent.tsx(23,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/ExcalidrawNode/ExcalidrawComponent.tsx(75,33): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'Node | null'.
+  Type 'EventTarget' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 43 more.
+src/components/components/TextEditor/nodes/ExcalidrawNode/ExcalidrawComponent.tsx(121,16): error TS2339: Property 'remove' does not exist on type 'ExcalidrawNode'.
+src/components/components/TextEditor/nodes/ExcalidrawNode/ExcalidrawImage.tsx(12,8): error TS2307: Cannot find module '@excalidraw/excalidraw/element/types' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/ExcalidrawNode/ExcalidrawImage.tsx(13,42): error TS2307: Cannot find module '@excalidraw/excalidraw/types' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/ExcalidrawNode/ExcalidrawImage.tsx(16,27): error TS2307: Cannot find module '@excalidraw/excalidraw' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/ExcalidrawNode/index.tsx(19,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/ExcalidrawNode/index.tsx(22,29): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/ExcalidrawNode/index.tsx(73,12): error TS2339: Property '__key' does not exist on type 'ExcalidrawNode'.
+src/components/components/TextEditor/nodes/ExcalidrawNode/index.tsx(82,7): error TS2339: Property 'updateFromJSON' does not exist on type 'ExcalidrawNode'.
+src/components/components/TextEditor/nodes/ExcalidrawNode/index.tsx(140,49): error TS2339: Property 'getKey' does not exist on type 'ExcalidrawNode'.
+src/components/components/TextEditor/nodes/ExcalidrawNode/index.tsx(158,23): error TS2339: Property 'getWritable' does not exist on type 'ExcalidrawNode'.
+src/components/components/TextEditor/nodes/ExcalidrawNode/index.tsx(163,17): error TS2339: Property 'getLatest' does not exist on type 'ExcalidrawNode'.
+src/components/components/TextEditor/nodes/ExcalidrawNode/index.tsx(167,23): error TS2339: Property 'getWritable' does not exist on type 'ExcalidrawNode'.
+src/components/components/TextEditor/nodes/ExcalidrawNode/index.tsx(172,17): error TS2339: Property 'getLatest' does not exist on type 'ExcalidrawNode'.
+src/components/components/TextEditor/nodes/ExcalidrawNode/index.tsx(176,23): error TS2339: Property 'getWritable' does not exist on type 'ExcalidrawNode'.
+src/components/components/TextEditor/nodes/ExcalidrawNode/index.tsx(183,23): error TS2339: Property 'getKey' does not exist on type 'ExcalidrawNode'.
+src/components/components/TextEditor/nodes/FigmaNode.tsx(16,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/FigmaNode.tsx(19,42): error TS2307: Cannot find module '@lexical/react/LexicalBlockWithAlignableContents' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/FigmaNode.tsx(23,8): error TS2307: Cannot find module '@lexical/react/LexicalDecoratorBlockNode' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/FigmaNode.tsx(72,42): error TS2339: Property '__format' does not exist on type 'FigmaNode'.
+src/components/components/TextEditor/nodes/FigmaNode.tsx(72,57): error TS2339: Property '__key' does not exist on type 'FigmaNode'.
+src/components/components/TextEditor/nodes/FigmaNode.tsx(76,56): error TS2339: Property 'updateFromJSON' does not exist on type 'FigmaNode'.
+src/components/components/TextEditor/nodes/FigmaNode.tsx(117,22): error TS2339: Property '__format' does not exist on type 'FigmaNode'.
+src/components/components/TextEditor/nodes/FigmaNode.tsx(118,23): error TS2339: Property 'getKey' does not exist on type 'FigmaNode'.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(9,58): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(14,31): error TS2307: Cannot find module '@lexical/react/LexicalAutoFocusPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(15,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(16,36): error TS2307: Cannot find module '@lexical/react/LexicalErrorBoundary' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(17,37): error TS2307: Cannot find module '@lexical/react/LexicalNestedComposer' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(18,30): error TS2307: Cannot find module '@lexical/react/LexicalRichTextPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(19,34): error TS2307: Cannot find module '@lexical/react/useLexicalEditable' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(20,39): error TS2307: Cannot find module '@lexical/react/useLexicalNodeSelection' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(21,29): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(33,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(258,39): error TS7031: Binding element 'editorState' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(265,10): error TS7006: Parameter '_' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(265,13): error TS7006: Parameter 'activeEditor' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(273,10): error TS7006: Parameter 'payload' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageComponent.tsx(291,10): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageNode.tsx(21,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageNode.tsx(27,8): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageNode.tsx(33,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageNode.tsx(105,12): error TS2339: Property '__key' does not exist on type 'InlineImageNode'.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageNode.tsx(196,27): error TS2339: Property 'getWritable' does not exist on type 'InlineImageNode'.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageNode.tsx(204,27): error TS2339: Property 'getWritable' does not exist on type 'InlineImageNode'.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageNode.tsx(214,27): error TS2339: Property 'getWritable' does not exist on type 'InlineImageNode'.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageNode.tsx(223,27): error TS2339: Property 'getWritable' does not exist on type 'InlineImageNode'.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageNode.tsx(228,27): error TS2339: Property 'getWritable' does not exist on type 'InlineImageNode'.
+src/components/components/TextEditor/nodes/InlineImageNode/InlineImageNode.tsx(272,23): error TS2339: Property 'getKey' does not exist on type 'InlineImageNode'.
+src/components/components/TextEditor/nodes/KeywordNode.tsx(9,66): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/KeywordNode.tsx(11,47): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/KeywordNode.tsx(21,28): error TS2554: Expected 0 arguments, but got 2.
+src/components/components/TextEditor/nodes/KeywordNode.tsx(21,33): error TS2339: Property '__text' does not exist on type 'KeywordNode'.
+src/components/components/TextEditor/nodes/KeywordNode.tsx(21,46): error TS2339: Property '__key' does not exist on type 'KeywordNode'.
+src/components/components/TextEditor/nodes/KeywordNode.tsx(25,33): error TS2339: Property 'updateFromJSON' does not exist on type 'KeywordNode'.
+src/components/components/TextEditor/nodes/KeywordNode.tsx(49,48): error TS2554: Expected 0 arguments, but got 1.
+src/components/components/TextEditor/nodes/LayoutContainerNode.tsx(19,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/LayoutContainerNode.tsx(21,38): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/LayoutContainerNode.tsx(22,27): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/LayoutContainerNode.tsx(58,65): error TS2339: Property '__key' does not exist on type 'LayoutContainerNode'.
+src/components/components/TextEditor/nodes/LayoutContainerNode.tsx(126,17): error TS2339: Property 'getLatest' does not exist on type 'LayoutContainerNode'.
+src/components/components/TextEditor/nodes/LayoutContainerNode.tsx(130,23): error TS2339: Property 'getWritable' does not exist on type 'LayoutContainerNode'.
+src/components/components/TextEditor/nodes/LayoutItemNode.tsx(15,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/LayoutItemNode.tsx(17,38): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/LayoutItemNode.tsx(18,27): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/LayoutItemNode.tsx(32,31): error TS2554: Expected 0 arguments, but got 1.
+src/components/components/TextEditor/nodes/LayoutItemNode.tsx(32,36): error TS2339: Property '__key' does not exist on type 'LayoutItemNode'.
+src/components/components/TextEditor/nodes/LayoutItemNode.tsx(63,36): error TS2339: Property 'updateFromJSON' does not exist on type 'LayoutItemNode'.
+src/components/components/TextEditor/nodes/MentionNode.tsx(20,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/MentionNode.tsx(57,49): error TS2339: Property '__text' does not exist on type 'MentionNode'.
+src/components/components/TextEditor/nodes/MentionNode.tsx(57,62): error TS2339: Property '__key' does not exist on type 'MentionNode'.
+src/components/components/TextEditor/nodes/MentionNode.tsx(60,59): error TS2339: Property 'updateFromJSON' does not exist on type 'MentionNode'.
+src/components/components/TextEditor/nodes/MentionNode.tsx(88,14): error TS2339: Property '__text' does not exist on type 'MentionNode'.
+src/components/components/TextEditor/nodes/MentionNode.tsx(91,32): error TS2339: Property '__text' does not exist on type 'MentionNode'.
+src/components/components/TextEditor/nodes/MentionNode.tsx(128,15): error TS2339: Property 'setMode' does not exist on type 'MentionNode'.
+src/components/components/TextEditor/nodes/PageBreakNode/index.tsx(13,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PageBreakNode/index.tsx(14,39): error TS2307: Cannot find module '@lexical/react/useLexicalNodeSelection' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PageBreakNode/index.tsx(15,29): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PageBreakNode/index.tsx(26,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PageBreakNode/index.tsx(74,30): error TS2554: Expected 0 arguments, but got 1.
+src/components/components/TextEditor/nodes/PageBreakNode/index.tsx(74,35): error TS2339: Property '__key' does not exist on type 'PageBreakNode'.
+src/components/components/TextEditor/nodes/PageBreakNode/index.tsx(78,35): error TS2339: Property 'updateFromJSON' does not exist on type 'PageBreakNode'.
+src/components/components/TextEditor/nodes/PageBreakNode/index.tsx(100,34): error TS2576: Property 'getType' does not exist on type 'PageBreakNode'. Did you mean to access the static member 'PageBreakNode.getType' instead?
+src/components/components/TextEditor/nodes/PageBreakNode/index.tsx(117,46): error TS2339: Property '__key' does not exist on type 'PageBreakNode'.
+src/components/components/TextEditor/nodes/PlaygroundNodes.ts(9,39): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PlaygroundNodes.ts(11,43): error TS2307: Cannot find module '@lexical/code' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PlaygroundNodes.ts(12,27): error TS2307: Cannot find module '@lexical/hashtag' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PlaygroundNodes.ts(13,38): error TS2307: Cannot find module '@lexical/link' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PlaygroundNodes.ts(14,38): error TS2307: Cannot find module '@lexical/list' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PlaygroundNodes.ts(15,24): error TS2307: Cannot find module '@lexical/mark' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PlaygroundNodes.ts(16,28): error TS2307: Cannot find module '@lexical/overflow' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PlaygroundNodes.ts(17,34): error TS2307: Cannot find module '@lexical/react/LexicalHorizontalRuleNode' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PlaygroundNodes.ts(18,38): error TS2307: Cannot find module '@lexical/rich-text' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PlaygroundNodes.ts(19,54): error TS2307: Cannot find module '@lexical/table' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PollComponent.tsx(14,39): error TS2307: Cannot find module '@lexical/react/LexicalCollaborationContext' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PollComponent.tsx(15,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PollComponent.tsx(16,39): error TS2307: Cannot find module '@lexical/react/useLexicalNodeSelection' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PollComponent.tsx(17,29): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PollComponent.tsx(26,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PollComponent.tsx(31,25): error TS2307: Cannot find module '../../../utils/joinClasses' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PollComponent.tsx(147,39): error TS7031: Binding element 'editorState' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/PollComponent.tsx(152,10): error TS7006: Parameter 'payload' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/PollNode.tsx(11,32): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PollNode.tsx(21,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/PollNode.tsx(99,13): error TS7006: Parameter 'v' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/PollNode.tsx(104,15): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/PollNode.tsx(104,18): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/PollNode.tsx(116,25): error TS2554: Expected 0 arguments, but got 1.
+src/components/components/TextEditor/nodes/PollNode.tsx(116,30): error TS2339: Property '__key' does not exist on type 'PollNode'.
+src/components/components/TextEditor/nodes/PollNode.tsx(123,7): error TS2339: Property 'updateFromJSON' does not exist on type 'PollNode'.
+src/components/components/TextEditor/nodes/PollNode.tsx(132,29): error TS7006: Parameter 'options' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/PollNode.tsx(136,29): error TS7006: Parameter 'prevOptions' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/PollNode.tsx(148,29): error TS7006: Parameter 'prevOptions' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/PollNode.tsx(158,29): error TS7006: Parameter 'prevOptions' implicitly has an 'any' type.
+src/components/components/TextEditor/nodes/PollNode.tsx(217,23): error TS2339: Property '__key' does not exist on type 'PollNode'.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(9,66): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(11,38): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(12,47): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(21,32): error TS2554: Expected 0 arguments, but got 2.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(21,37): error TS2339: Property '__text' does not exist on type 'SpecialTextNode'.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(21,50): error TS2339: Property '__key' does not exist on type 'SpecialTextNode'.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(27,28): error TS2339: Property 'getTextContent' does not exist on type 'SpecialTextNode'.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(32,18): error TS2339: Property '__text' does not exist on type 'SpecialTextNode'.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(32,53): error TS2339: Property '__text' does not exist on type 'SpecialTextNode'.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(33,33): error TS2339: Property '__text' does not exist on type 'SpecialTextNode'.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(33,58): error TS2339: Property '__text' does not exist on type 'SpecialTextNode'.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(43,37): error TS2339: Property 'updateFromJSON' does not exist on type 'SpecialTextNode'.
+src/components/components/TextEditor/nodes/SpecialTextNode.tsx(60,52): error TS2554: Expected 0 arguments, but got 1.
+src/components/components/TextEditor/nodes/TweetNode.tsx(19,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/TweetNode.tsx(22,42): error TS2307: Cannot find module '@lexical/react/LexicalBlockWithAlignableContents' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/TweetNode.tsx(26,8): error TS2307: Cannot find module '@lexical/react/LexicalDecoratorBlockNode' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/TweetNode.tsx(141,42): error TS2339: Property '__format' does not exist on type 'TweetNode'.
+src/components/components/TextEditor/nodes/TweetNode.tsx(141,57): error TS2339: Property '__key' does not exist on type 'TweetNode'.
+src/components/components/TextEditor/nodes/TweetNode.tsx(145,48): error TS2339: Property 'updateFromJSON' does not exist on type 'TweetNode'.
+src/components/components/TextEditor/nodes/TweetNode.tsx(202,22): error TS2339: Property '__format' does not exist on type 'TweetNode'.
+src/components/components/TextEditor/nodes/TweetNode.tsx(204,23): error TS2339: Property 'getKey' does not exist on type 'TweetNode'.
+src/components/components/TextEditor/nodes/YouTubeNode.tsx(19,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/YouTubeNode.tsx(22,42): error TS2307: Cannot find module '@lexical/react/LexicalBlockWithAlignableContents' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/YouTubeNode.tsx(26,8): error TS2307: Cannot find module '@lexical/react/LexicalDecoratorBlockNode' or its corresponding type declarations.
+src/components/components/TextEditor/nodes/YouTubeNode.tsx(88,44): error TS2339: Property '__format' does not exist on type 'YouTubeNode'.
+src/components/components/TextEditor/nodes/YouTubeNode.tsx(88,59): error TS2339: Property '__key' does not exist on type 'YouTubeNode'.
+src/components/components/TextEditor/nodes/YouTubeNode.tsx(92,55): error TS2339: Property 'updateFromJSON' does not exist on type 'YouTubeNode'.
+src/components/components/TextEditor/nodes/YouTubeNode.tsx(166,22): error TS2339: Property '__format' does not exist on type 'YouTubeNode'.
+src/components/components/TextEditor/nodes/YouTubeNode.tsx(167,23): error TS2339: Property 'getKey' does not exist on type 'YouTubeNode'.
+src/components/components/TextEditor/plugins/AutocompletePlugin/index.tsx(9,53): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/AutocompletePlugin/index.tsx(12,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/AutocompletePlugin/index.tsx(13,28): error TS2307: Cannot find module '@lexical/selection' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/AutocompletePlugin/index.tsx(14,29): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/AutocompletePlugin/index.tsx(27,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/AutocompletePlugin/index.tsx(152,12): error TS2339: Property 'setFormat' does not exist on type 'AutocompleteNode'.
+src/components/components/TextEditor/plugins/AutocompletePlugin/index.tsx(162,24): error TS2339: Property 'getKey' does not exist on type 'AutocompleteNode'.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(9,34): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(18,8): error TS2307: Cannot find module '@lexical/react/LexicalAutoEmbedPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(19,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(55,3): error TS2353: Object literal may only specify known properties, and 'insertNode' does not exist in type 'PlaygroundEmbedConfig'.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(91,3): error TS2353: Object literal may only specify known properties, and 'insertNode' does not exist in type 'PlaygroundEmbedConfig'.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(125,3): error TS2353: Object literal may only specify known properties, and 'insertNode' does not exist in type 'PlaygroundEmbedConfig'.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(245,39): error TS2339: Property 'parseUrl' does not exist on type 'PlaygroundEmbedConfig'.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(259,19): error TS2339: Property 'insertNode' does not exist on type 'PlaygroundEmbedConfig'.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(272,40): error TS2339: Property 'type' does not exist on type 'PlaygroundEmbedConfig'.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(284,40): error TS2339: Property 'type' does not exist on type 'PlaygroundEmbedConfig'.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(324,11): error TS7006: Parameter 'anchorElementRef' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(325,12): error TS7031: Binding element 'selectedIndex' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(325,27): error TS7031: Binding element 'options' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(325,36): error TS7031: Binding element 'selectOptionAndCleanUp' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/AutoEmbedPlugin/index.tsx(325,60): error TS7031: Binding element 'setHighlightedIndex' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContainerNode.ts(9,25): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContainerNode.ts(26,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContainerNode.ts(60,59): error TS2339: Property '__key' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContainerNode.ts(71,30): error TS2339: Property 'getChildren' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContainerNode.ts(120,22): error TS2339: Property 'hidden' does not exist on type 'Element'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContainerNode.ts(123,34): error TS2345: Argument of type 'Element' is not assignable to parameter of type 'HTMLElement'.
+  Type 'Element' is missing the following properties from type 'HTMLElement': accessKey, accessKeyLabel, autocapitalize, autocorrect, and 131 more.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContainerNode.ts(147,65): error TS2339: Property 'updateFromJSON' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContainerNode.ts(167,27): error TS2339: Property 'getWritable' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContainerNode.ts(172,17): error TS2339: Property 'getLatest' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContentNode.ts(9,25): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContentNode.ts(19,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContentNode.ts(41,39): error TS2554: Expected 0 arguments, but got 1.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContentNode.ts(41,44): error TS2339: Property '__key' does not exist on type 'CollapsibleContentNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContentNode.ts(49,36): error TS2339: Property 'getParentOrThrow' does not exist on type 'CollapsibleContentNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContentNode.ts(61,38): error TS2339: Property 'getParentOrThrow' does not exist on type 'CollapsibleContentNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleContentNode.ts(104,44): error TS2339: Property 'updateFromJSON' does not exist on type 'CollapsibleContentNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(9,25): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(21,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(43,37): error TS2554: Expected 0 arguments, but got 1.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(43,42): error TS2339: Property '__key' does not exist on type 'CollapsibleTitleNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(52,45): error TS2339: Property 'getLatest' does not exist on type 'CollapsibleTitleNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(83,42): error TS2339: Property 'updateFromJSON' does not exist on type 'CollapsibleTitleNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(91,16): error TS2339: Property 'isEmpty' does not exist on type 'CollapsibleTitleNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(92,14): error TS2339: Property 'remove' does not exist on type 'CollapsibleTitleNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(98,32): error TS2339: Property 'getParentOrThrow' does not exist on type 'CollapsibleTitleNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(107,32): error TS2339: Property 'getNextSibling' does not exist on type 'CollapsibleTitleNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(114,38): error TS2339: Property 'getFirstChild' does not exist on type 'CollapsibleContentNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(119,21): error TS2339: Property 'append' does not exist on type 'CollapsibleContentNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleTitleNode.ts(124,21): error TS2339: Property 'insertAfter' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleUtils.ts(10,3): error TS2578: Unused '@ts-expect-error' directive.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/CollapsibleUtils.ts(15,3): error TS2578: Unused '@ts-expect-error' directive.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(11,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(16,8): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(28,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(80,36): error TS2339: Property 'getParent' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(84,48): error TS2339: Property 'getFirstDescendant' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(86,23): error TS2339: Property 'insertBefore' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(103,36): error TS2339: Property 'getParent' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(105,46): error TS2339: Property 'getFirstDescendant' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(106,48): error TS2339: Property 'getLastDescendant' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(117,25): error TS2339: Property 'insertAfter' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(130,61): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(141,59): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(149,63): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(203,16): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(207,43): error TS2339: Property 'getParent' does not exist on type 'CollapsibleTitleNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(212,27): error TS2339: Property 'getNextSibling' does not exist on type 'CollapsibleTitleNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(229,53): error TS2339: Property 'append' does not exist on type 'CollapsibleContainerNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(230,23): error TS2339: Property 'append' does not exist on type 'CollapsibleTitleNode'.
+src/components/components/TextEditor/plugins/CollapsiblePlugin/index.tsx(231,49): error TS2339: Property 'append' does not exist on type 'CollapsibleContentNode'.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(9,29): error TS2307: Cannot find module '@lexical/yjs' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(16,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(18,24): error TS2307: Cannot find module 'yjs' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(29,8): error TS2307: Cannot find module '@lexical/mark' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(30,31): error TS2307: Cannot find module '@lexical/react/LexicalAutoFocusPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(31,33): error TS2307: Cannot find module '@lexical/react/LexicalClearEditorPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(32,39): error TS2307: Cannot find module '@lexical/react/LexicalCollaborationContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(33,31): error TS2307: Cannot find module '@lexical/react/LexicalComposer' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(34,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(35,31): error TS2307: Cannot find module '@lexical/react/LexicalEditorRefPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(36,36): error TS2307: Cannot find module '@lexical/react/LexicalErrorBoundary' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(37,29): error TS2307: Cannot find module '@lexical/react/LexicalHistoryPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(38,30): error TS2307: Cannot find module '@lexical/react/LexicalOnChangePlugin' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(39,31): error TS2307: Cannot find module '@lexical/react/LexicalPlainTextPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(40,55): error TS2307: Cannot find module '@lexical/selection' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(41,57): error TS2307: Cannot find module '@lexical/text' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(42,60): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(54,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(848,24): error TS7006: Parameter 'id' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(855,10): error TS7006: Parameter 'mutations' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(894,39): error TS7031: Binding element 'editorState' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/CommentPlugin/index.tsx(894,52): error TS7031: Binding element 'tags' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/DraggableBlockPlugin/index.tsx(12,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/DraggableBlockPlugin/index.tsx(13,49): error TS2307: Cannot find module '@lexical/react/LexicalDraggableBlockPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/DraggableBlockPlugin/index.tsx(14,64): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/EquationsPlugin/index.tsx(13,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/EquationsPlugin/index.tsx(14,34): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/EquationsPlugin/index.tsx(23,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/EquationsPlugin/index.tsx(67,8): error TS7006: Parameter 'payload' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/EquationsPlugin/index.tsx(72,46): error TS2339: Property 'getParentOrThrow' does not exist on type 'EquationNode'.
+src/components/components/TextEditor/plugins/ExcalidrawPlugin/index.tsx(8,42): error TS2307: Cannot find module '@excalidraw/excalidraw/types' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ExcalidrawPlugin/index.tsx(13,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ExcalidrawPlugin/index.tsx(14,34): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ExcalidrawPlugin/index.tsx(22,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ExcalidrawPlugin/index.tsx(79,46): error TS2339: Property 'getParentOrThrow' does not exist on type 'ExcalidrawNode'.
+src/components/components/TextEditor/plugins/FigmaPlugin/index.tsx(11,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/FigmaPlugin/index.tsx(12,40): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/FigmaPlugin/index.tsx(13,75): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/FigmaPlugin/index.tsx(32,8): error TS7006: Parameter 'payload' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/FloatingLinkEditorPlugin/index.tsx(17,8): error TS2307: Cannot find module '@lexical/link' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/FloatingLinkEditorPlugin/index.tsx(18,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/FloatingLinkEditorPlugin/index.tsx(19,50): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/FloatingLinkEditorPlugin/index.tsx(34,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/FloatingLinkEditorPlugin/index.tsx(178,39): error TS7031: Binding element 'editorState' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/FloatingLinkEditorPlugin/index.tsx(355,20): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/FloatingLinkEditorPlugin/index.tsx(356,18): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/FloatingLinkEditorPlugin/index.tsx(389,39): error TS7031: Binding element 'editorState' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/FloatingLinkEditorPlugin/index.tsx(396,10): error TS7006: Parameter '_payload' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/FloatingLinkEditorPlugin/index.tsx(396,20): error TS7006: Parameter 'newEditor' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/FloatingLinkEditorPlugin/index.tsx(405,10): error TS7006: Parameter 'payload' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(12,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(13,49): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(33,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(174,10): error TS7006: Parameter 'payload' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(177,45): error TS2339: Property 'getParentOrThrow' does not exist on type 'InlineImageNode'.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(187,10): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(194,10): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(201,10): error TS7006: Parameter 'event' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(235,19): error TS2339: Property 'getKey' does not exist on type 'InlineImageNode'.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(270,10): error TS2339: Property 'remove' does not exist on type 'InlineImageNode'.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(315,6): error TS18047: 'target' is possibly 'null'.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(315,13): error TS2339: Property 'closest' does not exist on type 'EventTarget'.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(316,19): error TS18047: 'target' is possibly 'null'.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(316,26): error TS2339: Property 'parentElement' does not exist on type 'EventTarget'.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(317,5): error TS18047: 'target' is possibly 'null'.
+src/components/components/TextEditor/plugins/InlineImagePlugin/index.tsx(317,12): error TS2339: Property 'parentElement' does not exist on type 'EventTarget'.
+src/components/components/TextEditor/plugins/LayoutPlugin/InsertLayoutDialog.tsx(11,36): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(9,70): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(11,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(16,8): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(29,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(73,36): error TS2339: Property 'getParent' does not exist on type 'LayoutContainerNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(80,25): error TS2339: Property 'getFirstDescendant' does not exist on type 'LayoutContainerNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(81,25): error TS2339: Property 'getLastDescendant' does not exist on type 'LayoutContainerNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(89,25): error TS2339: Property 'insertBefore' does not exist on type 'LayoutContainerNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(91,25): error TS2339: Property 'insertAfter' does not exist on type 'LayoutContainerNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(101,16): error TS2339: Property 'isEmpty' does not exist on type 'LayoutItemNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(102,14): error TS2339: Property 'append' does not exist on type 'LayoutItemNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(107,27): error TS2339: Property 'getParent' does not exist on type 'LayoutItemNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(109,31): error TS2339: Property 'getChildren' does not exist on type 'LayoutItemNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(111,16): error TS2339: Property 'insertBefore' does not exist on type 'LayoutItemNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(113,14): error TS2339: Property 'remove' does not exist on type 'LayoutItemNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(150,10): error TS7006: Parameter 'template' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(156,25): error TS2339: Property 'append' does not exist on type 'LayoutContainerNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(157,41): error TS2339: Property 'append' does not exist on type 'LayoutItemNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(162,23): error TS2339: Property 'selectStart' does not exist on type 'LayoutContainerNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(171,11): error TS7031: Binding element 'template' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(171,21): error TS7031: Binding element 'nodeKey' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(187,27): error TS2339: Property 'append' does not exist on type 'LayoutContainerNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(188,43): error TS2339: Property 'append' does not exist on type 'LayoutItemNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(193,46): error TS2339: Property 'getChildAtIndex' does not exist on type 'LayoutContainerNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(196,30): error TS2339: Property 'remove' does not exist on type 'LayoutItemNode'.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(209,53): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(221,58): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/LayoutPlugin/LayoutPlugin.tsx(222,26): error TS2347: Untyped function calls may not accept type arguments.
+src/components/components/TextEditor/plugins/LinkPlugin/index.tsx(11,47): error TS2307: Cannot find module '@lexical/react/LexicalLinkPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/PageBreakPlugin/index.tsx(11,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/PageBreakPlugin/index.tsx(12,55): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/PageBreakPlugin/index.tsx(19,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/PollPlugin/index.tsx(11,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/PollPlugin/index.tsx(12,34): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/PollPlugin/index.tsx(21,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/PollPlugin/index.tsx(72,8): error TS7006: Parameter 'payload' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/PollPlugin/index.tsx(78,42): error TS2339: Property 'getParentOrThrow' does not exist on type 'PollNode'.
+src/components/components/TextEditor/plugins/ShortcutsPlugin/index.tsx(9,35): error TS2307: Cannot find module '@lexical/link' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ShortcutsPlugin/index.tsx(10,37): error TS2307: Cannot find module '@lexical/rich-text' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ShortcutsPlugin/index.tsx(20,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ShortcutsPlugin/shortcuts.ts(9,24): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ShortcutsPlugin/shortcuts.ts(10,31): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableActionMenuPlugin/index.tsx(9,47): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableActionMenuPlugin/index.tsx(12,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableActionMenuPlugin/index.tsx(13,34): error TS2307: Cannot find module '@lexical/react/useLexicalEditable' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableActionMenuPlugin/index.tsx(35,8): error TS2307: Cannot find module '@lexical/table' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableActionMenuPlugin/index.tsx(36,29): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableActionMenuPlugin/index.tsx(47,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableActionMenuPlugin/index.tsx(139,8): error TS7006: Parameter 'nodeMutations' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/TableActionMenuPlugin/index.tsx(211,39): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'Node | null'.
+  Type 'EventTarget' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 43 more.
+src/components/components/TextEditor/plugins/TableActionMenuPlugin/index.tsx(212,38): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'Node | null'.
+  Type 'EventTarget' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 43 more.
+src/components/components/TextEditor/plugins/TableActionMenuPlugin/index.tsx(866,36): error TS7006: Parameter 'rootElement' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/TableActionMenuPlugin/index.tsx(866,49): error TS7006: Parameter 'prevRootElement' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(8,62): error TS2307: Cannot find module '@lexical/table' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(9,43): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(14,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(15,34): error TS2307: Cannot find module '@lexical/react/useLexicalEditable' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(25,8): error TS2307: Cannot find module '@lexical/table' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(26,49): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(31,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(79,51): error TS7006: Parameter 'nodeMutations' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(89,48): error TS7006: Parameter 'tableNode' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(123,61): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'Node | null'.
+  Type 'EventTarget' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 43 more.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(128,9): error TS2322: Type 'EventTarget | null' is not assignable to type 'HTMLElement | null'.
+  Type 'EventTarget' is missing the following properties from type 'HTMLElement': accessKey, accessKeyLabel, autocapitalize, autocorrect, and 315 more.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(175,8): error TS7006: Parameter 'rootElement' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(175,21): error TS7006: Parameter 'prevRootElement' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/TableCellResizer/index.tsx(238,18): error TS7006: Parameter 'cell' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(11,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(12,34): error TS2307: Cannot find module '@lexical/react/useLexicalEditable' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(25,8): error TS2307: Cannot find module '@lexical/table' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(26,50): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(32,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(82,64): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(201,10): error TS7006: Parameter 'mutations' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(292,26): error TS18047: 'target' is possibly 'null'.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(292,33): error TS2339: Property 'closest' does not exist on type 'EventTarget'.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(298,7): error TS18047: 'target' is possibly 'null'.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(298,14): error TS2339: Property 'closest' does not exist on type 'EventTarget'.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(301,7): error TS18047: 'target' is possibly 'null'.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(301,14): error TS2339: Property 'closest' does not exist on type 'EventTarget'.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(304,7): error TS18047: 'target' is possibly 'null'.
+src/components/components/TextEditor/plugins/TableHoverActionsPlugin/index.tsx(304,14): error TS2339: Property 'closest' does not exist on type 'EventTarget'.
+src/components/components/TextEditor/plugins/TablePlugin/index.tsx(11,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TablePlugin/index.tsx(17,8): error TS2307: Cannot find module '@lexical/table' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TablePlugin/index.tsx(18,76): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(16,8): error TS2307: Cannot find module '@lexical/code' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(17,48): error TS2307: Cannot find module '@lexical/link' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(18,37): error TS2307: Cannot find module '@lexical/list' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(19,36): error TS2307: Cannot find module '@lexical/react/LexicalAutoEmbedPlugin' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(20,46): error TS2307: Cannot find module '@lexical/react/LexicalHorizontalRuleNode' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(21,30): error TS2307: Cannot find module '@lexical/rich-text' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(26,8): error TS2307: Cannot find module '@lexical/selection' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(27,47): error TS2307: Cannot find module '@lexical/table' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(34,8): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(57,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(109,25): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(475,36): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(610,12): error TS7006: Parameter 'parentNode' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(673,8): error TS7006: Parameter '_payload' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(673,18): error TS7006: Parameter 'newEditor' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(690,40): error TS7006: Parameter 'editable' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(693,45): error TS7031: Binding element 'editorState' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(700,10): error TS7006: Parameter 'payload' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(708,10): error TS7006: Parameter 'payload' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(1218,38): error TS2339: Property 'type' does not exist on type 'PlaygroundEmbedConfig'.
+src/components/components/TextEditor/plugins/ToolbarPlugin/index.tsx(1222,37): error TS2339: Property 'type' does not exist on type 'PlaygroundEmbedConfig'.
+src/components/components/TextEditor/plugins/TwitterPlugin/index.tsx(11,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TwitterPlugin/index.tsx(12,40): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TwitterPlugin/index.tsx(13,75): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/TwitterPlugin/index.tsx(32,8): error TS7006: Parameter 'payload' implicitly has an 'any' type.
+src/components/components/TextEditor/plugins/YouTubePlugin/index.tsx(11,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/YouTubePlugin/index.tsx(12,40): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/YouTubePlugin/index.tsx(13,75): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/plugins/YouTubePlugin/index.tsx(32,8): error TS7006: Parameter 'payload' implicitly has an 'any' type.
+src/components/components/TextEditor/themes/CommentEditorTheme.ts(9,39): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/themes/PlaygroundEditorTheme.ts(9,39): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/ui/Button.tsx(15,25): error TS2307: Cannot find module '../../../utils/joinClasses' or its corresponding type declarations.
+src/components/components/TextEditor/ui/ColorPicker.tsx(13,34): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/ui/ContentEditable.tsx(13,31): error TS2307: Cannot find module '@lexical/react/LexicalContentEditable' or its corresponding type declarations.
+src/components/components/TextEditor/ui/DropDown.tsx(11,25): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/ui/DropDown.tsx(199,67): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'Node | null'.
+  Type 'EventTarget' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 43 more.
+src/components/components/TextEditor/ui/DropDown.tsx(203,30): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'Node | null'.
+  Type 'EventTarget' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 43 more.
+src/components/components/TextEditor/ui/EquationEditor.tsx(13,29): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/ui/ExcalidrawModal.tsx(14,8): error TS2307: Cannot find module '@excalidraw/excalidraw/types' or its corresponding type declarations.
+src/components/components/TextEditor/ui/ExcalidrawModal.tsx(19,26): error TS2307: Cannot find module '@excalidraw/excalidraw' or its corresponding type declarations.
+src/components/components/TextEditor/ui/ExcalidrawModal.tsx(20,25): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/ui/ExcalidrawModal.tsx(112,46): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'Node | null'.
+  Type 'EventTarget' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 43 more.
+src/components/components/TextEditor/ui/ExcalidrawModal.tsx(154,38): error TS7006: Parameter 'el' implicitly has an 'any' type.
+src/components/components/TextEditor/ui/fontSize.tsx(11,36): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/ui/ImageResizer.tsx(9,34): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/ui/ImageResizer.tsx(12,34): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/ui/KatexEquationAlterer.tsx(13,41): error TS2307: Cannot find module '@lexical/react/LexicalComposerContext' or its corresponding type declarations.
+src/components/components/TextEditor/ui/KatexEquationAlterer.tsx(15,29): error TS2307: Cannot find module 'react-error-boundary' or its corresponding type declarations.
+src/components/components/TextEditor/ui/KatexEquationAlterer.tsx(69,34): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/components/components/TextEditor/ui/KatexRenderer.tsx(11,19): error TS2307: Cannot find module 'katex' or its corresponding type declarations.
+src/components/components/TextEditor/ui/Modal.tsx(13,25): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/ui/Modal.tsx(48,36): error TS2345: Argument of type 'EventTarget | null' is not assignable to parameter of type 'Node | null'.
+  Type 'EventTarget' is missing the following properties from type 'Node': baseURI, childNodes, firstChild, isConnected, and 43 more.
+src/components/components/TextEditor/utils/commenting.ts(9,34): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/utils/commenting.ts(11,53): error TS2307: Cannot find module '@lexical/yjs' or its corresponding type declarations.
+src/components/components/TextEditor/utils/commenting.ts(12,36): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/utils/commenting.ts(20,8): error TS2307: Cannot find module 'yjs' or its corresponding type declarations.
+src/components/components/TextEditor/utils/commenting.ts(236,7): error TS2578: Unused '@ts-expect-error' directive.
+src/components/components/TextEditor/utils/commenting.ts(256,7): error TS2578: Unused '@ts-expect-error' directive.
+src/components/components/TextEditor/utils/commenting.ts(306,8): error TS7006: Parameter 'payload' implicitly has an 'any' type.
+src/components/components/TextEditor/utils/getSelectedNode.ts(8,28): error TS2307: Cannot find module '@lexical/selection' or its corresponding type declarations.
+src/components/components/TextEditor/utils/getSelectedNode.ts(9,58): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/utils/getThemeSelector.ts(16,41): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/utils/getThemeSelector.ts(25,49): error TS2731: Implicit conversion of a 'symbol' to a 'string' will fail at runtime. Consider wrapping this expression in 'String(...)'.
+src/components/components/TextEditor/utils/utils.ts(8,31): error TS2307: Cannot find module '@lexical/code' or its corresponding type declarations.
+src/components/components/TextEditor/utils/utils.ts(13,8): error TS2307: Cannot find module '@lexical/list' or its corresponding type declarations.
+src/components/components/TextEditor/utils/utils.ts(14,37): error TS2307: Cannot find module '@lexical/react/LexicalDecoratorBlockNode' or its corresponding type declarations.
+src/components/components/TextEditor/utils/utils.ts(21,8): error TS2307: Cannot find module '@lexical/rich-text' or its corresponding type declarations.
+src/components/components/TextEditor/utils/utils.ts(22,47): error TS2307: Cannot find module '@lexical/selection' or its corresponding type declarations.
+src/components/components/TextEditor/utils/utils.ts(23,33): error TS2307: Cannot find module '@lexical/table' or its corresponding type declarations.
+src/components/components/TextEditor/utils/utils.ts(24,54): error TS2307: Cannot find module '@lexical/utils' or its corresponding type declarations.
+src/components/components/TextEditor/utils/utils.ts(31,8): error TS2307: Cannot find module 'lexical' or its corresponding type declarations.
+src/components/components/TextEditor/utils/utils.ts(40,13): error TS1294: This syntax is not allowed when 'erasableSyntaxOnly' is enabled.
+src/components/components/TextEditor/utils/utils.ts(249,22): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/components/components/TextEditor/utils/utils.ts(249,28): error TS7006: Parameter 'idx' implicitly has an 'any' type.
+src/pages/users/index.tsx(282,13): error TS2322: Type '"purple"' is not assignable to type '"green" | "red" | "blue" | "gray"'.

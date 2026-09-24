@@ -4,6 +4,9 @@ import {
   fetchUserByUidApi,
   createUserApi,
   updateUserRoleApi,
+  updateUserReportsToApi,
+  activateUserApi,
+  deactivateUserApi,
 } from "../../services/apiServices";
 import type { Pagination, PaginationInfo, User } from "../../utils/types";
 
@@ -107,10 +110,10 @@ export const updateUserRole = createAsyncThunk<
 
 export const activateUser = createAsyncThunk(
   "users/activateUser",
-  async (userId: number, { rejectWithValue }) => {
+  async (userUid: string, { rejectWithValue }) => {
     try {
-      const response = await "";
-      return { userId, response };
+      const response = await activateUserApi(userUid);
+      return { userUid, response };
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to activate user");
     }
@@ -119,12 +122,27 @@ export const activateUser = createAsyncThunk(
 
 export const deactivateUser = createAsyncThunk(
   "users/deactivateUser",
-  async (userId: number, { rejectWithValue }) => {
+  async (userUid: string, { rejectWithValue }) => {
     try {
-      const response = await "";
-      return { userId, response };
+      const response = await deactivateUserApi(userUid);
+      return { userUid, response };
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to deactivate user");
+    }
+  }
+);
+
+export const updateUserReportsTo = createAsyncThunk<
+  { userUid: string; reportsToUid: string | null; reportsToObj?: any },
+  { userUid: string; reportsToUid: string | null; reportsToObj?: any }
+>(
+  "users/updateUserReportsTo",
+  async ({ userUid, reportsToUid, reportsToObj }, { rejectWithValue }) => {
+    try {
+      await updateUserReportsToApi(userUid, { reports_to: reportsToUid });
+      return { userUid, reportsToUid, reportsToObj };
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to update reporting manager");
     }
   }
 );
@@ -217,11 +235,11 @@ const userSlice = createSlice({
       })
       .addCase(activateUser.fulfilled, (state, action) => {
         state.actionLoading = false;
-        const user = (state.data || []).find((u) => u.id === action.payload.userId);
+        const user = (state.data || []).find((u) => u.uid === action.payload.userUid);
         if (user) {
           user.is_active = true;
         }
-        if (state.selectedUser?.id === action.payload.userId) {
+        if (state.selectedUser?.uid === action.payload.userUid) {
           state.selectedUser.is_active = true;
         }
       })
@@ -237,11 +255,11 @@ const userSlice = createSlice({
       })
       .addCase(deactivateUser.fulfilled, (state, action) => {
         state.actionLoading = false;
-        const user = (state.data || []).find((u) => u.id === action.payload.userId);
+        const user = (state.data || []).find((u) => u.uid === action.payload.userUid);
         if (user) {
           user.is_active = false;
         }
-        if (state.selectedUser?.id === action.payload.userId) {
+        if (state.selectedUser?.uid === action.payload.userUid) {
           state.selectedUser.is_active = false;
         }
       })
@@ -289,6 +307,41 @@ const userSlice = createSlice({
         }
       })
       .addCase(updateUserRole.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Update user reporting manager
+      .addCase(updateUserReportsTo.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(updateUserReportsTo.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const { userUid, reportsToUid, reportsToObj } = action.payload;
+        if (state.data && state.data.length > 0) {
+          const idx = state.data.findIndex((u) => u.uid === userUid);
+          if (idx !== -1) {
+            const updatedReportsTo =
+              reportsToObj || reportsToUid;
+            state.data[idx] = {
+              ...state.data[idx],
+              reports_to: updatedReportsTo,
+              reports_to_name: reportsToObj?.name || reportsToObj?.email || state.data[idx].reports_to_name,
+            };
+          }
+        }
+        if (state.selectedUser && state.selectedUser.uid === userUid) {
+          const updatedReportsTo =
+            reportsToObj || reportsToUid;
+          state.selectedUser = {
+            ...state.selectedUser,
+            reports_to: updatedReportsTo,
+            reports_to_name: reportsToObj?.name || reportsToObj?.email || state.selectedUser.reports_to_name,
+          };
+        }
+      })
+      .addCase(updateUserReportsTo.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload as string;
       });

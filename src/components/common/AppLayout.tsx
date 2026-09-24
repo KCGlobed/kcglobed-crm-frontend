@@ -19,6 +19,7 @@ const PAGE_TITLES: Record<string, string> = {
   admissions: 'Admissions',
   followups: 'Follow-ups & Notes',
   reports: 'Reports & Export',
+  'reporting-management': "Reporting Management",
 };
 
 export const AppLayout: React.FC<AppLayoutProps> = ({

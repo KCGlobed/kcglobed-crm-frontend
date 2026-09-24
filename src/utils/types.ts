@@ -1,11 +1,11 @@
 // Generic API Response
 export interface PaginationInfo {
-  total_results?: number;
-  total_pages?: number;
-  current_page?: number;
+  total_results?: number | null;
+  total_pages?: number | null;
+  current_page?: number | null;
   next_page?: number | null;
   previous_page?: number | null;
-  page_size?: number;
+  page_size?: number | null;
 }
 
 export interface ApiResponse<T = any> {
@@ -32,6 +32,7 @@ export interface Pagination<T> {
   page?: number;
   loading?: boolean;
   error?: string | null;
+  pagination?: PaginationInfo;
 }
 
 // Auth
@@ -207,4 +208,11 @@ export interface ReportingNode {
   is_active: boolean;
   team_count: number;
   team: ReportingNode[];
+}
+
+export interface ReportingOption {
+  uid?: string;
+  name?: string;
+  email?: string;
+  role?: string;
 }
