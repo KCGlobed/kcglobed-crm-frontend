@@ -199,4 +199,12 @@ export interface User {
   confirm_password?: string;
 }
 
-
+export interface ReportingNode {
+  uid: string;
+  name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+  team_count: number;
+  team: ReportingNode[];
+}

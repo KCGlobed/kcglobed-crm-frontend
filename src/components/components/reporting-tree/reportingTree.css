@@ -1,0 +1,234 @@
+/* reportingTree.css */
+
+:root {
+  --rt-primary: #3f6fa8;
+  --rt-primary-dark: #2b4f7e;
+  --rt-primary-light: #a9c6e8;
+  --rt-line: #b9c6d8;
+  --rt-text: #1e293b;
+  --rt-muted: #64748b;
+  --rt-bg: #ffffff;
+}
+
+.rt-status {
+  padding: 24px;
+  text-align: center;
+  color: var(--rt-muted);
+  font-size: 14px;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+}
+
+.rt-status--error {
+  color: #dc2626;
+}
+
+.rt-forest {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 48px;
+  padding: 32px 16px;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  overflow-x: auto;
+}
+
+/* ---- classic pure-CSS org chart connector technique ---- */
+
+.rt-tree,
+.rt-tree ul,
+.rt-tree li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rt-tree ul {
+  display: flex;
+  justify-content: center;
+  padding-top: 32px;
+  position: relative;
+}
+
+.rt-tree li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 14px 0 14px;
+}
+
+/* elbow connectors from each node up to its parent's row */
+.rt-tree li::before,
+.rt-tree li::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 32px;
+  border-top: 2px solid var(--rt-line);
+}
+.rt-tree li::before {
+  right: 50%;
+}
+.rt-tree li::after {
+  left: 50%;
+  border-left: 2px solid var(--rt-line);
+}
+
+/* a single child needs no elbow, just a straight drop */
+.rt-tree li:only-child {
+  padding-top: 0;
+}
+.rt-tree li:only-child::before,
+.rt-tree li:only-child::after {
+  display: none;
+}
+
+/* trim the outer edges of the horizontal connector row */
+.rt-tree li:first-child::before,
+.rt-tree li:last-child::after {
+  border: 0 none;
+}
+.rt-tree li:last-child::before {
+  border-right: 2px solid var(--rt-line);
+  border-radius: 0 6px 0 0;
+}
+.rt-tree li:first-child::after {
+  border-radius: 6px 0 0 0;
+}
+
+/* vertical stub dropping from a parent down into its children's row */
+.rt-tree ul ul::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 0;
+  height: 32px;
+  border-left: 2px solid var(--rt-line);
+}
+
+/* the very first (root) li has no incoming line from above */
+.rt-tree > ul > li {
+  padding-top: 0;
+}
+.rt-tree > ul > li::before,
+.rt-tree > ul > li::after {
+  display: none;
+}
+
+/* ---- root rectangle card ---- */
+
+.rt-root-card {
+  min-width: 260px;
+  max-width: 320px;
+  background: var(--rt-bg);
+  border: 2px solid var(--rt-primary-light);
+  border-radius: 10px;
+  padding: 16px 20px;
+  box-shadow: 0 2px 8px rgba(30, 41, 59, 0.08);
+  text-align: center;
+}
+
+.rt-root-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--rt-primary-dark);
+  margin-bottom: 6px;
+}
+
+.rt-root-subtitle {
+  font-size: 12px;
+  color: var(--rt-muted);
+  line-height: 1.5;
+}
+
+/* ---- circular icon nodes ---- */
+
+.rt-node {
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.rt-node--clickable {
+  cursor: pointer;
+}
+
+.rt-circle-wrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.rt-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--rt-bg);
+  border: 5px solid var(--rt-primary-light);
+  box-shadow: 0 0 0 2px var(--rt-primary-dark) inset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rt-primary-dark);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rt-node--clickable:hover .rt-circle {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 2px var(--rt-primary-dark) inset, 0 4px 10px rgba(30, 41, 59, 0.15);
+}
+
+.rt-count-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--rt-primary-dark);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rt-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rt-text);
+}
+
+.rt-sublabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--rt-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+}
+
+.rt-desc {
+  font-size: 11px;
+  color: var(--rt-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.rt-inactive-tag {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #dc2626;
+}
+
+.rt-inactive {
+  opacity: 0.55;
+}

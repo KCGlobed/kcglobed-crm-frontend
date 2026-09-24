@@ -4,6 +4,7 @@ import roleReducer from "./slices/roleSlice";
 import moduleReducer from "./slices/moduleSlice";
 import userReducer from "./slices/userSlice";
 import themeReducer from "./slices/themeSlice";
+import reportingReducer from "./slices/reportingSlice";
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     modules: moduleReducer,
     users: userReducer,
     theme: themeReducer,
+    reporting: reportingReducer,
   },
 });
 
