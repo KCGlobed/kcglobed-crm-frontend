@@ -85,10 +85,10 @@ export const createUserApi = async (payload: any): Promise<any> => {
 };
 
 export const updateUserRoleApi = async (userUid: string, payload: any): Promise<any> => {
-  return await apiRequest(`/access/users/${userUid}/role/`, "PATCH", payload);
+  return await apiRequest(`/access/users/${userUid}/`, "PATCH", payload);
 };
 
 // ----------------Reporting service------- //
-export const fetchReportingTreeApi = async (): Promise<any> => {
-  return await apiRequest("/access/users/reporting-tree/", "GET");
+export const fetchReportingTreeByUserApi = async (userUid: string): Promise<any> => {
+  return await apiRequest(`/access/users/reporting-tree/?user=${userUid}`, "GET");
 };

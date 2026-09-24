@@ -27,7 +27,7 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 48px;
-  padding: 32px 16px;
+  padding: 8px 16px 32px;
   font-family: "Inter", system-ui, -apple-system, sans-serif;
   overflow-x: auto;
 }
@@ -47,6 +47,11 @@
   justify-content: center;
   padding-top: 32px;
   position: relative;
+}
+
+/* root level has no parent connector, so no top padding needed */
+.rt-tree > ul {
+  padding-top: 0;
 }
 
 .rt-tree li {

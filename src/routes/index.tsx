@@ -28,8 +28,11 @@ export const AppRoutes: React.FC = () => {
           <Route path="/modules" element={<ModulesPage />} />
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/users" element={<UsersPage />} />
-          <Route path="/reporting" element={<ReportingPage />} />
+          {/* <Route path="/reporting" element={<ReportingPage />} /> */}
           <Route path="*" element={<NotFoundPage />} />
+        </Route>
+        <Route>
+          <Route path="/reporting" element={<ReportingPage />} />
         </Route>
       </Route>
     </Routes>
