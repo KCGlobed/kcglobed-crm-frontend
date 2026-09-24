@@ -8,6 +8,7 @@ import AppLayout from '../components/common/AppLayout';
 import RolesPage from '../pages/roles';
 import ModulesPage from '../pages/module';
 import UsersPage from '../pages/users';
+import ReportingPage from '../pages/reporting';
 import NotFoundPage from '../pages/notFound';
 import DashboardPage from '../pages/dashboard';
 
@@ -27,6 +28,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/modules" element={<ModulesPage />} />
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/users" element={<UsersPage />} />
+          <Route path="/reporting" element={<ReportingPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>

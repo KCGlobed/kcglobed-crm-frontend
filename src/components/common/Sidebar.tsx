@@ -121,6 +121,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       icon: <Users size={19} />,
     },
     {
+      id: 'reporting',
+      label: 'Reporting and Deactivate',
+      path: '/reporting',
+      icon: <Users size={19} />, // Using Users icon as a placeholder
+    },
+    {
       id: 'settings',
       label: 'Settings',
       icon: <SettingsIcon size={19} />,
