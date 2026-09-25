@@ -52,7 +52,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { user } = useAppSelector((state) => state.auth);
+  const { user, access } = useAppSelector((state) => state.auth);
   // const { data: roles } = useAppSelector((state) => state.roles);
   const { data: users } = useAppSelector((state) => state.users);
 
@@ -105,8 +105,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onCloseMobile?.();
   };
 
+  const hasAccess = (moduleId: string) => {
+    if (!access) return false;
+    if (access.full_access) return true;
+
+    // Map internal IDs to permission keys if necessary
+    const permissionKey = moduleId === 'reporting' ? 'reports' : moduleId;
+
+    // Some static paths might always be accessible, like dashboard
+    if (moduleId === 'dashboard') return true;
+
+    // Check if the permission exists and 'view' is true
+    const modulePerms = access.permissions?.[permissionKey as keyof typeof access.permissions] as any;
+    return modulePerms?.view === true;
+  };
+
   // CRM Navigation items structured with Instalearn's accordion submenu pattern
-  const navItems: NavItem[] = [
+  const allNavItems: NavItem[] = [
     {
       id: 'dashboard',
       label: 'Dashboard',
@@ -120,9 +135,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: users && users.length > 0 ? `${users.length}` : undefined,
       icon: <Users size={19} />,
     },
-
     {
-      id: 'reporting',
+      id: 'reports', // Match the permission key 'reports'
       label: 'Reporting Graph',
       path: '/reporting',
       icon: <Users size={19} />, // Using Users icon as a placeholder
@@ -170,6 +184,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
     //   ],
     // },
   ];
+
+  // Filter the navigation items based on user's access
+  const navItems = allNavItems.filter((item) => {
+    if (!hasAccess(item.id)) return false;
+
+    // If it has a submenu, filter the submenu items as well
+    if (item.submenu) {
+      item.submenu = item.submenu.filter((sub) => {
+        // Fallback to parent access if sub item isn't in permissions
+        if (access && !access.full_access && access.permissions) {
+          const subPerms = access.permissions[sub.id as keyof typeof access.permissions] as any;
+          if (subPerms) {
+            return subPerms.view === true;
+          }
+        }
+        return true;
+      });
+      return item.submenu.length > 0;
+    }
+
+    return true;
+  });
 
   // Auto-expand submenu if current path matches any of its children
   useEffect(() => {

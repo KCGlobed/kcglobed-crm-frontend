@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Filter, ChevronDown, Plus } from 'lucide-react';
+import { Filter, ChevronDown, Plus, Columns, Check } from 'lucide-react';
 import DynamicServerTable from '../../components/components/Table/Table';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
@@ -31,11 +31,10 @@ const UserThumbnail = ({ row }: { row: User }) => {
   const initial = (row.first_name?.[0] || row.email?.[0] || 'U').toUpperCase();
   return (
     <div
-      className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${
-        row.is_admin
-          ? 'border-primary/30 bg-primary-soft text-primary-contrast'
-          : 'border-crmBorder bg-major-tint text-crmText-secondary'
-      }`}
+      className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${row.is_admin
+        ? 'border-primary/30 bg-primary-soft text-primary-contrast'
+        : 'border-crmBorder bg-major-tint text-crmText-secondary'
+        }`}
     >
       <span>{initial}</span>
     </div>
@@ -52,6 +51,7 @@ const ManageUsers: React.FC = () => {
     current_page,
     page_size,
   } = useAppSelector((state) => state.users);
+  const { access } = useAppSelector((state) => state.auth);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,6 +59,27 @@ const ManageUsers: React.FC = () => {
   const [showFilter, setShowFilter] = useState(false);
   const { showModal } = useModal();
   const isMounted = React.useRef(false);
+  const columnDropdownRef = React.useRef<HTMLDivElement>(null);
+
+  const defaultVisibleColumns = ['first_name', 'email', 'phone1', 'role', 'reports_to', 'is_active', 'is_admin'];
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(defaultVisibleColumns);
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (columnDropdownRef.current && !columnDropdownRef.current.contains(event.target as Node)) {
+        setShowColumnDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const toggleColumn = (key: string) => {
+    setVisibleColumns(prev =>
+      prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]
+    );
+  };
 
   const pageSize = page_size || 10;
 
@@ -187,7 +208,7 @@ const ManageUsers: React.FC = () => {
         const fullName =
           [row.first_name, row.last_name].filter(Boolean).join(' ') || row.email || '-';
         return (
-          <div 
+          <div
             className="flex items-center gap-3 cursor-pointer hover:bg-major-tint p-1 -ml-1 rounded-lg transition-colors group"
             onClick={() =>
               showModal({
@@ -234,7 +255,7 @@ const ManageUsers: React.FC = () => {
           typeof row.role === 'object' && row.role ? row.role.name : row.role_name || '-';
         return (
           <div className="flex items-center">
-            <span 
+            <span
               className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity active:scale-95 ${getRoleBadgeClasses(roleName)}`}
               onClick={() =>
                 showModal({
@@ -261,10 +282,10 @@ const ManageUsers: React.FC = () => {
           typeof row.reports_to === 'object' && row.reports_to
             ? row.reports_to.name
             : typeof row.reports_to_name === 'string'
-            ? row.reports_to_name
-            : null;
+              ? row.reports_to_name
+              : null;
         return (
-          <span 
+          <span
             className="text-crmText-secondary text-xs font-medium cursor-pointer hover:text-minor hover:underline decoration-minor/30 underline-offset-4 transition-all"
             onClick={() =>
               showModal({
@@ -289,11 +310,10 @@ const ManageUsers: React.FC = () => {
         <div className="flex items-center justify-center">
           <span
             onClick={() => handleToggleStatus(row)}
-            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap cursor-pointer hover:shadow-sm transition-all active:scale-95 ${
-              value
-                ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border hover:bg-crmSuccess-bg/80'
-                : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border hover:bg-crmDanger-bg/80'
-            }`}
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap cursor-pointer hover:shadow-sm transition-all active:scale-95 ${value
+              ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border hover:bg-crmSuccess-bg/80'
+              : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border hover:bg-crmDanger-bg/80'
+              }`}
           >
             {value ? 'Active' : 'Inactive'}
           </span>
@@ -309,11 +329,10 @@ const ManageUsers: React.FC = () => {
       render: (value: boolean) => (
         <div className="flex items-center justify-center">
           <span
-            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
-              value
-                ? 'bg-minor-soft text-minor-contrast border-minor/30'
-                : 'bg-major-tint text-crmText-secondary border-crmBorder'
-            }`}
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${value
+              ? 'bg-minor-soft text-minor-contrast border-minor/30'
+              : 'bg-major-tint text-crmText-secondary border-crmBorder'
+              }`}
           >
             {value ? 'Yes' : 'No'}
           </span>
@@ -325,6 +344,8 @@ const ManageUsers: React.FC = () => {
     },
   ];
 
+  console.log()
+
   return (
     <div className="flex flex-col gap-4 w-full h-[calc(100vh-6rem)] max-w-full min-w-0 animate-in fade-in duration-500">
       {/* Top Action Bar */}
@@ -333,11 +354,10 @@ const ManageUsers: React.FC = () => {
           <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap">
             <button
               onClick={() => setShowFilter(!showFilter)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${
-                showFilter || activeFilterCount > 0
-                  ? 'border-minor/30 text-minor-contrast bg-minor-soft'
-                  : 'border-crmBorder text-crmText-secondary hover:border-crmBorder-strong hover:bg-major-tint'
-              }`}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${showFilter || activeFilterCount > 0
+                ? 'border-minor/30 text-minor-contrast bg-minor-soft'
+                : 'border-crmBorder text-crmText-secondary hover:border-crmBorder-strong hover:bg-major-tint'
+                }`}
             >
               <Filter
                 size={16}
@@ -346,9 +366,8 @@ const ManageUsers: React.FC = () => {
               <span>Filter</span>
               <ChevronDown
                 size={14}
-                className={`text-crmText-secondary transition-transform duration-200 ${
-                  showFilter ? 'rotate-180' : ''
-                }`}
+                className={`text-crmText-secondary transition-transform duration-200 ${showFilter ? 'rotate-180' : ''
+                  }`}
               />
               {activeFilterCount > 0 && (
                 <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-secondary text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
@@ -356,6 +375,40 @@ const ManageUsers: React.FC = () => {
                 </span>
               )}
             </button>
+
+            <div className="relative" ref={columnDropdownRef}>
+              <button
+                onClick={() => setShowColumnDropdown(!showColumnDropdown)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${showColumnDropdown
+                  ? 'border-minor/30 text-minor-contrast bg-minor-soft'
+                  : 'border-crmBorder text-crmText-secondary hover:border-crmBorder-strong hover:bg-major-tint'
+                  }`}
+              >
+                <Columns size={16} className={showColumnDropdown ? 'text-minor-contrast' : 'text-crmText-tertiary'} />
+                <span>Columns</span>
+                <ChevronDown size={14} className={`text-crmText-secondary transition-transform duration-200 ${showColumnDropdown ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showColumnDropdown && (
+                <div className="absolute top-full left-0 mt-2 w-48 bg-major rounded-xl shadow-lg border border-crmBorder py-2 z-50">
+                  <div className="px-3 pb-2 mb-2 border-b border-crmBorder text-xs font-semibold text-crmText-secondary uppercase tracking-wider">
+                    Toggle Columns
+                  </div>
+                  {columns.map(col => (
+                    <button
+                      key={col.key}
+                      onClick={() => toggleColumn(col.key)}
+                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-major-tint transition-colors text-sm text-crmText cursor-pointer border-none bg-transparent"
+                    >
+                      <span className="truncate pr-2 font-medium">{col.title}</span>
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${visibleColumns.includes(col.key) ? 'bg-minor border-minor text-white' : 'border-crmBorder bg-transparent'}`}>
+                        {visibleColumns.includes(col.key) && <Check size={12} strokeWidth={3} />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <SearchInput
@@ -369,20 +422,23 @@ const ManageUsers: React.FC = () => {
             <span className="text-xs font-semibold text-crmText-secondary mr-1">
               Total: {totalCount} users
             </span>
-            <button
-              className="flex items-center gap-1.5 px-4 py-2 bg-minor hover:bg-minor-hover text-white rounded-xl text-xs font-bold hover:shadow-lg transition-all active:scale-95 shadow-minor/20 shadow-sm cursor-pointer border-none"
-              onClick={() =>
-                showModal({
-                  title: 'Add User',
-                  content: <UserForm />,
-                  type: 'custom',
-                  size: 'lg',
-                })
-              }
-            >
-              <Plus size={18} strokeWidth={2.5} />
-              Add User
-            </button>
+            {
+              access?.permissions?.users?.add && (
+                <button
+                  className="flex items-center gap-1.5 px-4 py-2 bg-minor hover:bg-minor-hover text-white rounded-xl text-xs font-bold hover:shadow-lg transition-all active:scale-95 shadow-minor/20 shadow-sm cursor-pointer border-none"
+                  onClick={() =>
+                    showModal({
+                      title: 'Add User',
+                      content: <UserForm />,
+                      type: 'custom',
+                      size: 'lg',
+                    })
+                  }
+                >
+                  <Plus size={18} strokeWidth={2.5} />
+                  Add User
+                </button>
+              )}
           </div>
         </div>
 
@@ -403,7 +459,7 @@ const ManageUsers: React.FC = () => {
       <div className="flex flex-col bg-major rounded-2xl shadow-crm-card overflow-hidden border border-crmBorder w-full max-w-full min-w-0">
         <DynamicServerTable
           data={userList}
-          columns={columns as any}
+          columns={columns.filter(col => visibleColumns.includes(col.key)) as any}
           currentPage={currentPage}
           pageSize={pageSize}
           totalCount={totalCount}

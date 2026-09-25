@@ -67,7 +67,7 @@ export interface AuthAccess {
     slug: string;
   };
   full_access: boolean;
-  permissions: Record<string, unknown>;
+  permissions: Record<string, any>;
 }
 
 export type LoginResponse = ApiResponse<{
