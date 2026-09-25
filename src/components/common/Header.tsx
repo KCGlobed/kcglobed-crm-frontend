@@ -75,7 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Right: theme, notifications, account */}
       <div className="flex shrink-0 items-center gap-2 sm:gap-2.5">
         <ThemeToggle />
-        <NotificationMenu />
+        {/* <NotificationMenu /> */}
         <span className="hidden h-6 w-px bg-crmBorder sm:block" />
         <ProfileMenu />
       </div>

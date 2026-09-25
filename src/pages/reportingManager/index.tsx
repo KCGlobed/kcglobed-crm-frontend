@@ -53,7 +53,7 @@ const ManageReportingUser: React.FC = () => {
     const { showModal } = useModal();
     const isMounted = React.useRef(false);
 
-    const pageSize = page_size || 10;
+    const [pageSize, setPageSize] = useState(page_size || 10);
 
     // Filter states matching userFilterConfig
     const [filters, setFilters] = useState({
@@ -258,6 +258,10 @@ const ManageReportingUser: React.FC = () => {
                     emptyDescription="There are no users to display at the moment."
                     rowKey={(row: ReportingOption) => row.uid ?? String(Math.random())}
                     onPageChange={(page) => setCurrentPage(page)}
+                    onPageSizeChange={(size) => {
+                        setPageSize(size);
+                        setCurrentPage(1); // Reset to first page when size changes
+                    }}
                     onSort={handleSort as any}
                     className="rounded-none border-none shadow-none"
                     maxHeight="100%"

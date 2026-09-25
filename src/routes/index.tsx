@@ -11,7 +11,7 @@ import UsersPage from '../pages/users';
 import ReportingPage from '../pages/reporting';
 import NotFoundPage from '../pages/notFound';
 import DashboardPage from '../pages/dashboard';
-import ReportingManagementPage from '../pages/reportingManager';
+
 
 export const AppRoutes: React.FC = () => {
   return (

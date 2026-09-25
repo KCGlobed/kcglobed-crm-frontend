@@ -72,10 +72,11 @@ export const updateModuleApi = async (moduleId: number | string, payload: any): 
 };
 
 // ----------------User service------- //
-export const fetchUsersApi = async (params?: { page?: number; page_size?: number }): Promise<any> => {
+export const fetchUsersApi = async (params?: { page?: number; page_size?: number; search?: string }): Promise<any> => {
   const query = new URLSearchParams();
   if (params?.page) query.append("page", String(params.page));
   if (params?.page_size) query.append("page_size", String(params.page_size));
+  if (params?.search) query.append("search", params.search);
   const queryString = query.toString();
   return await apiRequest(`/access/users/${queryString ? `?${queryString}` : ""}`, "GET");
 };
@@ -86,6 +87,10 @@ export const fetchUserPermissionsApi = async (userUid: string): Promise<any> => 
 
 export const createUserApi = async (payload: any): Promise<any> => {
   return await apiRequest("/access/users/", "POST", payload);
+};
+
+export const updateUserApi = async (userUid: string, payload: any): Promise<any> => {
+  return await apiRequest(`/access/users/${userUid}/`, "PATCH", payload);
 };
 
 export const updateUserRoleApi = async (userUid: string, payload: any): Promise<any> => {

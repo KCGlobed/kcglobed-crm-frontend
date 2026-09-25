@@ -5,7 +5,7 @@ import 'react-international-phone/style.css';
 import { useModal } from '../../../context/ModalContext';
 import { useAppDispatch } from '../../../hooks/useAppDispatch';
 import { useAppSelector } from '../../../hooks/useRedux';
-import { createUser, fetchUsers } from '../../../store/slices/userSlice';
+import { createUser, updateUser, fetchUsers } from '../../../store/slices/userSlice';
 import { fetchRoles } from '../../../store/slices/roleSlice';
 import { fetchReportingManagementOptions } from '../../../store/slices/reportingMangementSlice';
 import toast from 'react-hot-toast';
@@ -127,13 +127,19 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
         payload.password = data.password;
       }
 
-      await dispatch(createUser(payload)).unwrap();
-      toast.success('User created successfully');
+      if (isEdit && userData?.uid) {
+        await dispatch(updateUser({ userUid: userData.uid, payload })).unwrap();
+        toast.success('User updated successfully');
+      } else {
+        await dispatch(createUser(payload)).unwrap();
+        toast.success('User created successfully');
+      }
+
       dispatch(fetchUsers());
       reset();
       hideModal();
     } catch (err: any) {
-      toast.error(err?.message || err || 'Failed to create user');
+      toast.error(err?.message || err || `Failed to ${isEdit ? 'update' : 'create'} user`);
     } finally {
       setSubmitting(false);
     }
@@ -372,10 +378,10 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
           {submitting ? (
             <>
               <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              <span>Creating...</span>
+              <span>{isEdit ? 'Updating...' : 'Creating...'}</span>
             </>
           ) : (
-            'Create User'
+            isEdit ? 'Update User' : 'Create User'
           )}
         </button>
       </div>

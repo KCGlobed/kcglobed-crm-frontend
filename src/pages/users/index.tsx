@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Filter, ChevronDown, Plus, Columns, Check } from 'lucide-react';
+import { ChevronDown, Plus, Columns, Check, MoreVertical, Eye, Shield, Users, Power } from 'lucide-react';
 import DynamicServerTable from '../../components/components/Table/Table';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
@@ -13,9 +13,8 @@ import UpdateRoleForm from '../../components/components/Forms/UpdateRoleForm';
 import UpdateReporterForm from '../../components/components/Forms/UpdateReporterForm';
 import StatusConfirmationModal from '../../components/components/Modal/StatusConfirmationModal';
 import SearchInput from '../../components/components/common/SearchInput';
-import DynamicFilter from '../../components/components/common/DynamicFilter';
-import { userFilterConfig } from '../../utils/filterConfiguration';
 import type { User } from '../../utils/types';
+import { FiEdit } from 'react-icons/fi';
 
 // Interface matching the Table component's column requirement
 interface ColumnDef {
@@ -41,27 +40,113 @@ const UserThumbnail = ({ row }: { row: User }) => {
   );
 };
 
+const ActionMenu = ({ row, onToggleStatus }: { row: User; onToggleStatus: (user: User) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const { showModal } = useModal();
+  const { access } = useAppSelector((state) => state.auth);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  const closeAndDo = (action: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsOpen(false);
+    action();
+  };
+  return (
+    <div className="relative flex justify-center" ref={dropdownRef}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className="p-1.5 text-crmText-secondary hover:text-minor hover:bg-minor-soft rounded-lg transition-colors cursor-pointer"
+      >
+        <MoreVertical size={18} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-44 bg-major rounded-xl shadow-lg border border-crmBorder py-1.5 z-[99] overflow-hidden">
+          <button
+            onClick={closeAndDo(() => showModal({ title: 'User Details', content: <UserView userData={row} />, type: 'success', size: 'lg' }))}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-minor hover:bg-major-tint transition-colors text-left"
+          >
+            <Eye size={14} /> View Details
+          </button>
+
+          {access?.permissions?.users?.change && (
+            <button
+              onClick={closeAndDo(() => showModal({ title: 'Edit User', content: <UserForm userData={row} />, type: 'custom', size: 'lg' }))}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-green-600 hover:bg-green-50 transition-colors text-left"
+            >
+              <FiEdit size={14} /> Edit User
+            </button>
+          )}
+
+          {access?.permissions?.users?.change && (
+            <button
+              onClick={closeAndDo(() => showModal({ title: 'Update User Role', content: <UpdateRoleForm userData={row} />, type: 'success', size: 'md' }))}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-blue-600 hover:bg-blue-50 transition-colors text-left"
+            >
+              <Shield size={14} /> Change Role
+            </button>
+          )}
+
+          {access?.permissions?.users?.change && (
+            <button
+              onClick={closeAndDo(() => showModal({ title: 'Update Reporting Manager', content: <UpdateReporterForm userData={row} />, type: 'success', size: 'md' }))}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-indigo-600 hover:bg-indigo-50 transition-colors text-left"
+            >
+              <Users size={14} /> Change Reporter
+            </button>
+          )}
+
+          {access?.permissions?.users?.change && (
+            <button
+              onClick={closeAndDo(() => onToggleStatus(row))}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left border-t border-crmBorder mt-1 pt-2 ${row.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+            >
+              <Power size={14} /> {row.is_active ? 'Deactivate User' : 'Activate User'}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ManageUsers: React.FC = () => {
   const dispatch = useAppDispatch();
   const {
     data: users,
     loading,
     error,
-    total_results,
-    current_page,
-    page_size,
+    pagination,
   } = useAppSelector((state) => state.users);
+
+  const current_page = pagination?.current_page;
+  const page_size = pagination?.page_size;
+  const total_results = pagination?.total_results;
   const { access } = useAppSelector((state) => state.auth);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const [ordering, setOrdering] = useState<string>('');
-  const [showFilter, setShowFilter] = useState(false);
+
   const { showModal } = useModal();
   const isMounted = React.useRef(false);
   const columnDropdownRef = React.useRef<HTMLDivElement>(null);
 
-  const defaultVisibleColumns = ['first_name', 'email', 'phone1', 'role', 'reports_to', 'is_active', 'is_admin'];
+  const defaultVisibleColumns = ['first_name', 'email', 'phone1', 'role', 'reports_to', 'is_active', 'is_admin', 'actions'];
   const [visibleColumns, setVisibleColumns] = useState<string[]>(defaultVisibleColumns);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
 
@@ -81,28 +166,9 @@ const ManageUsers: React.FC = () => {
     );
   };
 
-  const pageSize = page_size || 10;
-
-  // Filter states matching userFilterConfig
-  const [filters, setFilters] = useState({
-    name: '',
-    email: '',
-    role: '',
-    status: 'all' as 'all' | 'active' | 'deactive',
-  });
+  const [pageSize, setPageSize] = useState(page_size || 10);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
-  const debouncedFilters = useDebounce(filters, 500);
-
-  const activeFilterCount = useMemo(() => {
-    let count = 0;
-    if (filters.name) count++;
-    if (filters.email) count++;
-    if (filters.role) count++;
-    if (filters.status && filters.status !== 'all') count++;
-    if (ordering) count++;
-    return count;
-  }, [filters, ordering]);
 
   // Sync with current_page from Redux if it changes
   useEffect(() => {
@@ -113,7 +179,7 @@ const ManageUsers: React.FC = () => {
 
   // Fetch users on page/pageSize change
   useEffect(() => {
-    dispatch(fetchUsers({ page: currentPage, page_size: pageSize }));
+    dispatch(fetchUsers({ page: currentPage, page_size: pageSize, search: debouncedSearchTerm }));
   }, [dispatch, currentPage, pageSize]);
 
   // Reset to page 1 on search or filter changes
@@ -125,37 +191,16 @@ const ManageUsers: React.FC = () => {
     if (currentPage !== 1) {
       setCurrentPage(1);
     } else {
-      dispatch(fetchUsers({ page: 1, page_size: pageSize }));
+      dispatch(fetchUsers({ page: 1, page_size: pageSize, search: debouncedSearchTerm }));
     }
-  }, [debouncedSearchTerm, debouncedFilters]);
+  }, [debouncedSearchTerm]);
 
   const userList = useMemo(() => users || [], [users]);
   const totalCount = total_results ?? userList.length;
 
-  const handleFilterChange = (name: string, value: any) => {
-    setFilters((prev) => ({ ...prev, [name]: value }));
-  };
 
-  const clearFilters = () => {
-    setFilters({
-      name: '',
-      email: '',
-      role: '',
-      status: 'all',
-    });
-    setOrdering('');
-    setSearchTerm('');
-  };
 
-  const handleSort = (key: string, direction: 'asc' | 'desc') => {
-    const orderPrefix = direction === 'desc' ? '-' : '';
-    setOrdering(`${orderPrefix}${key}`);
-  };
 
-  const handleDirectionSort = (direction: 'asc' | 'desc') => {
-    const currentKey = ordering.replace(/^-/, '') || 'first_name';
-    handleSort(currentKey, direction);
-  };
 
   const executeToggleStatus = async (user: User) => {
     if (!user.uid) return;
@@ -208,20 +253,10 @@ const ManageUsers: React.FC = () => {
         const fullName =
           [row.first_name, row.last_name].filter(Boolean).join(' ') || row.email || '-';
         return (
-          <div
-            className="flex items-center gap-3 cursor-pointer hover:bg-major-tint p-1 -ml-1 rounded-lg transition-colors group"
-            onClick={() =>
-              showModal({
-                title: 'User Details',
-                content: <UserView userData={row} />,
-                type: 'success',
-                size: 'lg',
-              })
-            }
-          >
+          <div className="flex items-center gap-3 p-1 -ml-1 rounded-lg group">
             <UserThumbnail row={row} />
             <div className="flex flex-col min-w-0">
-              <span className="font-semibold text-crmText text-sm truncate group-hover:text-minor transition-colors">{fullName}</span>
+              <span className="font-semibold text-crmText text-sm truncate">{fullName}</span>
             </div>
           </div>
         );
@@ -256,15 +291,16 @@ const ManageUsers: React.FC = () => {
         return (
           <div className="flex items-center">
             <span
-              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity active:scale-95 ${getRoleBadgeClasses(roleName)}`}
-              onClick={() =>
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap cursor-pointer hover:opacity-80 transition-opacity active:scale-95 ${getRoleBadgeClasses(roleName || '-')}`}
+              onClick={(e) => {
+                e.stopPropagation();
                 showModal({
                   title: 'Update User Role',
                   content: <UpdateRoleForm userData={row} />,
                   type: 'success',
                   size: 'md',
-                })
-              }
+                });
+              }}
             >
               {roleName}
             </span>
@@ -287,14 +323,15 @@ const ManageUsers: React.FC = () => {
         return (
           <span
             className="text-crmText-secondary text-xs font-medium cursor-pointer hover:text-minor hover:underline decoration-minor/30 underline-offset-4 transition-all"
-            onClick={() =>
+            onClick={(e) => {
+              e.stopPropagation();
               showModal({
                 title: 'Update Reporting Manager',
                 content: <UpdateReporterForm userData={row} />,
                 type: 'success',
                 size: 'md',
-              })
-            }
+              });
+            }}
           >
             {reportsToName || '-'}
           </span>
@@ -309,10 +346,9 @@ const ManageUsers: React.FC = () => {
       render: (value: boolean, row: User) => (
         <div className="flex items-center justify-center">
           <span
-            onClick={() => handleToggleStatus(row)}
-            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap cursor-pointer hover:shadow-sm transition-all active:scale-95 ${value
-              ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border hover:bg-crmSuccess-bg/80'
-              : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border hover:bg-crmDanger-bg/80'
+            className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${value
+              ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border'
+              : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border'
               }`}
           >
             {value ? 'Active' : 'Inactive'}
@@ -342,40 +378,22 @@ const ManageUsers: React.FC = () => {
       align: 'center',
       sortable: true,
     },
+    {
+      key: 'actions',
+      title: 'Actions',
+      render: (_: any, row: User) => (
+        <ActionMenu row={row} onToggleStatus={handleToggleStatus} />
+      ),
+      width: '100px',
+      align: 'center',
+    },
   ];
-
-  console.log()
-
   return (
     <div className="flex flex-col gap-4 w-full h-[calc(100vh-6rem)] max-w-full min-w-0 animate-in fade-in duration-500">
       {/* Top Action Bar */}
       <div className="flex flex-col bg-major rounded-2xl shadow-crm-card border border-crmBorder relative">
         <div className="flex flex-wrap items-center justify-between px-4 py-3 gap-3">
           <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap">
-            <button
-              onClick={() => setShowFilter(!showFilter)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${showFilter || activeFilterCount > 0
-                ? 'border-minor/30 text-minor-contrast bg-minor-soft'
-                : 'border-crmBorder text-crmText-secondary hover:border-crmBorder-strong hover:bg-major-tint'
-                }`}
-            >
-              <Filter
-                size={16}
-                className={showFilter || activeFilterCount > 0 ? 'text-minor-contrast' : 'text-crmText-tertiary'}
-              />
-              <span>Filter</span>
-              <ChevronDown
-                size={14}
-                className={`text-crmText-secondary transition-transform duration-200 ${showFilter ? 'rotate-180' : ''
-                  }`}
-              />
-              {activeFilterCount > 0 && (
-                <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-secondary text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-
             <div className="relative" ref={columnDropdownRef}>
               <button
                 onClick={() => setShowColumnDropdown(!showColumnDropdown)}
@@ -442,17 +460,6 @@ const ManageUsers: React.FC = () => {
           </div>
         </div>
 
-        {/* Inline General Filter Section */}
-        <DynamicFilter
-          show={showFilter}
-          config={userFilterConfig}
-          values={filters}
-          onChange={handleFilterChange}
-          onClear={clearFilters}
-          onClose={() => setShowFilter(false)}
-          ordering={ordering}
-          onDirectionSort={handleDirectionSort}
-        />
       </div>
 
       {/* Main Table Content */}
@@ -470,7 +477,19 @@ const ManageUsers: React.FC = () => {
           emptyDescription="There are no users to display at the moment."
           rowKey={(row: User) => row.uid ?? String(Math.random())}
           onPageChange={(page) => setCurrentPage(page)}
-          onSort={handleSort as any}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setCurrentPage(1); // Reset to first page when size changes
+          }}
+
+          onRowClick={(row) =>
+            showModal({
+              title: 'User Details',
+              content: <UserView userData={row} />,
+              type: 'success',
+              size: 'lg',
+            })
+          }
           className="rounded-none border-none shadow-none"
           maxHeight="100%"
         />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Filter, Plus, ChevronDown } from 'lucide-react';
+import { Filter, Plus, ChevronDown, MoreVertical, Eye, Power } from 'lucide-react';
 import DynamicServerTable from '../../components/components/Table/Table';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
@@ -8,8 +8,7 @@ import { fetchModules, updateModule } from '../../store/slices/moduleSlice';
 import useDebounce from '../../hooks/useDebounce';
 import moment from 'moment';
 import { useModal } from '../../context/ModalContext';
-import GlassButton from '../../components/components/Button/Button';
-import { FiEye, FiEdit } from 'react-icons/fi';
+import { FiEdit } from 'react-icons/fi';
 import ModuleForm from '../../components/components/Forms/ModuleForm';
 import ModuleView from '../../components/components/View/ModuleView';
 import SearchInput from '../../components/components/common/SearchInput';
@@ -42,6 +41,74 @@ const ModuleThumbnail = ({ row }: { row: Module }) => {
     );
 };
 
+const ActionMenu = ({ row, onToggleStatus }: { row: Module; onToggleStatus: (row: Module) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const { showModal } = useModal();
+  const { access } = useAppSelector((state) => state.auth);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  const closeAndDo = (action: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsOpen(false);
+    action();
+  };
+
+  return (
+    <div className="relative flex justify-center" ref={dropdownRef}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className="p-1.5 text-crmText-secondary hover:text-minor hover:bg-minor-soft rounded-lg transition-colors cursor-pointer"
+      >
+        <MoreVertical size={18} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-44 bg-major rounded-xl shadow-lg border border-crmBorder py-1.5 z-[99] overflow-hidden">
+          <button
+            onClick={closeAndDo(() => showModal({ title: 'Module Details', content: <ModuleView moduleData={row} />, type: 'success', size: 'xl' }))}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-minor hover:bg-major-tint transition-colors text-left"
+          >
+            <Eye size={14} /> View Details
+          </button>
+
+          {access?.permissions?.modules?.change && (
+            <button
+              onClick={closeAndDo(() => showModal({ title: `Edit Module: ${row.name || row.code}`, content: <ModuleForm moduleData={row} />, type: 'custom', size: 'lg' }))}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-green-600 hover:bg-green-50 transition-colors text-left"
+            >
+              <FiEdit size={14} /> Edit Module
+            </button>
+          )}
+
+          {access?.permissions?.modules?.change && (
+            <button
+              onClick={closeAndDo(() => onToggleStatus(row))}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left border-t border-crmBorder mt-1 pt-2 ${row.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+            >
+              <Power size={14} /> {row.is_active ? 'Deactivate Module' : 'Activate Module'}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ManageModules: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
@@ -66,12 +133,14 @@ const ManageModules: React.FC = () => {
         data: modules,
         loading,
         error,
-        total_results,
-        current_page,
-        page_size,
+        pagination,
     } = useAppSelector((state) => state.modules);
 
-    const pageSize = page_size || 10;
+    const total_results = pagination?.total_results;
+    const current_page = pagination?.current_page;
+    const page_size = pagination?.page_size;
+
+    const [pageSize, setPageSize] = useState(page_size || 10);
     const isMounted = React.useRef(false);
 
     const activeFilterCount = useMemo(() => {
@@ -236,20 +305,15 @@ const ManageModules: React.FC = () => {
             key: 'is_active',
             title: 'Status',
             render: (value: boolean, row: Module) => (
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        handleToggleStatus(row);
-                    }}
-                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border cursor-pointer hover:shadow-sm transition-all active:scale-95 ${
+                <span
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                         value
                             ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border'
                             : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border'
                     }`}
-                    title={value ? 'Click to Deactivate' : 'Click to Activate'}
                 >
                     {value ? 'Active' : 'Inactive'}
-                </button>
+                </span>
             ),
             width: '100px',
             align: 'center',
@@ -259,34 +323,7 @@ const ManageModules: React.FC = () => {
             key: 'id',
             title: 'Actions',
             render: (_: any, row: Module) => (
-                <div className="flex items-center justify-end gap-2 pr-2">
-                    <GlassButton
-                        icon={<FiEye />}
-                        color="blue"
-                        title="View"
-                        onClick={() =>
-                            showModal({
-                                title: 'Module Details',
-                                content: <ModuleView moduleData={row} />,
-                                type: 'success',
-                                size: 'xl',
-                            })
-                        }
-                    />
-                    <GlassButton
-                        icon={<FiEdit />}
-                        color="green"
-                        title="Edit"
-                        onClick={() =>
-                            showModal({
-                                title: `Edit Module: ${row.name || row.code}`,
-                                content: <ModuleForm moduleData={row} />,
-                                type: 'custom',
-                                size: 'lg',
-                            })
-                        }
-                    />
-                </div>
+                <ActionMenu row={row} onToggleStatus={handleToggleStatus} />
             ),
             width: '120px',
             align: 'right',
@@ -384,6 +421,18 @@ const ManageModules: React.FC = () => {
                     emptyDescription="There are no modules to display at the moment."
                     rowKey={(row: Module) => row.id ?? row.code ?? row.name ?? Math.random()}
                     onPageChange={(page) => setCurrentPage(page)}
+                    onPageSizeChange={(size) => {
+                        setPageSize(size);
+                        setCurrentPage(1); // Reset to first page when size changes
+                    }}
+                    onRowClick={(row) =>
+                        showModal({
+                            title: 'Module Details',
+                            content: <ModuleView moduleData={row} />,
+                            type: 'success',
+                            size: 'xl',
+                        })
+                    }
                     onSort={handleSort}
                     className="rounded-none border-none shadow-none"
                     maxHeight="100%"

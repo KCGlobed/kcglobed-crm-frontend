@@ -20,6 +20,75 @@ export type ColumnDefinition<T> = {
   sortable?: boolean;
 };
 
+const PageSizeDropdown = ({
+  pageSize,
+  options,
+  onChange,
+}: {
+  pageSize: number;
+  options: number[];
+  onChange: (size: number) => void;
+}) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center justify-between w-[4.5rem] bg-major border border-crmBorder rounded-lg px-2.5 py-1 text-crmText font-semibold hover:border-crmBorder-strong hover:bg-major-tint focus:outline-none focus:border-minor focus:ring-1 focus:ring-minor transition-all shadow-crm-sm"
+      >
+        <span>{pageSize}</span>
+        <FiChevronDown
+          size={14}
+          className={`text-crmText-secondary transition-transform duration-200 ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute bottom-full mb-1.5 left-0 w-[4.5rem] bg-major border border-crmBorder rounded-xl shadow-crm-card overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-200">
+          <ul className="py-1">
+            {options.map((size) => (
+              <li key={size}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(size);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+                    pageSize === size
+                      ? 'bg-minor-soft text-minor-contrast font-bold'
+                      : 'text-crmText-secondary font-semibold hover:bg-major-tint hover:text-crmText'
+                  }`}
+                >
+                  {size}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+};
+
+
 type Props<T> = {
   data: T[];
   columns: ColumnDefinition<T>[];
@@ -43,6 +112,12 @@ type Props<T> = {
   rowKey?: (row: T, index: number) => React.Key;
   /** Optional toolbar rendered above the table inside the same card. */
   toolbar?: React.ReactNode;
+  /** Optional click handler for the entire row */
+  onRowClick?: (row: T) => void;
+  /** Optional handler for changing the number of rows per page */
+  onPageSizeChange?: (size: number) => void;
+  /** Options for the page size dropdown */
+  pageSizeOptions?: number[];
 };
 
 function DynamicServerTable<T extends object>({
@@ -64,6 +139,9 @@ function DynamicServerTable<T extends object>({
   emptyAction,
   rowKey,
   toolbar,
+  onRowClick,
+  onPageSizeChange,
+  pageSizeOptions = [10, 20, 50, 100],
 }: Props<T>) {
   const totalPages = Math.ceil(totalCount / pageSize);
   const [activeSort, setActiveSort] = React.useState<{ key: keyof T | null; direction: 'asc' | 'desc' }>({
@@ -219,16 +297,24 @@ function DynamicServerTable<T extends object>({
               sortedData.map((row, i) => (
                 <tr
                   key={rowKey ? rowKey(row, i) : i}
-                  className="transition-colors duration-150 hover:bg-major-tint"
+                  className={`transition-colors duration-150 hover:bg-major-tint ${
+                    onRowClick ? 'cursor-pointer' : ''
+                  }`}
+                  onClick={() => onRowClick?.(row)}
                 >
                   {columns.map((col) => (
                     <td
                       key={String(col.key)}
                       className={`whitespace-nowrap border-b border-crmBorder px-4 py-2.5 text-xs ${
-                        col.onClick ? 'cursor-pointer' : 'cursor-default'
+                        col.onClick && !onRowClick ? 'cursor-pointer' : ''
                       }`}
                       style={cellStyle(col)}
-                      onClick={() => col.onClick?.(row[col.key], row)}
+                      onClick={(e) => {
+                        if (col.onClick) {
+                          e.stopPropagation();
+                          col.onClick(row[col.key], row);
+                        }
+                      }}
                     >
                       <div
                         className={`flex items-center ${
@@ -250,13 +336,26 @@ function DynamicServerTable<T extends object>({
 
       {/* Pagination Footer */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-crmBorder bg-major-tint px-4 py-3">
-        <div className="text-xs font-medium text-crmText-tertiary">
-          Showing{' '}
-          <span className="font-semibold text-crmText">
-            {totalCount === 0 ? 0 : Math.min((currentPage - 1) * pageSize + 1, totalCount)}
-          </span>{' '}
-          to <span className="font-semibold text-crmText">{Math.min(currentPage * pageSize, totalCount)}</span> of{' '}
-          <span className="font-semibold text-crmText">{totalCount}</span> entries
+        <div className="flex items-center gap-4 text-xs font-medium text-crmText-tertiary">
+          <div>
+            Showing{' '}
+            <span className="font-semibold text-crmText">
+              {totalCount === 0 ? 0 : Math.min((currentPage - 1) * pageSize + 1, totalCount)}
+            </span>{' '}
+            to <span className="font-semibold text-crmText">{Math.min(currentPage * pageSize, totalCount)}</span> of{' '}
+            <span className="font-semibold text-crmText">{totalCount}</span> entries
+          </div>
+
+          {onPageSizeChange && (
+            <div className="flex items-center gap-2.5 border-l border-crmBorder pl-4">
+              <span>Rows per page:</span>
+              <PageSizeDropdown
+                pageSize={pageSize}
+                options={pageSizeOptions}
+                onChange={onPageSizeChange}
+              />
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-3">
