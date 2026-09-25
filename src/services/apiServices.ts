@@ -17,12 +17,16 @@ export const logoutAllApi = async (): Promise<any> => {
   return await apiRequest("/auth/logout-all/", "POST");
 };
 
-// TODO: confirm these endpoints with the backend once the forgot-password APIs are ready
+// TODO: confirm this endpoint with the backend once the forgot-password API is ready
 export const sendPasswordResetLinkApi = async (payload: { email: string }): Promise<any> => {
   return await apiRequest("/auth/forgot-password/", "POST", payload);
 };
 
-export const resetPasswordApi = async (payload: { token: string;uid?: string;new_password: string;confirm_password: string;}): Promise<any> => {
+export const validateResetLinkApi = async (uid: string, token: string): Promise<any> => {
+  return await apiRequest(`/auth/reset-password/${uid}/${token}/`, "GET");
+};
+
+export const resetPasswordApi = async (payload: {uid: string;token: string;new_password: string;confirm_password: string;}): Promise<any> => {
   return await apiRequest("/auth/reset-password/", "POST", payload);
 };
 

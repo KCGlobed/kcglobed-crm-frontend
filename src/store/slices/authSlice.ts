@@ -4,6 +4,7 @@ import {
   loginApi,
   logoutAllApi,
   sendPasswordResetLinkApi,
+  validateResetLinkApi,
   resetPasswordApi,
 } from "../../services/apiServices";
 import type { AuthState, LoginCred, LoginResponse } from "../../utils/types";
@@ -68,9 +69,22 @@ export const sendPasswordResetLink = createAsyncThunk<any, { email: string }>(
   }
 );
 
+// Opened from the email link: verifies the uid + token before showing the new-password form
+export const validateResetLink = createAsyncThunk<any, { uid: string; token: string }>(
+  "auth/validateResetLink",
+  async ({ uid, token }, { rejectWithValue }) => {
+    try {
+      const response = await validateResetLinkApi(uid, token);
+      return response.data;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Invalid or expired reset link");
+    }
+  }
+);
+
 export const resetPassword = createAsyncThunk<
   any,
-  { token: string; uid?: string; new_password: string; confirm_password: string }
+  { uid: string; token: string; new_password: string; confirm_password: string }
 >(
   "auth/resetPassword",
   async (payload, { rejectWithValue }) => {

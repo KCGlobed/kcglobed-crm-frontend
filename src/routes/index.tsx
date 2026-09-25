@@ -26,7 +26,8 @@ export const AppRoutes: React.FC = () => {
 
       {/* Reachable both logged-in (from Profile > Settings) and logged-out (from Login / email link) */}
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      {/* Must match the URL the backend puts in the reset email */}
+      <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
 
       {/* Protected Routes */}
       <Route element={<PrivateRoutes />}>

@@ -1,30 +1,44 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Lock, TriangleAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { resetPassword, logout } from '../../store/slices/authSlice';
+import { resetPassword, validateResetLink, logout } from '../../store/slices/authSlice';
 import kcglobedLogo from '../../assets/kcglobed-logo.svg';
 
 type ResetFormValues = { new_password: string; confirm_password: string };
 
+type LinkStatus = 'checking' | 'valid' | 'invalid';
+
 /**
- * Opened from the link in the reset email, e.g.
- *   /reset-password?token=<token>            (or)
- *   /reset-password?uid=<uid>&token=<token>
+ * Opened from the link in the reset email:
+ *   /auth/reset-password?uid=<uid>&token=<token>
+ *
+ * 1. On load, GET /auth/reset-password/{uid}/{token}/ to confirm the link is still valid.
+ * 2. On submit, POST /auth/reset-password/ with uid, token and the new password.
  */
 const ManageResetPassword: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
+  const uid = searchParams.get('uid') || '';
   const token = searchParams.get('token') || '';
-  const uid = searchParams.get('uid') || undefined;
 
+  const [linkStatus, setLinkStatus] = useState<LinkStatus>(uid && token ? 'checking' : 'invalid');
   const [submitting, setSubmitting] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Step 1: verify the link before showing the form
+  useEffect(() => {
+    if (!uid || !token) return;
+    dispatch(validateResetLink({ uid, token }))
+      .unwrap()
+      .then(() => setLinkStatus('valid'))
+      .catch(() => setLinkStatus('invalid'));
+  }, [dispatch, uid, token]);
 
   const {
     register,
@@ -37,13 +51,14 @@ const ManageResetPassword: React.FC = () => {
 
   const newPasswordValue = watch('new_password');
 
+  // Step 2: submit the new password together with the same uid + token
   const onResetPassword = async (data: ResetFormValues) => {
     setSubmitting(true);
     try {
       await dispatch(
         resetPassword({
-          token,
           uid,
+          token,
           new_password: data.new_password,
           confirm_password: data.confirm_password,
         })
@@ -73,7 +88,15 @@ const ManageResetPassword: React.FC = () => {
           <img src={kcglobedLogo} alt="KC Globed" width={490} height={128} className="h-10 w-auto sm:h-11" />
         </div>
 
-        {!token ? (
+        {linkStatus === 'checking' && (
+          <div className="flex flex-col items-center py-10 text-center">
+            <span className="mb-4 h-10 w-10 animate-spin rounded-full border-[3px] border-crmBorder border-t-primary" />
+            <div className="text-sm font-semibold text-crmText">Verifying your reset link...</div>
+            <div className="mt-1 text-xs text-crmText-secondary">This will only take a moment.</div>
+          </div>
+        )}
+
+        {linkStatus === 'invalid' && (
           <>
             <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-crmDanger-border bg-crmDanger-bg text-crmDanger">
               <TriangleAlert size={22} />
@@ -82,7 +105,8 @@ const ManageResetPassword: React.FC = () => {
               Invalid or Expired Link
             </h1>
             <p className="mt-2 text-sm text-crmText-secondary">
-              This password reset link is missing or no longer valid. Request a new link to continue.
+              This password reset link is missing, already used, or no longer valid. Request a new
+              link to continue.
             </p>
             <button
               type="button"
@@ -92,7 +116,9 @@ const ManageResetPassword: React.FC = () => {
               Request a New Link
             </button>
           </>
-        ) : (
+        )}
+
+        {linkStatus === 'valid' && (
           <>
             <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary-soft text-primary-contrast">
               <Lock size={22} />
