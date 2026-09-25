@@ -16,14 +16,18 @@ interface ModuleState extends Pagination<Module> {
 const initialState: ModuleState = {
   data: [],
   next: null,
+  previous: null,
+  pagination: {
+    total_results: null,
+    total_pages: null,
+    current_page: null,
+    next_page: null,
+    page_size: null,
+    previous_page: null,
+  },
+  page: 1,
   loading: false,
   error: null,
-  total_results: 0,
-  total_pages: 1,
-  current_page: 1,
-  next_page: null,
-  previous_page: null,
-  page_size: 10,
   selectedModule: null,
   selectedModuleLoading: false,
   actionLoading: false,
@@ -116,7 +120,7 @@ const moduleSlice = createSlice({
       state.error = null;
     },
     setCurrentPage: (state, action: PayloadAction<number>) => {
-      state.current_page = action.payload;
+      state.page = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -128,19 +132,8 @@ const moduleSlice = createSlice({
       })
       .addCase(fetchModules.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload.data;
-        if (action.payload.pagination) {
-          state.total_results = action.payload.pagination.total_results ?? action.payload.data.length;
-          state.total_pages = action.payload.pagination.total_pages ?? 1;
-          state.current_page = action.payload.pagination.current_page ?? 1;
-          state.next_page = action.payload.pagination.next_page ?? null;
-          state.previous_page = action.payload.pagination.previous_page ?? null;
-          state.page_size = action.payload.pagination.page_size ?? state.page_size;
-          state.count = action.payload.pagination.total_results ?? action.payload.data.length;
-        } else {
-          state.total_results = action.payload.data.length;
-          state.count = action.payload.data.length;
-        }
+        state.data = action.payload?.data || [];
+        state.pagination = action.payload?.pagination || initialState.pagination;
       })
       .addCase(fetchModules.rejected, (state, action) => {
         state.loading = false;

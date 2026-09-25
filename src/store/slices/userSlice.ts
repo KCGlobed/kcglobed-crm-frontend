@@ -3,6 +3,7 @@ import {
   fetchUsersApi,
   fetchUserPermissionsApi,
   createUserApi,
+  updateUserApi,
   updateUserRoleApi,
   updateUserReportsToApi,
   activateUserApi,
@@ -20,14 +21,18 @@ interface UserState extends Pagination<User> {
 const initialState: UserState = {
   data: [],
   next: null,
+  previous: null,
+  pagination: {
+    total_results: null,
+    total_pages: null,
+    current_page: null,
+    next_page: null,
+    page_size: null,
+    previous_page: null,
+  },
+  page: 1,
   loading: false,
   error: null,
-  total_results: 0,
-  total_pages: 1,
-  current_page: 1,
-  next_page: null,
-  previous_page: null,
-  page_size: 10,
   selectedUser: null,
   selectedUserLoading: false,
   actionLoading: false,
@@ -35,7 +40,7 @@ const initialState: UserState = {
 
 export const fetchUsers = createAsyncThunk<
   { data: User[]; pagination?: PaginationInfo },
-  { page?: number; page_size?: number } | void
+  { page?: number; page_size?: number; search?: string } | void
 >(
   "users/fetchUsers",
   async (params, { rejectWithValue }) => {
@@ -86,6 +91,18 @@ export const createUser = createAsyncThunk<User, any>(
       return response.data;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to create user");
+    }
+  }
+);
+
+export const updateUser = createAsyncThunk<User, { userUid: string; payload: any }>(
+  "users/updateUser",
+  async ({ userUid, payload }, { rejectWithValue }) => {
+    try {
+      const response = await updateUserApi(userUid, payload);
+      return response.data;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to update user");
     }
   }
 );
@@ -157,7 +174,7 @@ const userSlice = createSlice({
       state.error = null;
     },
     setCurrentPage: (state, action) => {
-      state.current_page = action.payload;
+      state.page = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -169,19 +186,8 @@ const userSlice = createSlice({
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload.data;
-        if (action.payload.pagination) {
-          state.total_results = action.payload.pagination.total_results ?? action.payload.data.length;
-          state.total_pages = action.payload.pagination.total_pages ?? 1;
-          state.current_page = action.payload.pagination.current_page ?? 1;
-          state.next_page = action.payload.pagination.next_page ?? null;
-          state.previous_page = action.payload.pagination.previous_page ?? null;
-          state.page_size = action.payload.pagination.page_size ?? state.page_size;
-          state.count = action.payload.pagination.total_results ?? action.payload.data.length;
-        } else {
-          state.total_results = action.payload.data.length;
-          state.count = action.payload.data.length;
-        }
+        state.data = action.payload?.data || [];
+        state.pagination = action.payload?.pagination || initialState.pagination;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
         state.loading = false;
@@ -223,6 +229,28 @@ const userSlice = createSlice({
         state.data = [action.payload, ...(state.data || [])];
       })
       .addCase(createUser.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Update user (PUT /access/users/{user_uid}/)
+      .addCase(updateUser.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(updateUser.fulfilled, (state, action: any) => {
+        state.actionLoading = false;
+        if (state.data && state.data.length > 0) {
+          const idx = state.data.findIndex((u) => u.uid === action.payload.uid);
+          if (idx !== -1) {
+            state.data[idx] = { ...state.data[idx], ...action.payload };
+          }
+        }
+        if (state.selectedUser && state.selectedUser.uid === action.payload.uid) {
+          state.selectedUser = { ...state.selectedUser, ...action.payload };
+        }
+      })
+      .addCase(updateUser.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload as string;
       })

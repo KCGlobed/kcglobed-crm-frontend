@@ -15,6 +15,7 @@ import ProfilePage from '../pages/profile';
 import ForgotPasswordPage from '../pages/forgotPassword';
 import ResetPasswordPage from '../pages/resetPassword';
 
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>

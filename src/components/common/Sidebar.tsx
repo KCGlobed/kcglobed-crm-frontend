@@ -10,6 +10,7 @@ import {
   Users,
   X,
   SettingsIcon,
+  Network,
 } from 'lucide-react';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
@@ -139,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'reports', // Match the permission key 'reports'
       label: 'Reporting Graph',
       path: '/reporting',
-      icon: <Users size={19} />, // Using Users icon as a placeholder
+      icon: <Network size={19} />,
     },
     {
       id: 'settings',

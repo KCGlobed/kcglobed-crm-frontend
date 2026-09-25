@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Filter, Plus, ChevronDown } from 'lucide-react';
+import { Filter, Plus, ChevronDown, MoreVertical, Eye, Power, Trash2 } from 'lucide-react';
 import DynamicServerTable from '../../components/components/Table/Table';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
@@ -9,8 +9,7 @@ import moment from 'moment';
 import RoleForm from '../../components/components/Forms/RoleForm';
 import { useModal } from '../../context/ModalContext';
 import toast from 'react-hot-toast';
-import GlassButton from '../../components/components/Button/Button';
-import { FiEdit, FiTrash, FiEye } from 'react-icons/fi';
+import { FiEdit } from 'react-icons/fi';
 import DeleteConfirmationModal from '../../components/components/Modal/DeleteModal';
 import RoleView from '../../components/components/View/RoleView';
 import SearchInput from '../../components/components/common/SearchInput';
@@ -43,6 +42,105 @@ const RoleThumbnail = ({ row }: { row: Role }) => {
     );
 };
 
+const ActionMenu = ({ row, dispatch }: { row: Role; dispatch: any }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const { showModal } = useModal();
+  const { access } = useAppSelector((state) => state.auth);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  const closeAndDo = (action: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsOpen(false);
+    action();
+  };
+
+  const handleToggleStatus = () => {
+    dispatch(updateRoleStatus({ id: row.id, is_active: !row.is_active } as Role))
+      .unwrap()
+      .then(() => toast.success(`Role is ${!row.is_active ? 'active' : 'inactive'}`))
+      .catch((err: any) => toast.error(err || 'Failed to update status'));
+  };
+
+  return (
+    <div className="relative flex justify-center" ref={dropdownRef}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className="p-1.5 text-crmText-secondary hover:text-minor hover:bg-minor-soft rounded-lg transition-colors cursor-pointer"
+      >
+        <MoreVertical size={18} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-44 bg-major rounded-xl shadow-lg border border-crmBorder py-1.5 z-[99] overflow-hidden">
+          <button
+            onClick={closeAndDo(() => showModal({ title: 'Role Details', content: <RoleView roleData={row} />, type: 'success', size: 'xl' }))}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-minor hover:bg-major-tint transition-colors text-left"
+          >
+            <Eye size={14} /> View Details
+          </button>
+
+          {access?.permissions?.roles?.change && (
+            <button
+              onClick={closeAndDo(() => showModal({ title: `Edit Role: ${row.name}`, content: <RoleForm roleData={row} />, type: 'success', size: 'xl' }))}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-green-600 hover:bg-green-50 transition-colors text-left"
+            >
+              <FiEdit size={14} /> Edit Role
+            </button>
+          )}
+
+          {access?.permissions?.roles?.change && (
+            <button
+              onClick={closeAndDo(handleToggleStatus)}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left border-t border-crmBorder mt-1 pt-2 ${row.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+            >
+              <Power size={14} /> {row.is_active ? 'Deactivate Role' : 'Activate Role'}
+            </button>
+          )}
+
+          {access?.permissions?.roles?.delete && !row.is_system && (
+            <button
+              onClick={closeAndDo(() => showModal({
+                  title: 'Delete Role',
+                  content: (
+                      <DeleteConfirmationModal
+                          id={row.id ?? 0}
+                          name={row.name ?? 'Role'}
+                          onDelete={async () => {
+                              if (row.id != null) {
+                                  await dispatch(deleteRole(row.id)).unwrap();
+                              }
+                          }}
+                      />
+                  ),
+                  type: 'custom',
+                  size: 'md',
+              }))}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors text-left mt-1"
+            >
+              <Trash2 size={14} /> Delete Role
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const ManageRoles: React.FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [searchTerm, setSearchTerm] = useState('');
@@ -67,12 +165,14 @@ const ManageRoles: React.FC = () => {
         data: roles,
         loading,
         error,
-        total_results,
-        current_page,
-        page_size,
+        pagination,
     } = useAppSelector((state) => state.roles);
 
-    const pageSize = page_size || 10;
+    const total_results = pagination?.total_results;
+    const current_page = pagination?.current_page;
+    const page_size = pagination?.page_size;
+
+    const [pageSize, setPageSize] = useState(page_size || 10);
     const isMounted = React.useRef(false);
 
     const activeFilterCount = useMemo(() => {
@@ -240,21 +340,15 @@ const ManageRoles: React.FC = () => {
             key: 'is_active',
             title: 'Status',
             render: (value: boolean, row: Role) => (
-                <button
-                    onClick={() => {
-                        dispatch(updateRoleStatus({ id: row.id, is_active: !value }))
-                            .unwrap()
-                            .then(() => toast.success(`Role ${!value ? 'activated' : 'deactivated'} successfully`))
-                            .catch((err: any) => toast.error(err || 'Failed to update status'));
-                    }}
-                    className={`px-3 cursor-pointer py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all active:scale-95 hover:shadow-sm ${
+                <span
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                         value
-                            ? 'bg-crmSuccess-bg text-crmSuccess border border-crmSuccess-border hover:bg-crmSuccess-bg/80'
-                            : 'bg-crmDanger-bg text-crmDanger border border-crmDanger-border hover:bg-crmDanger-bg/80'
+                            ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border'
+                            : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border'
                     }`}
                 >
                     {value ? 'Active' : 'Inactive'}
-                </button>
+                </span>
             ),
             width: '100px',
             align: 'center',
@@ -264,59 +358,7 @@ const ManageRoles: React.FC = () => {
             key: 'id',
             title: 'Actions',
             render: (_: any, row: Role) => (
-                <div className="flex items-center justify-end gap-3 pr-2">
-                    <GlassButton
-                        icon={<FiEye />}
-                        color="blue"
-                        title="View"
-                        onClick={() =>
-                            showModal({
-                                title: 'Role Details',
-                                content: <RoleView roleData={row} />,
-                                type: 'success',
-                                size: 'xl',
-                            })
-                        }
-                    />
-                    <GlassButton
-                        icon={<FiEdit />}
-                        color="green"
-                        title="Edit"
-                        onClick={() =>
-                            showModal({
-                                title: `Edit Role: ${row.name}`,
-                                content: <RoleForm roleData={row} />,
-                                type: 'success',
-                                size: 'xl',
-                            })
-                        }
-                    />
-                    {!row.is_system && (
-                        <GlassButton
-                            icon={<FiTrash className="text-base" />}
-                            color="red"
-                            title="Delete"
-                            onClick={() => {
-                                showModal({
-                                    title: 'Delete Role',
-                                    content: (
-                                        <DeleteConfirmationModal
-                                            id={row.id ?? 0}
-                                            name={row.name ?? 'Role'}
-                                            onDelete={async () => {
-                                                if (row.id != null) {
-                                                    await dispatch(deleteRole(row.id)).unwrap();
-                                                }
-                                            }}
-                                        />
-                                    ),
-                                    type: 'custom',
-                                    size: 'md',
-                                });
-                            }}
-                        />
-                    )}
-                </div>
+                <ActionMenu row={row} dispatch={dispatch} />
             ),
             width: '130px',
             align: 'right',
@@ -414,6 +456,18 @@ const ManageRoles: React.FC = () => {
                     emptyDescription="There are no roles to display at the moment."
                     rowKey={(row: Role) => row.id ?? row.slug ?? row.name ?? Math.random()}
                     onPageChange={(page) => setCurrentPage(page)}
+                    onPageSizeChange={(size) => {
+                        setPageSize(size);
+                        setCurrentPage(1); // Reset to first page when size changes
+                    }}
+                    onRowClick={(row) =>
+                        showModal({
+                            title: 'Role Details',
+                            content: <RoleView roleData={row} />,
+                            type: 'success',
+                            size: 'xl',
+                        })
+                    }
                     onSort={handleSort}
                     className="rounded-none border-none shadow-none"
                     maxHeight="100%"
