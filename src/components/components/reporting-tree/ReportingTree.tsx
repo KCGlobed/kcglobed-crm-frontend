@@ -11,6 +11,7 @@ interface ReportingTreeProps {
   isLoading?: boolean;
   error?: string | null;
   roleIconOverrides?: Record<string, React.ReactNode>;
+  selectedUserId?: string;
 }
 
 /** Presentational tree — you control fetching/state yourself and pass data in. */
@@ -19,6 +20,7 @@ export const ReportingTree: React.FC<ReportingTreeProps> = ({
   isLoading = false,
   error = null,
   roleIconOverrides,
+  selectedUserId,
 }) => {
   if (isLoading) {
     return <div className="rt-status">Loading reporting tree...</div>;
@@ -43,6 +45,7 @@ export const ReportingTree: React.FC<ReportingTreeProps> = ({
               node={rootNode}
               depth={0}
               roleIconOverrides={roleIconOverrides}
+              selectedUserId={selectedUserId}
             />
           </ul>
         </div>
@@ -54,6 +57,7 @@ export const ReportingTree: React.FC<ReportingTreeProps> = ({
 interface ConnectedReportingTreeProps {
   fetcher: ReportingTreeFetcher;
   roleIconOverrides?: Record<string, React.ReactNode>;
+  selectedUserId?: string;
 }
 
 /**
@@ -67,6 +71,7 @@ interface ConnectedReportingTreeProps {
 export const ConnectedReportingTree: React.FC<ConnectedReportingTreeProps> = ({
   fetcher,
   roleIconOverrides,
+  selectedUserId,
 }) => {
   const { data, isLoading, error } = useReportingTree(fetcher);
 
@@ -76,6 +81,7 @@ export const ConnectedReportingTree: React.FC<ConnectedReportingTreeProps> = ({
       isLoading={isLoading}
       error={error}
       roleIconOverrides={roleIconOverrides}
+      selectedUserId={selectedUserId}
     />
   );
 };

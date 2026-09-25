@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
   fetchUsersApi,
-  fetchUserByUidApi,
+  fetchUserPermissionsApi,
   createUserApi,
   updateUserRoleApi,
   updateUserReportsToApi,
@@ -65,19 +65,18 @@ export const fetchUsers = createAsyncThunk<
   }
 );
 
-export const fetchUserByUid = createAsyncThunk<User, string>(
-  "users/fetchUserByUid",
+export const fetchUserPermissions = createAsyncThunk<User, string>(
+  "users/fetchUserPermissions",
   async (userUid: string, { rejectWithValue }) => {
     try {
-      const response = await fetchUserByUidApi(userUid);
-      return response.data;
+      const response = await fetchUserPermissionsApi(userUid);
+      const { user, full_access, overrides, effective } = response.data || {};
+      return { ...user, full_access, overrides, effective };
     } catch (err: any) {
-      return rejectWithValue(err.message || "Failed to fetch user details");
+      return rejectWithValue(err.message || "Failed to fetch user permissions");
     }
   }
 );
-
-export const fetchUserById = fetchUserByUid;
 
 export const createUser = createAsyncThunk<User, any>(
   "users/createUser",
@@ -189,12 +188,12 @@ const userSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // Fetch user by UID (GET /access/users/{user_uid}/)
-      .addCase(fetchUserByUid.pending, (state) => {
+      // Fetch user permissions (GET /access/users/{user_uid}/permissions/)
+      .addCase(fetchUserPermissions.pending, (state) => {
         state.selectedUserLoading = true;
         state.error = null;
       })
-      .addCase(fetchUserByUid.fulfilled, (state, action: any) => {
+      .addCase(fetchUserPermissions.fulfilled, (state, action: any) => {
         state.selectedUserLoading = false;
         state.selectedUser = action.payload;
         // Keep in-memory list synchronized if user exists
@@ -209,7 +208,7 @@ const userSlice = createSlice({
           }
         }
       })
-      .addCase(fetchUserByUid.rejected, (state, action) => {
+      .addCase(fetchUserPermissions.rejected, (state, action) => {
         state.selectedUserLoading = false;
         state.error = action.payload as string;
       })

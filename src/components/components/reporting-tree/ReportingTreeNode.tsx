@@ -8,15 +8,26 @@ interface ReportingTreeNodeProps {
   node: TreeNodeType;
   depth?: number;
   roleIconOverrides?: Record<string, React.ReactNode>;
+  selectedUserId?: string;
+  isParentHighlighted?: boolean;
 }
 
 const ReportingTreeNode: React.FC<ReportingTreeNodeProps> = ({
   node,
   depth = 0,
   roleIconOverrides,
+  selectedUserId,
+  isParentHighlighted = false,
 }) => {
   const hasChildren = node.team_count > 0 && node.team.length > 0;
   const [collapsed, setCollapsed] = useState(false);
+
+  const isSelected = selectedUserId === node.uid;
+  const isHighlighted = isParentHighlighted || isSelected;
+  const shouldDim = selectedUserId ? !isHighlighted : false;
+  
+  const dimClass = shouldDim ? "rt-dimmed" : "";
+  const selectedClass = isSelected ? "rt-selected" : "";
 
   const toggle = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -28,7 +39,7 @@ const ReportingTreeNode: React.FC<ReportingTreeNodeProps> = ({
       {depth === 0 ? (
         // Root: rounded rectangle card
         <div
-          className={`rt-root-card ${!node.is_active ? "rt-inactive" : ""}`}
+          className={`rt-root-card ${!node.is_active ? "rt-inactive" : ""} ${dimClass} ${selectedClass}`}
         >
           <div className="rt-root-title">• {node.name.toUpperCase()} •</div>
           <div className="rt-root-subtitle">
@@ -40,7 +51,7 @@ const ReportingTreeNode: React.FC<ReportingTreeNodeProps> = ({
         <div
           className={`rt-node ${!node.is_active ? "rt-inactive" : ""} ${
             hasChildren ? "rt-node--clickable" : ""
-          }`}
+          } ${dimClass} ${selectedClass}`}
           onClick={toggle}
         >
           <div className="rt-circle-wrap">
@@ -68,6 +79,8 @@ const ReportingTreeNode: React.FC<ReportingTreeNodeProps> = ({
               node={child}
               depth={depth + 1}
               roleIconOverrides={roleIconOverrides}
+              selectedUserId={selectedUserId}
+              isParentHighlighted={isHighlighted}
             />
           ))}
         </ul>

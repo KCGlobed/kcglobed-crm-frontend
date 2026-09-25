@@ -420,7 +420,7 @@ const ReportingPage: React.FC = () => {
             >
               {selectedUser ? (
                 <div className="min-w-max min-h-full flex items-start justify-center">
-                  <ReportingTree data={treeData as any} isLoading={loading} error={error} />
+                  <ReportingTree data={rootTree as any} isLoading={rootLoading} error={error} selectedUserId={selectedUser} />
                 </div>
               ) : (
                 <div className="h-full flex flex-col items-center justify-center text-center py-16">

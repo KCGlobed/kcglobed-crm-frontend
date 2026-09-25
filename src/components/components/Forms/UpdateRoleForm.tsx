@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { useModal } from '../../../context/ModalContext';
 import { useAppDispatch } from '../../../hooks/useAppDispatch';
 import { useAppSelector } from '../../../hooks/useRedux';
-import { updateUserRole, fetchUsers, fetchUserByUid } from '../../../store/slices/userSlice';
+import { updateUserRole, fetchUsers, fetchUserPermissions } from '../../../store/slices/userSlice';
 import { fetchRoles } from '../../../store/slices/roleSlice';
 import toast from 'react-hot-toast';
 import { RefreshCw, Check } from 'lucide-react';
@@ -93,7 +93,7 @@ const UpdateRoleForm: React.FC<UpdateRoleFormProps> = ({ userData }) => {
 
       toast.success('Role updated successfully');
       dispatch(fetchUsers());
-      dispatch(fetchUserByUid(userData.uid));
+      dispatch(fetchUserPermissions(userData.uid));
       reset();
       hideModal();
     } catch (err: any) {

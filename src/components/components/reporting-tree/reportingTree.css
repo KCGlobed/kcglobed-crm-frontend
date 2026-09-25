@@ -237,3 +237,27 @@
 .rt-inactive {
   opacity: 0.55;
 }
+
+/* ---- highlighting and dimming ---- */
+
+.rt-dimmed {
+  opacity: 0.25;
+  filter: grayscale(100%);
+  transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.rt-dimmed:hover {
+  opacity: 0.6;
+}
+
+.rt-selected .rt-circle-wrap .rt-circle,
+.rt-selected.rt-root-card {
+  box-shadow: 0 0 0 4px var(--rt-primary-light);
+  border-color: var(--rt-primary);
+  transform: scale(1.05);
+}
+
+.rt-selected .rt-label,
+.rt-selected .rt-root-title {
+  color: var(--rt-primary);
+}

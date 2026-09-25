@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { useModal } from '../../../context/ModalContext';
 import { useAppDispatch } from '../../../hooks/useAppDispatch';
 import { useAppSelector } from '../../../hooks/useRedux';
-import { updateUserReportsTo, fetchUsers, fetchUserByUid } from '../../../store/slices/userSlice';
+import { updateUserReportsTo, fetchUsers, fetchUserPermissions } from '../../../store/slices/userSlice';
 import { fetchReportingManagementOptionsApi } from '../../../services/apiServices';
 import toast from 'react-hot-toast';
 import { RefreshCw, Check } from 'lucide-react';
@@ -102,7 +102,7 @@ const UpdateReporterForm: React.FC<UpdateReporterFormProps> = ({ userData }) => 
 
       toast.success('Reporting manager updated successfully');
       dispatch(fetchUsers());
-      dispatch(fetchUserByUid(userData.uid));
+      dispatch(fetchUserPermissions(userData.uid));
       reset();
       hideModal();
     } catch (err: any) {
