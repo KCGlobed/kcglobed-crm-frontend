@@ -11,6 +11,9 @@ import UsersPage from '../pages/users';
 import ReportingPage from '../pages/reporting';
 import NotFoundPage from '../pages/notFound';
 import DashboardPage from '../pages/dashboard';
+import ProfilePage from '../pages/profile';
+import ForgotPasswordPage from '../pages/forgotPassword';
+import ResetPasswordPage from '../pages/resetPassword';
 
 
 export const AppRoutes: React.FC = () => {
@@ -21,6 +24,11 @@ export const AppRoutes: React.FC = () => {
         <Route path="/login" element={<LoginPage />} />
       </Route>
 
+      {/* Reachable both logged-in (from Profile > Settings) and logged-out (from Login / email link) */}
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      {/* Must match the URL the backend puts in the reset email */}
+      <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
+
       {/* Protected Routes */}
       <Route element={<PrivateRoutes />}>
         <Route element={<AppLayout />}>
@@ -29,6 +37,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/modules" element={<ModulesPage />} />
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/users" element={<UsersPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           {/* <Route path="/reporting" element={<ReportingPage />} /> */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>

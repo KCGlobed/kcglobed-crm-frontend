@@ -261,3 +261,36 @@
 .rt-selected .rt-root-title {
   color: var(--rt-primary);
 }
+
+/* ---- ancestor path of the selected node (the chain it belongs to) ---- */
+
+.rt-path .rt-circle-wrap .rt-circle,
+.rt-path.rt-root-card {
+  border-color: var(--rt-primary);
+}
+
+.rt-path .rt-label,
+.rt-path .rt-root-title {
+  color: var(--rt-primary-dark);
+}
+
+/* collapsed ancestor that is hiding the selected node */
+.rt-path--collapsed .rt-circle-wrap .rt-circle {
+  box-shadow: 0 0 0 2px var(--rt-primary-dark) inset, 0 0 0 4px var(--rt-primary-light);
+}
+
+.rt-path--collapsed .rt-count-badge {
+  background: var(--rt-primary);
+  box-shadow: 0 0 0 3px var(--rt-primary-light);
+  animation: rt-badge-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes rt-badge-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px var(--rt-primary-light);
+  }
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}

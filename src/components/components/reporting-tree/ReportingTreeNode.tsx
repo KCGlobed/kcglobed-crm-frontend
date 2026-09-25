@@ -1,5 +1,5 @@
 // ReportingTreeNode.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { ReportingTreeNode as TreeNodeType } from "./types";
 import { getRoleIcon } from "./roleIcons";
 import "./reportingTree.css";
@@ -12,6 +12,10 @@ interface ReportingTreeNodeProps {
   isParentHighlighted?: boolean;
 }
 
+/** True when `uid` is somewhere inside this node's subtree (excluding the node itself). */
+const containsUid = (node: TreeNodeType, uid: string): boolean =>
+  (node.team || []).some((child) => child.uid === uid || containsUid(child, uid));
+
 const ReportingTreeNode: React.FC<ReportingTreeNodeProps> = ({
   node,
   depth = 0,
@@ -23,23 +27,38 @@ const ReportingTreeNode: React.FC<ReportingTreeNodeProps> = ({
   const [collapsed, setCollapsed] = useState(false);
 
   const isSelected = selectedUserId === node.uid;
+  // Ancestor chain of the selected node: the nodes it "belongs to"
+  const isOnPath = !!selectedUserId && !isSelected && containsUid(node, selectedUserId);
+  // Selected node + everyone under it
   const isHighlighted = isParentHighlighted || isSelected;
-  const shouldDim = selectedUserId ? !isHighlighted : false;
-  
+  const shouldDim = selectedUserId ? !(isHighlighted || isOnPath) : false;
+
   const dimClass = shouldDim ? "rt-dimmed" : "";
   const selectedClass = isSelected ? "rt-selected" : "";
+  const pathClass = isOnPath ? `rt-path ${collapsed ? "rt-path--collapsed" : ""}` : "";
+
+  // When a member inside a collapsed subtree is selected, open the subtree so the member is visible
+  useEffect(() => {
+    if (isOnPath) setCollapsed(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserId]);
 
   const toggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (hasChildren) setCollapsed((prev) => !prev);
   };
 
+  const badgeTitle =
+    isOnPath && collapsed
+      ? "Selected member is inside this team. Click to expand."
+      : `${node.team_count} report(s)`;
+
   return (
     <li>
       {depth === 0 ? (
         // Root: rounded rectangle card
         <div
-          className={`rt-root-card ${!node.is_active ? "rt-inactive" : ""} ${dimClass} ${selectedClass}`}
+          className={`rt-root-card ${!node.is_active ? "rt-inactive" : ""} ${dimClass} ${selectedClass} ${pathClass}`}
         >
           <div className="rt-root-title">• {node.name.toUpperCase()} •</div>
           <div className="rt-root-subtitle">
@@ -51,7 +70,7 @@ const ReportingTreeNode: React.FC<ReportingTreeNodeProps> = ({
         <div
           className={`rt-node ${!node.is_active ? "rt-inactive" : ""} ${
             hasChildren ? "rt-node--clickable" : ""
-          } ${dimClass} ${selectedClass}`}
+          } ${dimClass} ${selectedClass} ${pathClass}`}
           onClick={toggle}
         >
           <div className="rt-circle-wrap">
@@ -59,7 +78,7 @@ const ReportingTreeNode: React.FC<ReportingTreeNodeProps> = ({
               {getRoleIcon(node.role, roleIconOverrides)}
             </div>
             {hasChildren && (
-              <span className="rt-count-badge" title={`${node.team_count} report(s)`}>
+              <span className="rt-count-badge" title={badgeTitle}>
                 {collapsed ? "+" : node.team_count}
               </span>
             )}
