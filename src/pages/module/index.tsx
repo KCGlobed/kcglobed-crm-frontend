@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import toast from 'react-hot-toast';
 import { Filter, Plus, ChevronDown } from 'lucide-react';
 import DynamicServerTable from '../../components/components/Table/Table';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
-import { fetchModules } from '../../store/slices/moduleSlice';
+import { fetchModules, updateModule } from '../../store/slices/moduleSlice';
 import useDebounce from '../../hooks/useDebounce';
 import moment from 'moment';
 import { useModal } from '../../context/ModalContext';
@@ -146,6 +147,18 @@ const ManageModules: React.FC = () => {
         handleSort(currentKey, direction);
     };
 
+    const handleToggleStatus = async (row: Module) => {
+        if (row.id == null) return;
+        const newStatus = !row.is_active;
+        try {
+            await dispatch(updateModule({ id: row.id, payload: { is_active: newStatus } as Module })).unwrap();
+            toast.success(`Module is ${newStatus ? 'active' : 'inactive'}`);
+        } catch (error: any) {
+            console.error("Failed to update status", error);
+            toast.error(error?.message || error || 'Failed to update status');
+        }
+    };
+
     // Column definitions
     const columns: ColumnDef[] = [
         {
@@ -222,16 +235,21 @@ const ManageModules: React.FC = () => {
         {
             key: 'is_active',
             title: 'Status',
-            render: (value: boolean) => (
-                <span
-                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+            render: (value: boolean, row: Module) => (
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleToggleStatus(row);
+                    }}
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border cursor-pointer hover:shadow-sm transition-all active:scale-95 ${
                         value
                             ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border'
                             : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border'
                     }`}
+                    title={value ? 'Click to Deactivate' : 'Click to Activate'}
                 >
                     {value ? 'Active' : 'Inactive'}
-                </span>
+                </button>
             ),
             width: '100px',
             align: 'center',

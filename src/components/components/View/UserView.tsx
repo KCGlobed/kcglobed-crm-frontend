@@ -1,21 +1,24 @@
 import React, { useEffect, useMemo } from 'react';
+import { Check, X } from 'lucide-react';
 import { useAppDispatch } from '../../../hooks/useAppDispatch';
 import { useAppSelector } from '../../../hooks/useRedux';
-import { fetchUserByUid } from '../../../store/slices/userSlice';
+import { fetchUserPermissions } from '../../../store/slices/userSlice';
 import type { User } from '../../../utils/types';
 
 interface UserViewProps {
   userData: User;
 }
 
+const PERMISSION_ACTIONS = ['view', 'add', 'change', 'delete', 'export'];
+
 const UserView: React.FC<UserViewProps> = ({ userData }) => {
   const dispatch = useAppDispatch();
   const { selectedUser, selectedUserLoading } = useAppSelector((state) => state.users);
 
-  // Fetch fresh user details by UID on mount
+  // Fetch user + effective permissions by UID on mount
   useEffect(() => {
     if (userData.uid) {
-      dispatch(fetchUserByUid(userData.uid));
+      dispatch(fetchUserPermissions(userData.uid));
     }
   }, [dispatch, userData.uid]);
 
@@ -35,6 +38,14 @@ const UserView: React.FC<UserViewProps> = ({ userData }) => {
       : user.role_name || '-';
   const roleSlug =
     typeof user.role === 'object' && user.role ? user.role.slug : null;
+  const reportsToName =
+    typeof user.reports_to === 'object' && user.reports_to
+      ? user.reports_to.name || user.reports_to.email
+      : user.reports_to_name || null;
+  const reportsToEmail =
+    typeof user.reports_to === 'object' && user.reports_to ? user.reports_to.email : null;
+
+  const modules = Object.keys(user.effective || {});
 
   return (
     <div className="w-full space-y-5">
@@ -60,6 +71,11 @@ const UserView: React.FC<UserViewProps> = ({ userData }) => {
                 Admin
               </span>
             )}
+            {user.full_access && (
+              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-amber-50 text-amber-700 border-amber-200">
+                Full Access
+              </span>
+            )}
             {selectedUserLoading && (
               <span className="text-[11px] text-crmText-tertiary italic">Syncing...</span>
             )}
@@ -68,8 +84,8 @@ const UserView: React.FC<UserViewProps> = ({ userData }) => {
         </div>
       </div>
 
-      {/* Details Grid - strictly matching backend response fields (uid strictly hidden) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-5 mb-6">
+      {/* Details Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-5">
         <div>
           <div className="text-[10px] font-bold text-crmText-tertiary uppercase tracking-wider mb-1">
             First Name
@@ -92,11 +108,28 @@ const UserView: React.FC<UserViewProps> = ({ userData }) => {
         </div>
         <div>
           <div className="text-[10px] font-bold text-crmText-tertiary uppercase tracking-wider mb-1">
+            Phone
+          </div>
+          <div className="text-sm font-semibold text-crmText">{user.phone1 || user.phone || '-'}</div>
+        </div>
+        <div>
+          <div className="text-[10px] font-bold text-crmText-tertiary uppercase tracking-wider mb-1">
             Role
           </div>
           <div className="text-sm font-semibold text-crmText">{roleName}</div>
           {roleSlug && (
             <div className="text-[11px] font-mono text-crmText-tertiary mt-0.5">{roleSlug}</div>
+          )}
+        </div>
+        <div>
+          <div className="text-[10px] font-bold text-crmText-tertiary uppercase tracking-wider mb-1">
+            Reports To
+          </div>
+          <div className="text-sm font-semibold text-crmText">{reportsToName || '-'}</div>
+          {reportsToEmail && (
+            <div className="text-[11px] text-crmText-tertiary mt-0.5 truncate" title={reportsToEmail}>
+              {reportsToEmail}
+            </div>
           )}
         </div>
         <div>
@@ -123,6 +156,80 @@ const UserView: React.FC<UserViewProps> = ({ userData }) => {
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Effective Permissions */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[10px] font-bold text-crmText-tertiary uppercase tracking-wider">
+            Effective Permissions
+          </div>
+          {user.overrides && user.overrides.length > 0 && (
+            <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-bold">
+              {user.overrides.length} override{user.overrides.length === 1 ? '' : 's'}
+            </span>
+          )}
+        </div>
+
+        {selectedUserLoading && modules.length === 0 ? (
+          <div className="text-xs text-crmText-tertiary italic py-4 text-center">
+            Loading permissions...
+          </div>
+        ) : modules.length === 0 ? (
+          <div className="text-xs text-crmText-tertiary italic py-4 text-center">
+            No permission data available.
+          </div>
+        ) : (
+          <div className="rounded-xl border border-crmBorder overflow-hidden">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-major-tint">
+                  <th className="px-4 py-2.5 text-left text-[10px] font-bold text-crmText-tertiary uppercase tracking-wider">
+                    Module
+                  </th>
+                  {PERMISSION_ACTIONS.map((action) => (
+                    <th
+                      key={action}
+                      className="px-3 py-2.5 text-center text-[10px] font-bold text-crmText-tertiary uppercase tracking-wider"
+                    >
+                      {action}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {modules.map((mod) => {
+                  const perms = user.effective?.[mod] || {};
+                  return (
+                    <tr key={mod} className="border-t border-crmBorder">
+                      <td className="px-4 py-2.5 font-semibold text-crmText capitalize">{mod}</td>
+                      {PERMISSION_ACTIONS.map((action) => {
+                        const allowed = !!perms[action];
+                        return (
+                          <td key={action} className="px-3 py-2.5 text-center">
+                            <span
+                              className={`inline-flex h-6 w-6 items-center justify-center rounded-md ${
+                                allowed
+                                  ? 'bg-crmSuccess-bg text-crmSuccess'
+                                  : 'bg-crmDanger-bg text-crmDanger'
+                              }`}
+                            >
+                              {allowed ? (
+                                <Check size={14} strokeWidth={3} />
+                              ) : (
+                                <X size={14} strokeWidth={3} />
+                              )}
+                            </span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

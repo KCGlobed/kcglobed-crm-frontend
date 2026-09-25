@@ -198,6 +198,9 @@ export interface User {
   last_login?: string | null;
   password?: string;
   confirm_password?: string;
+  full_access?: boolean;
+  overrides?: any[];
+  effective?: Record<string, Record<string, boolean>>;
 }
 
 export interface ReportingNode {

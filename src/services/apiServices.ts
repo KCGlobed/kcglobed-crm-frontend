@@ -80,8 +80,8 @@ export const fetchUsersApi = async (params?: { page?: number; page_size?: number
   return await apiRequest(`/access/users/${queryString ? `?${queryString}` : ""}`, "GET");
 };
 
-export const fetchUserByUidApi = async (userUid: string): Promise<any> => {
-  return await apiRequest(`/access/users/${userUid}/`, "GET");
+export const fetchUserPermissionsApi = async (userUid: string): Promise<any> => {
+  return await apiRequest(`/access/users/${userUid}/permissions/`, "GET");
 };
 
 export const createUserApi = async (payload: any): Promise<any> => {
