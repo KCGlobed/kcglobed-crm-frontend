@@ -81,6 +81,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   token: string | null;
   loading: boolean;
+  actionLoading?: boolean;
   error: string | null;
   user?: AuthUser | null;
   access?: AuthAccess | null;
@@ -182,6 +183,13 @@ export interface User {
   first_name?: string;
   last_name?: string;
   phone1?: string | null;
+  phone2?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  pincode?: string | null;
+  dob?: string | null;
   role?: Role | number | string | null;
   reports_to?: ReportsTo | number | null;
   is_active?: boolean;
@@ -195,9 +203,13 @@ export interface User {
   is_superadmin?: boolean;
   is_student?: boolean;
   date_joined?: string;
+  created_at?: string;
+  updated_at?: string;
   last_login?: string | null;
   password?: string;
   confirm_password?: string;
+  old_password?: string;
+  new_password?: string;
   full_access?: boolean;
   overrides?: any[];
   effective?: Record<string, Record<string, boolean>>;

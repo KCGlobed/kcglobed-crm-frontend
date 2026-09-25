@@ -13,6 +13,28 @@ export const refreshTokenApi = async (payload: { refresh: string }): Promise<any
   return await apiRequest(`${BASE_URL}/auth/refresh/`, "POST", payload);
 };
 
+export const logoutAllApi = async (): Promise<any> => {
+  return await apiRequest("/auth/logout-all/", "POST");
+};
+
+// TODO: confirm these endpoints with the backend once the forgot-password APIs are ready
+export const sendPasswordResetLinkApi = async (payload: { email: string }): Promise<any> => {
+  return await apiRequest("/auth/forgot-password/", "POST", payload);
+};
+
+export const resetPasswordApi = async (payload: { token: string;uid?: string;new_password: string;confirm_password: string;}): Promise<any> => {
+  return await apiRequest("/auth/reset-password/", "POST", payload);
+};
+
+// ----------------Profile service------- //
+export const fetchProfileApi = async (userUid: string): Promise<any> => {
+  return await apiRequest(`/access/users/${userUid}/`, "GET");
+};
+
+export const changePasswordApi = async (payload: any): Promise<any> => {
+  return await apiRequest("/auth/change-password/", "POST", payload);
+};
+
 // ----------------Role service------- //
 export const fetchRolesApi = async (params?: { page?: number; page_size?: number }): Promise<any> => {
   const query = new URLSearchParams();

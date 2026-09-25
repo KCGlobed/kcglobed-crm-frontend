@@ -102,11 +102,25 @@ export const ProfileMenu: React.FC = () => {
 
           {/* Actions */}
           <div className="p-1.5">
-            <button type="button" className={menuItemClass} onClick={close}>
+            <button
+              type="button"
+              className={menuItemClass}
+              onClick={() => {
+                close();
+                navigate('/profile');
+              }}
+            >
               <User size={16} className="text-crmText-tertiary" />
               Profile
             </button>
-            <button type="button" className={menuItemClass} onClick={close}>
+            <button
+              type="button"
+              className={menuItemClass}
+              onClick={() => {
+                close();
+                navigate('/profile');
+              }}
+            >
               <Settings size={16} className="text-crmText-tertiary" />
               Settings
             </button>

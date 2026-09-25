@@ -15,6 +15,7 @@ const PAGE_TITLES: Record<string, string> = {
   roles: 'Roles & Permissions',
   'roles-old': 'Roles & Permissions',
   users: 'Users & Staff',
+  profile: 'Profile Settings',
   leads: 'Leads & Pipeline',
   admissions: 'Admissions',
   followups: 'Follow-ups & Notes',

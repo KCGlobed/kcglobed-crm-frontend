@@ -463,7 +463,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 type="button"
                 onClick={() => {
                   setIsDropdownOpen(false);
-                  navigate('/users');
+                  navigate('/profile');
                   onCloseMobile?.();
                 }}
                 className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-crmText transition-colors hover:bg-minor-soft hover:text-minor-contrast"
