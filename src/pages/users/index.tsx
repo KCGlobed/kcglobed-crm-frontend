@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, Plus, Columns, Check, MoreVertical, Eye, Shield, Users, Power } from 'lucide-react';
+import { ChevronDown, Plus, Columns, Check, MoreVertical, Eye, Shield, Users, Power, Filter } from 'lucide-react';
 import DynamicServerTable from '../../components/components/Table/Table';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
@@ -13,6 +13,8 @@ import UpdateRoleForm from '../../components/components/Forms/UpdateRoleForm';
 import UpdateReporterForm from '../../components/components/Forms/UpdateReporterForm';
 import StatusConfirmationModal from '../../components/components/Modal/StatusConfirmationModal';
 import SearchInput from '../../components/components/common/SearchInput';
+import DynamicFilter from '../../components/components/common/DynamicFilter';
+import { userFilterConfig } from '../../utils/filterConfiguration';
 import type { User } from '../../utils/types';
 import { FiEdit } from 'react-icons/fi';
 
@@ -141,6 +143,23 @@ const ManageUsers: React.FC = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilter, setShowFilter] = useState(false);
+  const [filterValues, setFilterValues] = useState<Record<string, any>>({});
+  const activeFilterCount = Object.keys(filterValues).filter((k) => filterValues[k] !== '' && filterValues[k] !== 'all').length;
+
+  const handleFilterChange = (name: string, value: any) => {
+    setFilterValues((prev) => {
+      if (prev[name] === value) return prev;
+      return {
+        ...prev,
+        [name]: value,
+      };
+    });
+  };
+
+  const handleClearFilters = () => {
+    setFilterValues({});
+  };
 
   const { showModal } = useModal();
   const isMounted = React.useRef(false);
@@ -179,8 +198,14 @@ const ManageUsers: React.FC = () => {
 
   // Fetch users on page/pageSize change
   useEffect(() => {
-    dispatch(fetchUsers({ page: currentPage, page_size: pageSize, search: debouncedSearchTerm }));
-  }, [dispatch, currentPage, pageSize]);
+    dispatch(fetchUsers({ 
+      page: currentPage, 
+      page_size: pageSize, 
+      search: debouncedSearchTerm,
+      ...filterValues
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, currentPage, pageSize, debouncedSearchTerm, JSON.stringify(filterValues)]);
 
   // Reset to page 1 on search or filter changes
   useEffect(() => {
@@ -190,10 +215,9 @@ const ManageUsers: React.FC = () => {
     }
     if (currentPage !== 1) {
       setCurrentPage(1);
-    } else {
-      dispatch(fetchUsers({ page: 1, page_size: pageSize, search: debouncedSearchTerm }));
     }
-  }, [debouncedSearchTerm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchTerm, JSON.stringify(filterValues)]);
 
   const userList = useMemo(() => users || [], [users]);
   const totalCount = total_results ?? userList.length;
@@ -393,41 +417,58 @@ const ManageUsers: React.FC = () => {
       {/* Top Action Bar */}
       <div className="flex flex-col bg-major rounded-2xl shadow-crm-card border border-crmBorder relative">
         <div className="flex flex-wrap items-center justify-between px-4 py-3 gap-3">
-          <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap">
-            <div className="relative" ref={columnDropdownRef}>
+            <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap">
               <button
-                onClick={() => setShowColumnDropdown(!showColumnDropdown)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${showColumnDropdown
+                onClick={() => setShowFilter(!showFilter)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${showFilter || activeFilterCount > 0
                   ? 'border-minor/30 text-minor-contrast bg-minor-soft'
                   : 'border-crmBorder text-crmText-secondary hover:border-crmBorder-strong hover:bg-major-tint'
                   }`}
               >
-                <Columns size={16} className={showColumnDropdown ? 'text-minor-contrast' : 'text-crmText-tertiary'} />
-                <span>Columns</span>
-                <ChevronDown size={14} className={`text-crmText-secondary transition-transform duration-200 ${showColumnDropdown ? 'rotate-180' : ''}`} />
+                <Filter size={16} className={showFilter || activeFilterCount > 0 ? 'text-minor-contrast' : 'text-crmText-tertiary'} />
+                <span>Filter</span>
+                <ChevronDown size={14} className={`text-crmText-secondary transition-transform duration-200 ${showFilter ? 'rotate-180' : ''}`} />
+                {activeFilterCount > 0 && (
+                  <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-secondary text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
 
-              {showColumnDropdown && (
-                <div className="absolute top-full left-0 mt-2 w-48 bg-major rounded-xl shadow-lg border border-crmBorder py-2 z-50">
-                  <div className="px-3 pb-2 mb-2 border-b border-crmBorder text-xs font-semibold text-crmText-secondary uppercase tracking-wider">
-                    Toggle Columns
+              <div className="relative" ref={columnDropdownRef}>
+                <button
+                  onClick={() => setShowColumnDropdown(!showColumnDropdown)}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${showColumnDropdown
+                    ? 'border-minor/30 text-minor-contrast bg-minor-soft'
+                    : 'border-crmBorder text-crmText-secondary hover:border-crmBorder-strong hover:bg-major-tint'
+                    }`}
+                >
+                  <Columns size={16} className={showColumnDropdown ? 'text-minor-contrast' : 'text-crmText-tertiary'} />
+                  <span>Columns</span>
+                  <ChevronDown size={14} className={`text-crmText-secondary transition-transform duration-200 ${showColumnDropdown ? 'rotate-180' : ''}`} />
+                </button>
+
+                {showColumnDropdown && (
+                  <div className="absolute top-full left-0 mt-2 w-48 bg-major rounded-xl shadow-lg border border-crmBorder py-2 z-50">
+                    <div className="px-3 pb-2 mb-2 border-b border-crmBorder text-xs font-semibold text-crmText-secondary uppercase tracking-wider">
+                      Toggle Columns
+                    </div>
+                    {columns.map(col => (
+                      <button
+                        key={col.key}
+                        onClick={() => toggleColumn(col.key)}
+                        className="w-full flex items-center justify-between px-3 py-2 hover:bg-major-tint transition-colors text-sm text-crmText cursor-pointer border-none bg-transparent"
+                      >
+                        <span className="truncate pr-2 font-medium">{col.title}</span>
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${visibleColumns.includes(col.key) ? 'bg-minor border-minor text-white' : 'border-crmBorder bg-transparent'}`}>
+                          {visibleColumns.includes(col.key) && <Check size={12} strokeWidth={3} />}
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                  {columns.map(col => (
-                    <button
-                      key={col.key}
-                      onClick={() => toggleColumn(col.key)}
-                      className="w-full flex items-center justify-between px-3 py-2 hover:bg-major-tint transition-colors text-sm text-crmText cursor-pointer border-none bg-transparent"
-                    >
-                      <span className="truncate pr-2 font-medium">{col.title}</span>
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${visibleColumns.includes(col.key) ? 'bg-minor border-minor text-white' : 'border-crmBorder bg-transparent'}`}>
-                        {visibleColumns.includes(col.key) && <Check size={12} strokeWidth={3} />}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
 
           <SearchInput
             value={searchTerm}
@@ -460,6 +501,14 @@ const ManageUsers: React.FC = () => {
           </div>
         </div>
 
+        <DynamicFilter
+          show={showFilter}
+          config={userFilterConfig}
+          values={filterValues}
+          onChange={handleFilterChange}
+          onClear={handleClearFilters}
+          onClose={() => setShowFilter(false)}
+        />
       </div>
 
       {/* Main Table Content */}
@@ -472,7 +521,7 @@ const ManageUsers: React.FC = () => {
           totalCount={totalCount}
           loading={loading}
           error={error}
-          onRetry={() => dispatch(fetchUsers({ page: currentPage, page_size: pageSize }))}
+          onRetry={() => dispatch(fetchUsers({ page: currentPage, page_size: pageSize, search: debouncedSearchTerm, ...filterValues }))}
           emptyTitle="No users found"
           emptyDescription="There are no users to display at the moment."
           rowKey={(row: User) => row.uid ?? String(Math.random())}

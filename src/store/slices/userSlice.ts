@@ -40,7 +40,7 @@ const initialState: UserState = {
 
 export const fetchUsers = createAsyncThunk<
   { data: User[]; pagination?: PaginationInfo },
-  { page?: number; page_size?: number; search?: string } | void
+  { page?: number; page_size?: number; search?: string; role?: string; is_active?: boolean | string } | void
 >(
   "users/fetchUsers",
   async (params, { rejectWithValue }) => {

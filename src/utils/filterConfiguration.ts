@@ -1,5 +1,5 @@
 import type { FilterField } from '../components/components/common/DynamicFilter';
-
+import { fetchRoleOptionsApi } from '../services/apiServices';
 export const roleFilterConfig: FilterField[] = [
     {
         type: 'text',
@@ -27,31 +27,28 @@ export const roleFilterConfig: FilterField[] = [
 
 export const userFilterConfig: FilterField[] = [
     {
-        type: 'text',
-        label: 'Name',
-        name: 'name',
-        placeholder: 'Filter by name...',
-    },
-    {
-        type: 'text',
-        label: 'Email',
-        name: 'email',
-        placeholder: 'Filter by email...',
-    },
-    {
-        type: 'text',
+        type: 'select',
         label: 'Role',
         name: 'role',
-        placeholder: 'Filter by role...',
+        placeholder: 'Select a role...',
+        getOptions: async () => {
+            try {
+                const response = await fetchRoleOptionsApi();
+                return response.data.map((r: any) => ({ label: r.name, value: r.slug }));
+            } catch (err) {
+                console.error("Failed to fetch roles", err);
+                return [];
+            }
+        }
     },
     {
         type: 'status',
         label: 'Status',
-        name: 'status',
+        name: 'is_active',
         options: [
             { label: 'All', value: 'all' },
-            { label: 'Active', value: 'active' },
-            { label: 'Inactive', value: 'deactive' },
+            { label: 'Active', value: 'true' },
+            { label: 'Inactive', value: 'false' },
         ],
     },
 ];

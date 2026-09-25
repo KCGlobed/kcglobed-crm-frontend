@@ -72,11 +72,13 @@ export const updateModuleApi = async (moduleId: number | string, payload: any): 
 };
 
 // ----------------User service------- //
-export const fetchUsersApi = async (params?: { page?: number; page_size?: number; search?: string }): Promise<any> => {
+export const fetchUsersApi = async (params?: { page?: number; page_size?: number; search?: string; role?: string; is_active?: boolean | string }): Promise<any> => {
   const query = new URLSearchParams();
   if (params?.page) query.append("page", String(params.page));
   if (params?.page_size) query.append("page_size", String(params.page_size));
   if (params?.search) query.append("search", params.search);
+  if (params?.role) query.append("role", params.role);
+  if (params?.is_active !== undefined && params?.is_active !== "all") query.append("is_active", String(params.is_active));
   const queryString = query.toString();
   return await apiRequest(`/access/users/${queryString ? `?${queryString}` : ""}`, "GET");
 };
