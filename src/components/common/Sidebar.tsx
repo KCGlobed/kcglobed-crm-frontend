@@ -10,6 +10,7 @@ import {
   Users,
   X,
   SettingsIcon,
+  KeyRound,
   Network,
 } from 'lucide-react';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
@@ -471,6 +472,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
               >
                 <UserIcon size={15} className="text-crmText-tertiary" />
                 <span>Profile</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  navigate('/change-password');
+                  onCloseMobile?.();
+                }}
+                className="flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-semibold text-crmText transition-colors hover:bg-minor-soft hover:text-minor-contrast"
+              >
+                <KeyRound size={15} className="text-crmText-tertiary" />
+                <span>Change Password</span>
               </button>
               <button
                 type="button"

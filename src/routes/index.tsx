@@ -12,6 +12,7 @@ import ReportingPage from '../pages/reporting';
 import NotFoundPage from '../pages/notFound';
 import DashboardPage from '../pages/dashboard';
 import ProfilePage from '../pages/profile';
+import ChangePasswordPage from '../pages/changePassword';
 import ForgotPasswordPage from '../pages/forgotPassword';
 import ResetPasswordPage from '../pages/resetPassword';
 
@@ -38,6 +39,7 @@ export const AppRoutes: React.FC = () => {
           <Route path="/roles" element={<RolesPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/change-password" element={<ChangePasswordPage />} />
           {/* <Route path="/reporting" element={<ReportingPage />} /> */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>

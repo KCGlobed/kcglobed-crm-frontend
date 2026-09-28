@@ -10,18 +10,24 @@ interface AppLayoutProps {
   children?: React.ReactNode;
 }
 
-const PAGE_TITLES: Record<string, string> = {
-  dashboard: 'Dashboard',
-  roles: 'Roles & Permissions',
-  'roles-old': 'Roles & Permissions',
-  users: 'Users & Staff',
-  profile: 'Profile Settings',
-  leads: 'Leads & Pipeline',
-  admissions: 'Admissions',
-  followups: 'Follow-ups & Notes',
-  reports: 'Reports & Export',
-  'reporting-management': "Reporting Management",
+/** Breadcrumb labels keyed by the first URL segment. Labels match the sidebar names. */
+const PAGE_TITLES: Record<string, { label: string; parent?: string }> = {
+  dashboard: { label: 'Dashboard' },
+  users: { label: 'Users & Staff' },
+  reporting: { label: 'Reporting Graph' },
+  modules: { label: 'Module', parent: 'Settings' },
+  roles: { label: 'Roles & Permissions', parent: 'Settings' },
+  profile: { label: 'My Profile' },
+  'change-password': { label: 'Change Password' },
 };
+
+/** "follow-ups" -> "Follow Ups" for routes not listed above. */
+const titleFromSlug = (slug: string) =>
+  slug
+    .split(/[-_]+/)
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 
 export const AppLayout: React.FC<AppLayoutProps> = ({
   activePage,
@@ -32,14 +38,18 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const location = useLocation();
 
-  const currentPath = location?.pathname ? location.pathname.replace(/^\//, '') : '';
+  const currentPath = location?.pathname ? location.pathname.replace(/^\//, '').split('/')[0] : '';
   const currentPage = activePage || currentPath || 'dashboard';
-  const pageTitle = PAGE_TITLES[currentPage] || 'CRM Executive Dashboard';
+  const page = PAGE_TITLES[currentPage] || { label: titleFromSlug(currentPage) || 'Page Not Found' };
 
   const breadcrumbs: Breadcrumb[] =
     currentPage === 'dashboard'
       ? [{ label: 'Dashboard' }]
-      : [{ label: 'Dashboard', to: '/dashboard' }, { label: pageTitle }];
+      : [
+          { label: 'Dashboard', to: '/dashboard' },
+          ...(page.parent ? [{ label: page.parent }] : []),
+          { label: page.label },
+        ];
 
   // The drawer should never stay open across a navigation.
   useEffect(() => {

@@ -116,7 +116,7 @@ const DashboardHeader: React.FC = () => {
           <div className="absolute right-0 mt-2 w-44 bg-white rounded-xl shadow-lg
             border border-gray-100 py-1 z-50">
             <button
-              onClick={() => { navigate('/dashboard/profile'); setDropdownOpen(false); }}
+              onClick={() => { navigate('/profile'); setDropdownOpen(false); }}
               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition"
             >
               <FaUser className="w-4 h-4 mr-2 text-gray-400" />

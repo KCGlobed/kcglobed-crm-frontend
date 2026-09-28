@@ -1,13 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, LogOut, Settings, User } from 'lucide-react';
+import { ChevronDown, KeyRound, LogOut, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
 import { logout } from '../../store/slices/authSlice';
 import useClickOutside from '../../hooks/useClickOutside';
 
-/** Header account dropdown: identity summary + Profile / Settings / Logout. */
+/** Header account dropdown: identity summary + Profile / Change Password / Logout. */
 export const ProfileMenu: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const dispatch = useAppDispatch();
@@ -118,11 +118,11 @@ export const ProfileMenu: React.FC = () => {
               className={menuItemClass}
               onClick={() => {
                 close();
-                navigate('/profile');
+                navigate('/change-password');
               }}
             >
-              <Settings size={16} className="text-crmText-tertiary" />
-              Settings
+              <KeyRound size={16} className="text-crmText-tertiary" />
+              Change Password
             </button>
           </div>
 

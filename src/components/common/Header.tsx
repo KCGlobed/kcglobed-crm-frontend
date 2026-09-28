@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Menu } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
-import NotificationMenu from './NotificationMenu';
 import ProfileMenu from './ProfileMenu';
 
 export interface Breadcrumb {
@@ -20,7 +19,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   breadcrumbs,
-  title = 'CRM Executive Dashboard',
+  title = 'Dashboard',
   onOpenSidebar,
 }) => {
   const trail: Breadcrumb[] = breadcrumbs?.length ? breadcrumbs : [{ label: title }];
