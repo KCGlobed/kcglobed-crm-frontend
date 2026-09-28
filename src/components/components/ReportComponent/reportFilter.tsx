@@ -14,15 +14,15 @@ export const Filter = ({ label, options, value, onChange, disabled = false }: an
             className="react-select-container"
             classNamePrefix="react-select"
             styles={{
-                container: (base) => ({
+                container: (base: any) => ({
                     ...base,
                     width: "100%", // 👈 parent width le lega
                 }),
-                control: (base) => ({
+                control: (base: any) => ({
                     ...base,
                     width: "100%", // 👈 input area bhi full stretch hoga
                 }),
-                menuPortal: (base) => ({
+                menuPortal: (base: any) => ({
                     ...base,
                     zIndex: 9999, // 👈 dropdown upar rahe
                 }),
