@@ -8,6 +8,7 @@ interface Alert {
   type: AlertType;
 }
 
+
 interface ConfirmOptions {
   message: string;
   onConfirm: () => void;
