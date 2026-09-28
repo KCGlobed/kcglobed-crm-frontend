@@ -26,7 +26,7 @@ export const validateResetLinkApi = async (uid: string, token: string): Promise<
   return await apiRequest(`/auth/reset-password/${uid}/${token}/`, "GET");
 };
 
-export const resetPasswordApi = async (payload: {uid: string;token: string;new_password: string;confirm_password: string;}): Promise<any> => {
+export const resetPasswordApi = async (payload: { uid: string; token: string; new_password: string; confirm_password: string; }): Promise<any> => {
   return await apiRequest("/auth/reset-password/", "POST", payload);
 };
 
@@ -95,6 +95,10 @@ export const createModuleApi = async (payload: any): Promise<any> => {
 
 export const updateModuleApi = async (moduleId: number | string, payload: any): Promise<any> => {
   return await apiRequest(`/access/modules/${moduleId}/`, "PATCH", payload);
+};
+
+export const deleteModuleApi = async (moduleId: number | string): Promise<any> => {
+  return await apiRequest(`/access/modules/${moduleId}/`, "DELETE");
 };
 
 // ----------------User service------- //

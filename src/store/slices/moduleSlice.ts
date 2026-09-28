@@ -4,6 +4,7 @@ import {
   fetchModuleByIdApi,
   createModuleApi,
   updateModuleApi,
+  deleteModuleApi,
 } from "../../services/apiServices";
 import type { Pagination, PaginationInfo, Module } from "../../utils/types";
 
@@ -109,6 +110,18 @@ export const updateModule = createAsyncThunk<
   }
 );
 
+export const deleteModule = createAsyncThunk<number | string, number | string>(
+  "modules/deleteModule",
+  async (moduleId, { rejectWithValue }) => {
+    try {
+      await deleteModuleApi(moduleId);
+      return moduleId;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to delete module");
+    }
+  }
+);
+
 const moduleSlice = createSlice({
   name: "modules",
   initialState,
@@ -203,6 +216,23 @@ const moduleSlice = createSlice({
         }
       })
       .addCase(updateModule.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+      
+      // Delete module (DELETE /api/access/modules/{id}/)
+      .addCase(deleteModule.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteModule.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.data = (state.data || []).filter((m) => m.id !== action.payload);
+        if (state.selectedModule?.id === action.payload) {
+          state.selectedModule = null;
+        }
+      })
+      .addCase(deleteModule.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload as string;
       });

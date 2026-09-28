@@ -128,8 +128,10 @@ export interface Module {
   code?: string;
   module_code?: string;
   description?: string;
-  parent?: number | null;
+  parent?: string | number | null;
   sort_order?: number;
+  icon?: string;
+  path?: string;
   is_active?: boolean;
   created_at?: string;
 }

@@ -31,11 +31,10 @@ interface ColumnDef {
 const RoleThumbnail = ({ row }: { row: Role }) => {
     return (
         <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${
-                row.is_system
-                    ? 'border-secondary/30 bg-secondary-soft text-secondary-contrast'
-                    : 'border-primary/30 bg-primary-soft text-primary-contrast'
-            }`}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm overflow-hidden shrink-0 border ${row.is_system
+                ? 'border-secondary/30 bg-secondary-soft text-secondary-contrast'
+                : 'border-primary/30 bg-primary-soft text-primary-contrast'
+                }`}
         >
             <span>{row.name ? row.name.charAt(0).toUpperCase() : 'R'}</span>
         </div>
@@ -43,102 +42,106 @@ const RoleThumbnail = ({ row }: { row: Role }) => {
 };
 
 const ActionMenu = ({ row, dispatch }: { row: Role; dispatch: any }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = React.useRef<HTMLDivElement>(null);
-  const { showModal } = useModal();
-  const { access } = useAppSelector((state) => state.auth);
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+    const { showModal } = useModal();
+    const { access } = useAppSelector((state) => state.auth);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    console.log()
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        if (isOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen]);
+
+    const closeAndDo = (action: () => void) => (e: React.MouseEvent) => {
+        e.stopPropagation();
         setIsOpen(false);
-      }
+        action();
     };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isOpen]);
 
-  const closeAndDo = (action: () => void) => (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsOpen(false);
-    action();
-  };
+    const handleToggleStatus = () => {
+        dispatch(updateRoleStatus({ id: row.id, is_active: !row.is_active } as Role))
+            .unwrap()
+            .then(() => toast.success(`Role is ${!row.is_active ? 'active' : 'inactive'}`))
+            .catch((err: any) => toast.error(err || 'Failed to update status'));
+    };
 
-  const handleToggleStatus = () => {
-    dispatch(updateRoleStatus({ id: row.id, is_active: !row.is_active } as Role))
-      .unwrap()
-      .then(() => toast.success(`Role is ${!row.is_active ? 'active' : 'inactive'}`))
-      .catch((err: any) => toast.error(err || 'Failed to update status'));
-  };
 
-  return (
-    <div className="relative flex justify-center" ref={dropdownRef}>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsOpen(!isOpen);
-        }}
-        className="p-1.5 text-crmText-secondary hover:text-minor hover:bg-minor-soft rounded-lg transition-colors cursor-pointer"
-      >
-        <MoreVertical size={18} />
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-44 bg-major rounded-xl shadow-lg border border-crmBorder py-1.5 z-[99] overflow-hidden">
-          <button
-            onClick={closeAndDo(() => showModal({ title: 'Role Details', content: <RoleView roleData={row} />, type: 'success', size: 'xl' }))}
-            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-minor hover:bg-major-tint transition-colors text-left"
-          >
-            <Eye size={14} /> View Details
-          </button>
-
-          {access?.permissions?.roles?.change && (
+    return (
+        <div className="relative flex justify-center" ref={dropdownRef}>
             <button
-              onClick={closeAndDo(() => showModal({ title: `Edit Role: ${row.name}`, content: <RoleForm roleData={row} />, type: 'success', size: 'xl' }))}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-green-600 hover:bg-green-50 transition-colors text-left"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpen(!isOpen);
+                }}
+                className="p-1.5 text-crmText-secondary hover:text-minor hover:bg-minor-soft rounded-lg transition-colors cursor-pointer"
             >
-              <FiEdit size={14} /> Edit Role
+                <MoreVertical size={18} />
             </button>
-          )}
 
-          {access?.permissions?.roles?.change && (
-            <button
-              onClick={closeAndDo(handleToggleStatus)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left border-t border-crmBorder mt-1 pt-2 ${row.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
-            >
-              <Power size={14} /> {row.is_active ? 'Deactivate Role' : 'Activate Role'}
-            </button>
-          )}
+            {isOpen && (
+                <div className="absolute right-0 top-full mt-1 w-44 bg-major rounded-xl shadow-lg border border-crmBorder py-1.5 z-[99] overflow-hidden">
+                    <button
+                        onClick={closeAndDo(() => showModal({ title: 'Role Details', content: <RoleView roleData={row} />, type: 'success', size: 'xl' }))}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-minor hover:bg-major-tint transition-colors text-left"
+                    >
+                        <Eye size={14} /> View Details
+                    </button>
 
-          {access?.permissions?.roles?.delete && !row.is_system && (
-            <button
-              onClick={closeAndDo(() => showModal({
-                  title: 'Delete Role',
-                  content: (
-                      <DeleteConfirmationModal
-                          id={row.id ?? 0}
-                          name={row.name ?? 'Role'}
-                          onDelete={async () => {
-                              if (row.id != null) {
-                                  await dispatch(deleteRole(row.id)).unwrap();
-                              }
-                          }}
-                      />
-                  ),
-                  type: 'custom',
-                  size: 'md',
-              }))}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors text-left mt-1"
-            >
-              <Trash2 size={14} /> Delete Role
-            </button>
-          )}
+                    {access?.permissions?.roles_permissions?.change && (
+
+                        <button
+                            onClick={closeAndDo(() => showModal({ title: `Edit Role: ${row.name}`, content: <RoleForm roleData={row} />, type: 'success', size: 'xl' }))}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-green-600 hover:bg-green-50 transition-colors text-left"
+                        >
+                            <FiEdit size={14} /> Edit Role
+                        </button>
+                    )}
+
+                    {access?.permissions?.roles_permissions?.change && (
+                        <button
+                            onClick={closeAndDo(handleToggleStatus)}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left border-t border-crmBorder mt-1 pt-2 ${row.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+                        >
+                            <Power size={14} /> {row.is_active ? 'Deactivate Role' : 'Activate Role'}
+                        </button>
+                    )}
+
+                    {access?.permissions?.roles?.delete && !row.is_system && (
+                        <button
+                            onClick={closeAndDo(() => showModal({
+                                title: 'Delete Role',
+                                content: (
+                                    <DeleteConfirmationModal
+                                        id={row.id ?? 0}
+                                        name={row.name ?? 'Role'}
+                                        onDelete={async () => {
+                                            if (row.id != null) {
+                                                await dispatch(deleteRole(row.id)).unwrap();
+                                            }
+                                        }}
+                                    />
+                                ),
+                                type: 'custom',
+                                size: 'md',
+                            }))}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors text-left mt-1"
+                        >
+                            <Trash2 size={14} /> Delete Role
+                        </button>
+                    )}
+                </div>
+            )}
         </div>
-      )}
-    </div>
-  );
+    );
 };
 
 const ManageRoles: React.FC = () => {
@@ -281,11 +284,10 @@ const ManageRoles: React.FC = () => {
             render: (_: any, row: Role) => (
                 <div className="flex items-center gap-1.5 justify-center flex-wrap">
                     <span
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
-                            row.is_system
-                                ? 'bg-secondary-soft text-secondary-contrast border-secondary/30'
-                                : 'bg-major-tint text-crmText-secondary border-crmBorder'
-                        }`}
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${row.is_system
+                            ? 'bg-secondary-soft text-secondary-contrast border-secondary/30'
+                            : 'bg-major-tint text-crmText-secondary border-crmBorder'
+                            }`}
                     >
                         {row.is_system ? 'System' : 'Custom'}
                     </span>
@@ -341,11 +343,10 @@ const ManageRoles: React.FC = () => {
             title: 'Status',
             render: (value: boolean, row: Role) => (
                 <span
-                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                        value
-                            ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border'
-                            : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border'
-                    }`}
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${value
+                        ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border'
+                        : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border'
+                        }`}
                 >
                     {value ? 'Active' : 'Inactive'}
                 </span>
@@ -373,11 +374,10 @@ const ManageRoles: React.FC = () => {
                     <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap">
                         <button
                             onClick={() => setShowFilter(!showFilter)}
-                            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${
-                                showFilter || activeFilterCount > 0
-                                    ? 'border-minor/30 text-minor-contrast bg-minor-soft'
-                                    : 'border-crmBorder text-crmText-secondary hover:border-crmBorder-strong hover:bg-major-tint'
-                            }`}
+                            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${showFilter || activeFilterCount > 0
+                                ? 'border-minor/30 text-minor-contrast bg-minor-soft'
+                                : 'border-crmBorder text-crmText-secondary hover:border-crmBorder-strong hover:bg-major-tint'
+                                }`}
                         >
                             <Filter size={16} className={showFilter || activeFilterCount > 0 ? "text-minor-contrast" : "text-crmText-tertiary"} />
                             <span>Filter</span>

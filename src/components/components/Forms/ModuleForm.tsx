@@ -16,6 +16,9 @@ type ModuleFormValues = {
   name: string;
   sort_order: string;
   description: string;
+  parent: string;
+  icon: string;
+  path: string;
 };
 
 // Automatically derive slug code from module name (lowercase and underscore-delimited)
@@ -59,6 +62,9 @@ const ModuleForm: React.FC<ModuleFormProps> = ({ moduleData, onSuccess }) => {
       name: moduleData?.name || '',
       sort_order: moduleData?.sort_order != null ? String(moduleData.sort_order) : nextSortOrder,
       description: moduleData?.description || '',
+      parent: '', // Will be properly resolved in useEffect
+      icon: moduleData?.icon || '',
+      path: moduleData?.path || '',
     },
   });
 
@@ -67,15 +73,28 @@ const ModuleForm: React.FC<ModuleFormProps> = ({ moduleData, onSuccess }) => {
   // Synchronize form on edit or when nextSortOrder becomes available
   useEffect(() => {
     if (moduleData) {
+      let resolvedParent = '';
+      if (moduleData.parent) {
+        if (typeof moduleData.parent === 'number') {
+          const parentMod = (modules || []).find((m) => m.id === moduleData.parent);
+          resolvedParent = parentMod?.code ? String(parentMod.code) : '';
+        } else {
+          resolvedParent = String(moduleData.parent);
+        }
+      }
+
       reset({
         name: moduleData.name || '',
         sort_order: moduleData.sort_order != null ? String(moduleData.sort_order) : nextSortOrder,
         description: moduleData.description || '',
+        parent: resolvedParent,
+        icon: moduleData.icon || '',
+        path: moduleData.path || '',
       });
     } else if (nextSortOrder) {
       setValue('sort_order', nextSortOrder);
     }
-  }, [moduleData, nextSortOrder, reset, setValue]);
+  }, [moduleData, nextSortOrder, reset, setValue, modules]);
 
   const onSubmit = async (data: ModuleFormValues) => {
     const autoCode = deriveCode(data.name);
@@ -88,6 +107,9 @@ const ModuleForm: React.FC<ModuleFormProps> = ({ moduleData, onSuccess }) => {
         module_code: autoCode,
         description: data.description.trim(),
         sort_order: data.sort_order.trim() !== '' ? Number(data.sort_order) : 0,
+        parent: data.parent || null,
+        icon: data.icon.trim(),
+        path: data.path.trim(),
         is_active: true,
       };
 
@@ -144,11 +166,10 @@ const ModuleForm: React.FC<ModuleFormProps> = ({ moduleData, onSuccess }) => {
             })}
             placeholder="e.g. Leads, Admissions, Academics..."
             autoFocus
-            className={`w-full px-3.5 py-2.5 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm ${
-              errors.name
+            className={`w-full px-3.5 py-2.5 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm ${errors.name
                 ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
                 : 'border-crmBorder focus:border-primary focus:ring-2 focus:ring-primary-ring'
-            }`}
+              }`}
           />
           {errors.name ? (
             <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>
@@ -173,11 +194,10 @@ const ModuleForm: React.FC<ModuleFormProps> = ({ moduleData, onSuccess }) => {
             })}
             placeholder="10"
             min={0}
-            className={`w-full px-3.5 py-2.5 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm ${
-              errors.sort_order
+            className={`w-full px-3.5 py-2.5 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm ${errors.sort_order
                 ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
                 : 'border-crmBorder focus:border-primary focus:ring-2 focus:ring-primary-ring'
-            }`}
+              }`}
           />
           {errors.sort_order ? (
             <p className="mt-1 text-xs text-red-500">{errors.sort_order.message}</p>
@@ -187,6 +207,70 @@ const ModuleForm: React.FC<ModuleFormProps> = ({ moduleData, onSuccess }) => {
             </p>
           )}
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Parent Module */}
+        <div>
+          <label className="block text-xs font-semibold text-crmText mb-1.5">
+            Parent Module
+          </label>
+          <select
+            {...register('parent')}
+            className={`w-full px-3.5 py-2.5 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm ${errors.parent
+                ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
+                : 'border-crmBorder focus:border-primary focus:ring-2 focus:ring-primary-ring'
+              }`}
+          >
+            <option value="">None (Top Level)</option>
+            {(modules || []).map((m) => (
+              <option key={m.id} value={m.code}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          {errors.parent && (
+            <p className="mt-1 text-xs text-red-500">{errors.parent.message}</p>
+          )}
+        </div>
+
+        {/* Path */}
+        <div>
+          <label className="block text-xs font-semibold text-crmText mb-1.5">
+            Path
+          </label>
+          <input
+            type="text"
+            {...register('path')}
+            placeholder="/"
+            className={`w-full px-3.5 py-2.5 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm ${errors.path
+                ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
+                : 'border-crmBorder focus:border-primary focus:ring-2 focus:ring-primary-ring'
+              }`}
+          />
+          {errors.path && (
+            <p className="mt-1 text-xs text-red-500">{errors.path.message}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Icon */}
+      <div>
+        <label className="block text-xs font-semibold text-crmText mb-1.5">
+          Icon
+        </label>
+        <input
+          type="text"
+          {...register('icon')}
+          placeholder="Icon name (e.g., FiUsers)"
+          className={`w-full px-3.5 py-2.5 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm ${errors.icon
+              ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
+              : 'border-crmBorder focus:border-primary focus:ring-2 focus:ring-primary-ring'
+            }`}
+        />
+        {errors.icon && (
+          <p className="mt-1 text-xs text-red-500">{errors.icon.message}</p>
+        )}
       </div>
 
       {/* Description */}
@@ -202,11 +286,10 @@ const ModuleForm: React.FC<ModuleFormProps> = ({ moduleData, onSuccess }) => {
           })}
           placeholder="Brief description of this module's scope and purpose..."
           rows={3}
-          className={`w-full px-3.5 py-2.5 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm resize-y ${
-            errors.description
+          className={`w-full px-3.5 py-2.5 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm resize-y ${errors.description
               ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
               : 'border-crmBorder focus:border-primary focus:ring-2 focus:ring-primary-ring'
-          }`}
+            }`}
         />
         {errors.description && (
           <p className="mt-1 text-xs text-red-500">{errors.description.message}</p>
