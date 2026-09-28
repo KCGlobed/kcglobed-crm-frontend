@@ -7,6 +7,9 @@ import themeReducer from "./slices/themeSlice";
 import reportingReducer from "./slices/reportingSlice";
 import reportingManagementReducer from "./slices/reportingMangementSlice";
 import profileReducer from "./slices/profileSlice";
+import questionReducer from "./slices/questionSlice";
+import exhibitReducer from "./slices/exhibitSlice";
+import metaReducer from "./slices/metaSlice";
 
 export const store = configureStore({
   reducer: {
@@ -18,6 +21,9 @@ export const store = configureStore({
     theme: themeReducer,
     reporting: reportingReducer,
     reportingManagement: reportingManagementReducer,
+    question: questionReducer,
+    exhibit: exhibitReducer,
+    meta: metaReducer,
   },
 });
 

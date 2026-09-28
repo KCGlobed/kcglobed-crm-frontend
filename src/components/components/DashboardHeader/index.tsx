@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import { FaChevronDown, FaChevronUp, FaUser, FaSignOutAlt } from 'react-icons/fa';
-import { useAppDispatch } from '../../hooks/useAppDispatch';
-import { logout } from '../../store/slices/authSlice';
+import { useAppDispatch } from '../../../hooks/useAppDispatch';
+import { logout } from '../../../store/slices/authSlice';
 
 const DashboardHeader: React.FC = () => {
   const navigate = useNavigate();

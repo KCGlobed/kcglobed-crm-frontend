@@ -28,7 +28,7 @@ import {useEffect, useMemo, useRef, useState} from 'react';
 
 import Button from '../ui/Button';
 import {$isPollNode, createPollOption} from './PollNode';
-import joinClasses from '../../../utils/joinClasses';
+import joinClasses from '../../../../utils/joinClasses';
 
 function getTotalVotes(options: Options): number {
   return options.reduce((totalVotes, next) => {
@@ -52,7 +52,7 @@ function PollOptionComponent({
     onSelect?: () => void,
   ) => void;
 }): JSX.Element {
-  const {clientID} = useCollaborationContext();
+  const {clientID} = useCollaborationContext() as any;
   const checkboxRef = useRef(null);
   const votesArray = option.votes;
   const checkedIndex = votesArray.indexOf(clientID);

@@ -367,7 +367,7 @@ const ManageUsers: React.FC = () => {
     {
       key: 'is_active',
       title: 'Status',
-      render: (value: boolean, row: User) => (
+      render: (value: boolean, _row: User) => (
         <div className="flex items-center justify-center">
           <span
             className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${value

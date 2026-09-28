@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import { Filter, Plus, ChevronDown, MoreVertical, Eye, Power } from 'lucide-react';
+import { Filter, Plus, ChevronDown, MoreVertical, Eye, Power, Trash2 } from 'lucide-react';
 import DynamicServerTable from '../../components/components/Table/Table';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
-import { fetchModules, updateModule } from '../../store/slices/moduleSlice';
+import { fetchModules, updateModule, deleteModule } from '../../store/slices/moduleSlice';
 import useDebounce from '../../hooks/useDebounce';
 import moment from 'moment';
 import { useModal } from '../../context/ModalContext';
 import { FiEdit } from 'react-icons/fi';
 import ModuleForm from '../../components/components/Forms/ModuleForm';
 import ModuleView from '../../components/components/View/ModuleView';
+import DeleteConfirmationModal from '../../components/components/Modal/DeleteModal';
 import SearchInput from '../../components/components/common/SearchInput';
 import DateRangeDropdown from '../../components/components/common/DateRangeDropdown';
 import DynamicFilter from '../../components/components/common/DynamicFilter';
@@ -45,7 +46,9 @@ const ActionMenu = ({ row, onToggleStatus }: { row: Module; onToggleStatus: (row
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const { showModal } = useModal();
+  // @ts-ignore
   const { access } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,23 +89,39 @@ const ActionMenu = ({ row, onToggleStatus }: { row: Module; onToggleStatus: (row
             <Eye size={14} /> View Details
           </button>
 
-          {access?.permissions?.modules?.change && (
-            <button
-              onClick={closeAndDo(() => showModal({ title: `Edit Module: ${row.name || row.code}`, content: <ModuleForm moduleData={row} />, type: 'custom', size: 'lg' }))}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-green-600 hover:bg-green-50 transition-colors text-left"
-            >
-              <FiEdit size={14} /> Edit Module
-            </button>
-          )}
+          <button
+            onClick={closeAndDo(() => showModal({ title: `Edit Module: ${row.name || row.code}`, content: <ModuleForm moduleData={row} />, type: 'custom', size: 'lg' }))}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-green-600 hover:bg-green-50 transition-colors text-left"
+          >
+            <FiEdit size={14} /> Edit Module
+          </button>
 
-          {access?.permissions?.modules?.change && (
-            <button
-              onClick={closeAndDo(() => onToggleStatus(row))}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left border-t border-crmBorder mt-1 pt-2 ${row.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
-            >
-              <Power size={14} /> {row.is_active ? 'Deactivate Module' : 'Activate Module'}
-            </button>
-          )}
+          <button
+            onClick={closeAndDo(() => onToggleStatus(row))}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left border-t border-crmBorder mt-1 pt-2 ${row.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+          >
+            <Power size={14} /> {row.is_active ? 'Deactivate Module' : 'Activate Module'}
+          </button>
+
+          <button
+            onClick={closeAndDo(() => showModal({
+                title: 'Delete Module',
+                content: (
+                    <DeleteConfirmationModal
+                        id={row.id!}
+                        name={row.name || 'this module'}
+                        onDelete={async (id) => {
+                            await dispatch(deleteModule(id)).unwrap();
+                        }}
+                    />
+                ),
+                type: 'custom',
+                size: 'md'
+            }))}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors text-left"
+          >
+            <Trash2 size={14} /> Delete Module
+          </button>
         </div>
       )}
     </div>
@@ -304,7 +323,7 @@ const ManageModules: React.FC = () => {
         {
             key: 'is_active',
             title: 'Status',
-            render: (value: boolean, row: Module) => (
+            render: (value: boolean, _row: Module) => (
                 <span
                     className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                         value

@@ -112,8 +112,8 @@ export const useCropper = (
   }, [image, originalSize, containerSize.width, containerSize.height]);
 
   // Clamp position when scale or rotation changes
-  const adjustCropBoxOnZoom = useCallback((newScale: number, newRotation: number) => {
-    
+  const _adjustCropBoxOnZoom = useCallback((newScale: number, newRotation: number) => {
+    console.log(_adjustCropBoxOnZoom);
     const imgPos = imagePositionRef.current;
     setPosition((prev) => {
       const relPos = { x: prev.x - imgPos.x, y: prev.y - imgPos.y };

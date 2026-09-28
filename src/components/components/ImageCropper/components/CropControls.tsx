@@ -23,8 +23,8 @@ export const CropControls: React.FC<CropControlsProps> = React.memo(({
   onScaleChange,
   rotation,
   onRotationChange,
-  aspectRatio,
-  onAspectRatioChange,
+  /* aspectRatio */
+  /* onAspectRatioChange */
   onReset,
   onCrop,
   onCancel,

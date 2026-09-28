@@ -1,5 +1,5 @@
-import { useAppSelector } from "../../hooks/useRedux";
-import type { StepProps } from "../../utils/types";
+import { useAppSelector } from "../../../hooks/useRedux";
+import type { StepProps } from "../../../utils/types";
 
 
 const PreviewEssayEdit: React.FC<StepProps> = () => {

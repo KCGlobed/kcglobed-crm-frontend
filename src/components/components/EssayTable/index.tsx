@@ -1,4 +1,4 @@
-import type { Essay } from "../../utils/types";
+import type { Essay } from "../../../utils/types";
 import Toggle from "../Toggle";
 
 
