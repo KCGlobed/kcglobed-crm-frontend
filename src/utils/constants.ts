@@ -2,7 +2,7 @@
 
 let BASE_URL: string;
 
-const DEV_URL = 'http://168.144.122.34/api';
+const DEV_URL = 'http://crm-backend.kcglobed.com/api';
 // const PROD_URL = 'https://backend-prod-254015706580.asia-south2.run.app/api/';
 const PROD_URL = 'https://prodlmsbackend-254015706580.asia-south1.run.app/api/';
 
