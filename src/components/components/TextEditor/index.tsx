@@ -77,9 +77,9 @@ const LexicalEditor: React.FC<Props> = ({ value, onChange, className, maxLength 
 
     // Wrap all TextNode importers with a function that also imports
     // the custom styles implemented by the playground
-    for (const [tag, fn] of Object.entries(TextNode.importDOM() || {})) {
-      importMap[tag] = (importNode) => {
-        const importer = fn(importNode);
+    for (const [tag, fn] of Object.entries((TextNode as any).importDOM?.() || {})) {
+      importMap[tag] = (importNode: any) => {
+        const importer = (fn as any)?.(importNode);
         if (!importer) {
           return null;
         }

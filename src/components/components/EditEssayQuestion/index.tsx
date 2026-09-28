@@ -1,13 +1,13 @@
 import React from "react";
 import LexicalEditor from "../TextEditor";
-import { useAppDispatch, useAppSelector } from "../../hooks/useRedux";
+import { useAppDispatch, useAppSelector } from "../../../hooks/useRedux";
 import {
   addSubQuestion,
   removeSubQuestion,
   setDescription,
   updateSubQuestion,
-} from "../../store/slices/questionSlice";
-import type { StepProps } from "../../utils/types";
+} from "../../../store/slices/questionSlice";
+import type { StepProps } from "../../../utils/types";
 
 const EditEssayQuestion: React.FC<StepProps> = () => {
   const dispatch = useAppDispatch();
@@ -82,7 +82,7 @@ const EditEssayQuestion: React.FC<StepProps> = () => {
       <div>
         <button
           type="button"
-          onClick={() => dispatch(addSubQuestion())}
+          onClick={() => dispatch(addSubQuestion({ id: Date.now().toString(), question: "", answer: "" }))}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
         >
           + Add Sub Question

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import type { StepProps } from '../../utils/types';
-import { apiRequest } from '../../services/apiRequest';
-import { useAppDispatch, useAppSelector } from '../../hooks/useRedux';
-import { addExhibit, removeExhibit } from '../../store/slices/exhibitSlice';
-import { useAlert } from '../../context/AlertContext';
+import type { StepProps } from '../../../utils/types';
+import { apiRequest } from '../../../services/apiRequest';
+import { useAppDispatch, useAppSelector } from '../../../hooks/useRedux';
+import { addExhibit, removeExhibit } from '../../../store/slices/exhibitSlice';
+import { useAlert } from '../../../context/AlertContext';
 
 interface FileWithUrl {
   url: string;

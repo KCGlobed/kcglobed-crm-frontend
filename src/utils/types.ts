@@ -8,6 +8,15 @@ export interface PaginationInfo {
   page_size?: number | null;
 }
 
+export interface Essay { id: string; [key: string]: any; }
+
+export interface StepProps {
+  onDemandQuestionSave?: () => Promise<string | undefined> | string | undefined | void;
+  stepKey?: string;
+  data?: any;
+  updateData?: any;
+}
+
 export interface ApiResponse<T = any> {
   success?: boolean;
   status_code?: number;

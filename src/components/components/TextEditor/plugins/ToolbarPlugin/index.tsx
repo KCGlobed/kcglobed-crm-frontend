@@ -10,10 +10,36 @@ import type {JSX} from 'react';
 
 import {
   $isCodeNode,
-  CODE_LANGUAGE_FRIENDLY_NAME_MAP,
-  CODE_LANGUAGE_MAP,
-  getLanguageFriendlyName,
 } from '@lexical/code';
+
+const CODE_LANGUAGE_MAP: Record<string, string> = {
+  javascript: 'js',
+  md: 'markdown',
+  plaintext: 'plain',
+  python: 'py',
+  text: 'plain',
+};
+const CODE_LANGUAGE_FRIENDLY_NAME_MAP: Record<string, string> = {
+  c: 'C',
+  clike: 'C-like',
+  cpp: 'C++',
+  css: 'CSS',
+  html: 'HTML',
+  java: 'Java',
+  js: 'JavaScript',
+  markdown: 'Markdown',
+  objc: 'Objective-C',
+  plain: 'Plain Text',
+  py: 'Python',
+  rust: 'Rust',
+  sql: 'SQL',
+  swift: 'Swift',
+  xml: 'XML',
+};
+const getLanguageFriendlyName = (lang: string) => {
+  const _lang = CODE_LANGUAGE_MAP[lang] || lang;
+  return CODE_LANGUAGE_FRIENDLY_NAME_MAP[_lang] || _lang;
+};
 import {$isLinkNode, TOGGLE_LINK_COMMAND} from '@lexical/link';
 import {$isListNode, ListNode} from '@lexical/list';
 import {INSERT_EMBED_COMMAND} from '@lexical/react/LexicalAutoEmbedPlugin';

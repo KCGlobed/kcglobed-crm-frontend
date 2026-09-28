@@ -1,5 +1,5 @@
 import React, { useState, type ReactNode } from "react";
-import type { StepProps } from "../../utils/types";
+import type { StepProps } from "../../../utils/types";
 
 type Step = {
   title: string;

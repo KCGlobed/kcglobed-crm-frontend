@@ -1,9 +1,9 @@
 import Select from "react-select";
 import { useForm, Controller } from "react-hook-form";
-import { createSubject, fetchSubjectList } from "../../services/phaseTwoService";
+import { createSubject, fetchSubjectList } from "../../../services/phaseTwoService";
 import { useEffect, useState } from "react";
-import { viewCourseApi } from "../../services/courseService";
-import { useModal } from "../../context/ModalContext";
+import { viewCourseApi } from "../../../services/courseService";
+import { useModal } from "../../../context/ModalContext";
 
 type SubjectOption = {
     value: number;

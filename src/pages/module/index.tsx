@@ -46,6 +46,7 @@ const ActionMenu = ({ row, onToggleStatus }: { row: Module; onToggleStatus: (row
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const { showModal } = useModal();
+  // @ts-ignore
   const { access } = useAppSelector((state) => state.auth);
   const dispatch = useAppDispatch();
 
@@ -322,7 +323,7 @@ const ManageModules: React.FC = () => {
         {
             key: 'is_active',
             title: 'Status',
-            render: (value: boolean, row: Module) => (
+            render: (value: boolean, _row: Module) => (
                 <span
                     className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                         value

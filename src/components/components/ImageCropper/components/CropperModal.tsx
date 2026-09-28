@@ -34,7 +34,7 @@ export const CropperModal: React.FC<CropperModalProps> = ({
 
   // Export formats & Quality states
   const [outputFormat, setOutputFormat] = useState<'image/png' | 'image/jpeg'>(initialFormat);
-  const [jpegQuality, setJpegQuality] = useState(0.9);
+  const [jpegQuality] = useState(0.9);
 
   // Reset outputFormat when initialFormat or imageSrc changes (new image uploaded)
   useEffect(() => {

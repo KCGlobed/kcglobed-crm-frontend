@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import toast from "react-hot-toast";
+
 import { AlertTriangle, Info } from "lucide-react";
 import { useModal } from "../../../context/ModalContext";
 import Button from "../../common/Button";

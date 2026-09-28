@@ -1,4 +1,4 @@
-import Select, { type MultiValue } from "react-select";
+import Select from "react-select";
 // ------------------- Reusable Filter Component -------------------
 export const Filter = ({ label, options, value, onChange, disabled = false }: any) => (
     <div>

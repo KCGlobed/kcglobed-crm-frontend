@@ -341,7 +341,7 @@ const ManageRoles: React.FC = () => {
         {
             key: 'is_active',
             title: 'Status',
-            render: (value: boolean, row: Role) => (
+            render: (value: boolean, _row: Role) => (
                 <span
                     className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${value
                         ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border'

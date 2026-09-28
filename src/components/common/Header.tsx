@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Menu } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
-import NotificationMenu from './NotificationMenu';
+
 import ProfileMenu from './ProfileMenu';
 
 export interface Breadcrumb {

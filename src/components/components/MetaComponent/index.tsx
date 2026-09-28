@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { useAppSelector } from "../../hooks/useRedux";
-import { useAppDispatch } from "../../hooks/useAppDispatch";
-import { updateMeta } from "../../store/slices/metaSlice";
-import type { StepProps } from "../../utils/types";
+import { useAppSelector } from "../../../hooks/useRedux";
+import { useAppDispatch } from "../../../hooks/useAppDispatch";
+import { updateNote } from "../../../store/slices/metaSlice";
+import type { StepProps } from "../../../utils/types";
 
 type Course = {
   id: number;
@@ -25,17 +25,17 @@ type Chapter = {
 const MetaComponent: React.FC<StepProps> = () => {
   const dispatch = useAppDispatch();
   const metaData = useAppSelector((state) => state.meta);
-  const { data: courseData } = useAppSelector((state) => state.course);
+  const { data: courseData } = useAppSelector((state: any) => state.course || { data: [] });
 
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
 
   useEffect(() => {
-    const foundCourse = courseData.find((c:Course) => c.id == metaData.courseId);
+    const foundCourse = courseData.find((c:Course) => String(c.id) == String(metaData.courseId));
     setSelectedCourse(foundCourse ?? null);
 
     if (foundCourse && metaData.subjectId) {
-      const foundSubject = foundCourse.subjects.find((s:Subject) => s.id == metaData.subjectId);
+      const foundSubject = foundCourse.subjects.find((s:Subject) => String(s.id) == String(metaData.subjectId));
       setSelectedSubject(foundSubject ?? null);
     } else {
       setSelectedSubject(null);
@@ -47,28 +47,28 @@ const MetaComponent: React.FC<StepProps> = () => {
     const course = courseData.find((c:Course) => c.id === parseInt(courseId));
     setSelectedCourse(course ?? null);
     setSelectedSubject(null);
-    dispatch(updateMeta({ courseId }));
+    dispatch(updateNote({ courseId }));
   };
 
   const handleSubjectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const subjectId = e.target.value;
     const subject = selectedCourse?.subjects.find((s) => s.id === parseInt(subjectId));
     setSelectedSubject(subject ?? null);
-    dispatch(updateMeta({ subjectId }));
+    dispatch(updateNote({ subjectId }));
   };
 
   const handleChapterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    dispatch(updateMeta({ chapterId: e.target.value }));
+    dispatch(updateNote({ chapterId: e.target.value }));
   };
 
   const handleDifficultyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    dispatch(updateMeta({ difficulty_level: e.target.value as "low" | "medium" | "high" }));
+    dispatch(updateNote({ difficulty_level: e.target.value as "low" | "medium" | "high" }));
   };
 
   const handlePassPercentageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     if (val === "" || Number(val) <= 100) {
-      dispatch(updateMeta({ pass_percentage: val}));
+      dispatch(updateNote({ pass_percentage: val}));
     }
     
   };
@@ -80,7 +80,7 @@ const MetaComponent: React.FC<StepProps> = () => {
         <input
           type="text"
           value={metaData.questionId || ""}
-          onChange={(e) => dispatch(updateMeta({ questionId: e.target.value }))}
+          onChange={(e) => dispatch(updateNote({ questionId: e.target.value }))}
           className="w-full px-4 py-2 border rounded-lg"
         />
       </div>
