@@ -1,25 +1,42 @@
-name: Deploy
+name: Deploy Frontend
 
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 15
 
-      - uses: actions/setup-node@v4
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
-      - run: npm install
-      - run: npm run build
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
         env:
           CI: false
 
-      - uses: appleboy/scp-action@v0.1.7
+      - name: Verify build
+        run: test -f dist/index.html
+
+      - name: Upload build to server
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
@@ -28,3 +45,17 @@ jobs:
           target: "/var/www/kcg-crm-frontend"
           strip_components: 1
           rm: true
+
+      - name: Fix permissions and reload Nginx
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            test -f /var/www/kcg-crm-frontend/index.html
+            chown -R www-data:www-data /var/www/kcg-crm-frontend
+            nginx -t
+            systemctl reload nginx
+            echo "Deploy successful"
