@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { useModal } from '../../../context/ModalContext';
+import LexicalEditor from '../TextEditor';
 import { useAppDispatch } from '../../../hooks/useAppDispatch';
 import { useAppSelector } from '../../../hooks/useRedux';
 import { createModule, updateModule, fetchModules } from '../../../store/slices/moduleSlice';
@@ -57,6 +58,7 @@ const ModuleForm: React.FC<ModuleFormProps> = ({ moduleData, onSuccess }) => {
     reset,
     watch,
     setValue,
+    control,
   } = useForm<ModuleFormValues>({
     defaultValues: {
       name: moduleData?.name || '',
@@ -278,18 +280,28 @@ const ModuleForm: React.FC<ModuleFormProps> = ({ moduleData, onSuccess }) => {
         <label className="block text-xs font-semibold text-crmText mb-1.5">
           Description <span className="text-red-500">*</span>
         </label>
-        <textarea
-          {...register('description', {
-            required: 'Description is required',
-            minLength: { value: 2, message: 'Description must be at least 2 characters' },
-            validate: (val) => val.trim().length > 0 || 'Description cannot be empty or only spaces',
-          })}
-          placeholder="Brief description of this module's scope and purpose..."
-          rows={3}
-          className={`w-full px-3.5 py-2.5 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm resize-y ${errors.description
-              ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
-              : 'border-crmBorder focus:border-primary focus:ring-2 focus:ring-primary-ring'
-            }`}
+        <Controller
+          name="description"
+          control={control}
+          rules={{
+            validate: {
+              notEmpty: (val) =>
+                (val || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length > 0 ||
+                'Description is required',
+              minLength: (val) =>
+                (val || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim().length >= 2 ||
+                'Description must be at least 2 characters',
+            },
+          }}
+          render={({ field }) => (
+            <LexicalEditor
+              type="description"
+              value={field.value}
+              onChange={field.onChange}
+              placeholder="Brief description of this module's scope and purpose..."
+              className={errors.description ? 'rounded-xl ring-2 ring-red-500/20' : ''}
+            />
+          )}
         />
         {errors.description && (
           <p className="mt-1 text-xs text-red-500">{errors.description.message}</p>
