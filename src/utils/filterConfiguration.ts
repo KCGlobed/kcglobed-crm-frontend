@@ -1,6 +1,6 @@
 import type { FilterField } from '../components/components/common/DynamicFilter';
-import { fetchRoleOptionsApi } from '../services/apiServices';
-import { LEAD_STAGES, LEAD_SOURCES } from './mockLeads';
+import { fetchRoleOptionsApi, fetchStageOptionsApi } from '../services/apiServices';
+import { LEAD_SOURCES } from './mockLeads';
 export const roleFilterConfig: FilterField[] = [
     {
         type: 'text',
@@ -69,21 +69,65 @@ export const leadFilterConfig: FilterField[] = [
     },
     {
         type: 'text',
-        label: 'Registered Mobile',
-        name: 'mobile',
-        placeholder: 'Filter by mobile...',
+        label: 'Registered Phone',
+        name: 'phone',
+        placeholder: 'Filter by phone...',
     },
     {
         type: 'select',
         label: 'Lead Stage',
-        name: 'lead_stage',
-        options: LEAD_STAGES.map((stage) => ({ label: stage, value: stage })),
+        name: 'stage',
+        placeholder: 'Select a stage...',
+        getOptions: async () => {
+            try {
+                const response = await fetchStageOptionsApi();
+                return (response.data || []).map((s: any) => ({ label: s.name, value: s.code }));
+            } catch (err) {
+                console.error("Failed to fetch stages", err);
+                return [];
+            }
+        }
     },
     {
         type: 'select',
         label: 'Source',
         name: 'source',
         options: LEAD_SOURCES.map((source) => ({ label: source, value: source })),
+    },
+];
+
+export const stageFilterConfig: FilterField[] = [
+    {
+        type: 'text',
+        label: 'Stage Name',
+        name: 'name',
+        placeholder: 'Filter by stage name...',
+    },
+    {
+        type: 'text',
+        label: 'Code',
+        name: 'code',
+        placeholder: 'Filter by code...',
+    },
+    {
+        type: 'select',
+        label: 'Kind',
+        name: 'kind',
+        options: [
+            { label: 'Open', value: 'open' },
+            { label: 'Won', value: 'won' },
+            { label: 'Lost', value: 'lost' },
+        ],
+    },
+    {
+        type: 'status',
+        label: 'Status',
+        name: 'status',
+        options: [
+            { label: 'All', value: 'all' },
+            { label: 'Active', value: 'active' },
+            { label: 'Inactive', value: 'deactive' },
+        ],
     },
 ];
 

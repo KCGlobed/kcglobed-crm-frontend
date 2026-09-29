@@ -1,38 +1,69 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
-import type { Pagination, Lead } from "../../utils/types";
-import { MOCK_LEADS } from "../../utils/mockLeads";
+import {
+  fetchLeadsApi,
+  createLeadApi,
+  deleteLeadApi,
+  updateLeadStageApi,
+  fetchStageOptionsApi,
+} from "../../services/apiServices";
+import type { Pagination, PaginationInfo, Lead, Stage } from "../../utils/types";
 
-// TODO: No Lead backend endpoints exist yet. Every thunk below is stubbed with
-// mock data (same pattern as updateRoleStatus in roleSlice). Once the API is
-// ready, add the Lead service group in apiServices.ts and swap the stubs.
+// TODO: reassignLead is still stubbed (`await ""`) — the backend has no
+// re-assign endpoint yet. Swap the stub body once it ships. List/create/
+// delete/stage-change are wired to the real /leads/ API.
 
 interface LeadState extends Pagination<Lead> {
   selectedLead: Lead | null;
   selectedLeadLoading: boolean;
   actionLoading: boolean;
+  stageOptions: Stage[];
+  stageOptionsLoading: boolean;
 }
 
 const initialState: LeadState = {
   data: [],
   next: null,
+  previous: null,
+  pagination: {
+    total_results: null,
+    total_pages: null,
+    current_page: null,
+    next_page: null,
+    page_size: null,
+    previous_page: null,
+  },
+  page: 1,
   loading: false,
   error: null,
   selectedLead: null,
   selectedLeadLoading: false,
   actionLoading: false,
+  stageOptions: [],
+  stageOptionsLoading: false,
 };
 
-export const fetchLeads = createAsyncThunk<Lead[]>(
+export const fetchLeads = createAsyncThunk<
+  { data: Lead[]; pagination?: PaginationInfo },
+  { page?: number; page_size?: number } | void
+>(
   "leads/fetchLeads",
-  async (_, { getState, rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     try {
-      const response = await "";
-      const { leads } = getState() as { leads: LeadState };
-      // Keep in-memory mutations (create/re-assign/stage) across refetches
-      return (
-        (response as unknown as Lead[]) ||
-        (leads.data && leads.data.length > 0 ? leads.data : MOCK_LEADS)
-      );
+      const response = await fetchLeadsApi(params || undefined);
+      let data: Lead[] = [];
+      if (Array.isArray(response?.data)) {
+        data = response.data;
+      } else if (Array.isArray(response)) {
+        data = response;
+      } else if (Array.isArray(response?.results)) {
+        data = response.results;
+      } else if (Array.isArray(response?.data?.results)) {
+        data = response.data.results;
+      }
+      return {
+        data,
+        pagination: response?.pagination,
+      };
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to fetch leads");
     }
@@ -48,64 +79,64 @@ export const fetchLeads = createAsyncThunk<Lead[]>(
   }
 );
 
-export const fetchLeadById = createAsyncThunk<Lead, number>(
-  "leads/fetchLeadById",
-  async (leadId, { getState, rejectWithValue }) => {
-    try {
-      const response = await "";
-      const { leads } = getState() as { leads: LeadState };
-      const existing = (leads.data || []).find((l) => l.id === leadId);
-      return (response as unknown as Lead) || existing || { id: leadId };
-    } catch (err: any) {
-      return rejectWithValue(err.message || "Failed to fetch lead details");
-    }
-  }
-);
-
 export const createLead = createAsyncThunk<Lead, Lead>(
   "leads/createLead",
-  async (payload, { getState, rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
-      const response = await "";
-      const { leads } = getState() as { leads: LeadState };
-      const maxId = (leads.data || []).reduce((max, l) => Math.max(max, l.id ?? 0), 0);
-      return (
-        (response as unknown as Lead) || {
-          ...payload,
-          id: maxId + 1,
-          lead_stage: payload.lead_stage || "Untouched",
-          last_activity: "Just now",
-          queries: [],
-          activities: [
-            {
-              id: 1,
-              action: "Lead Registered",
-              description: "Added as a quick lead.",
-              created_at: new Date().toISOString(),
-            },
-          ],
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-      );
+      const response = await createLeadApi(payload);
+      return response.data ?? response;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to create lead");
     }
   }
 );
 
+export const deleteLead = createAsyncThunk<string, string>(
+  "leads/deleteLead",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      await deleteLeadApi(leadUid);
+      return leadUid;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to delete lead");
+    }
+  }
+);
+
 export const updateLeadStage = createAsyncThunk<
-  { ids: number[]; lead_stage: string },
-  { ids: number[]; lead_stage: string }
+  { uids: string[]; stage: Stage },
+  { uids: string[]; stage: Stage; remark?: string }
 >(
   "leads/updateLeadStage",
-  async (payload, { rejectWithValue }) => {
+  async ({ uids, stage, remark }, { rejectWithValue }) => {
     try {
-      const response = await "";
-      return (response as unknown as { ids: number[]; lead_stage: string }) || payload;
+      const payload = remark ? { stage: stage.code, remark } : { stage: stage.code };
+      await Promise.all(uids.map((uid) => updateLeadStageApi(uid, payload)));
+      return { uids, stage };
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to update lead stage");
     }
+  }
+);
+
+export const fetchStageOptions = createAsyncThunk<Stage[]>(
+  "leads/fetchStageOptions",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetchStageOptionsApi();
+      return response.data;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch stage options");
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { leads } = getState() as { leads: { stageOptionsLoading: boolean } };
+      if (leads?.stageOptionsLoading) {
+        return false; // prevent duplicate in-flight request
+      }
+      return true;
+    },
   }
 );
 
@@ -115,10 +146,10 @@ export const reassignLead = createAsyncThunk<Lead, Lead>(
     try {
       const response = await "";
       const { leads } = getState() as { leads: LeadState };
-      const existing = (leads.data || []).find((l) => l.id === payload.id);
+      const existing = (leads.data || []).find((l) => l.uid === payload.uid);
       return (
         (response as unknown as Lead) || {
-          ...(existing || { id: payload.id }),
+          ...(existing || { uid: payload.uid }),
           assigned_to: payload.assigned_to,
           updated_at: new Date().toISOString(),
         }
@@ -142,51 +173,55 @@ const leadSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      // Fetch leads (GET /api/leads/)
       .addCase(fetchLeads.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchLeads.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload || [];
-        state.count = state.data.length;
-        state.next = null;
+        state.data = action.payload?.data || [];
+        state.pagination = action.payload?.pagination || initialState.pagination;
       })
       .addCase(fetchLeads.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
 
-      // Detail
-      .addCase(fetchLeadById.pending, (state) => {
-        state.selectedLeadLoading = true;
-        state.error = null;
-      })
-      .addCase(fetchLeadById.fulfilled, (state, action) => {
-        state.selectedLeadLoading = false;
-        state.selectedLead = action.payload;
-        if (state.data && state.data.length > 0) {
-          const idx = state.data.findIndex((l) => l.id === action.payload.id);
-          if (idx !== -1) {
-            state.data[idx] = { ...state.data[idx], ...action.payload };
-          }
-        }
-      })
-      .addCase(fetchLeadById.rejected, (state, action) => {
-        state.selectedLeadLoading = false;
-        state.error = action.payload as string;
-      })
-
+      // Create lead (POST /api/leads/)
       .addCase(createLead.pending, (state) => {
         state.actionLoading = true;
         state.error = null;
       })
       .addCase(createLead.fulfilled, (state, action) => {
         state.actionLoading = false;
-        state.data = [action.payload, ...(state.data || [])];
-        state.count = state.data.length;
+        const newLead = action.payload;
+        if (newLead && typeof newLead === "object") {
+          state.data = [
+            newLead,
+            ...(state.data || []).filter((l) => l.uid !== newLead.uid),
+          ];
+          state.count = state.data?.length ?? 0;
+        }
       })
       .addCase(createLead.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Delete lead (DELETE /api/leads/{uid}/)
+      .addCase(deleteLead.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteLead.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.data = (state.data || []).filter((l) => l.uid !== action.payload);
+        if (state.selectedLead?.uid === action.payload) {
+          state.selectedLead = null;
+        }
+      })
+      .addCase(deleteLead.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload as string;
       })
@@ -197,18 +232,31 @@ const leadSlice = createSlice({
       })
       .addCase(updateLeadStage.fulfilled, (state, action) => {
         state.actionLoading = false;
-        const { ids, lead_stage } = action.payload;
+        const { uids, stage } = action.payload;
         state.data = (state.data || []).map((l) =>
-          l.id != null && ids.includes(l.id)
-            ? { ...l, lead_stage, updated_at: new Date().toISOString() }
+          l.uid != null && uids.includes(l.uid)
+            ? { ...l, stage, updated_at: new Date().toISOString() }
             : l
         );
-        if (state.selectedLead?.id != null && ids.includes(state.selectedLead.id)) {
-          state.selectedLead = { ...state.selectedLead, lead_stage };
+        if (state.selectedLead?.uid != null && uids.includes(state.selectedLead.uid)) {
+          state.selectedLead = { ...state.selectedLead, stage };
         }
       })
       .addCase(updateLeadStage.rejected, (state, action) => {
         state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Fetch stage options (GET /api/leads/stages/options/)
+      .addCase(fetchStageOptions.pending, (state) => {
+        state.stageOptionsLoading = true;
+      })
+      .addCase(fetchStageOptions.fulfilled, (state, action) => {
+        state.stageOptionsLoading = false;
+        state.stageOptions = action.payload || [];
+      })
+      .addCase(fetchStageOptions.rejected, (state, action) => {
+        state.stageOptionsLoading = false;
         state.error = action.payload as string;
       })
 
@@ -218,9 +266,9 @@ const leadSlice = createSlice({
       })
       .addCase(reassignLead.fulfilled, (state, action) => {
         state.actionLoading = false;
-        const idx = (state.data || []).findIndex((l) => l.id === action.payload.id);
+        const idx = (state.data || []).findIndex((l) => l.uid === action.payload.uid);
         if (idx !== -1 && state.data) state.data[idx] = action.payload;
-        if (state.selectedLead?.id === action.payload.id) state.selectedLead = action.payload;
+        if (state.selectedLead?.uid === action.payload.uid) state.selectedLead = action.payload;
       })
       .addCase(reassignLead.rejected, (state, action) => {
         state.actionLoading = false;

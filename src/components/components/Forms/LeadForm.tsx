@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { useModal } from '../../../context/ModalContext';
 import { useAppDispatch } from '../../../hooks/useAppDispatch';
 import { createLead, fetchLeads } from '../../../store/slices/leadSlice';
-import { LEAD_STAGES, LEAD_SOURCES } from '../../../utils/mockLeads';
+import { LEAD_SOURCES } from '../../../utils/mockLeads';
 import toast from 'react-hot-toast';
 import type { Lead } from '../../../utils/types';
 
@@ -12,14 +12,22 @@ interface LeadFormProps {
 }
 
 type LeadFormValues = {
-  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  mobile: string;
-  course: string;
+  phone: string;
+  city: string;
+  state: string;
+  country: string;
   source: string;
-  medium: string;
-  campaign: string;
-  lead_stage: string;
+  remarks: string;
+  utm_source: string;
+  utm_medium: string;
+  utm_campaign: string;
+  utm_term: string;
+  utm_content: string;
+  landing_page: string;
+  referrer: string;
 };
 
 const inputClass = (hasError: boolean) =>
@@ -43,32 +51,51 @@ const LeadForm: React.FC<LeadFormProps> = ({ leadData }) => {
     reset,
   } = useForm<LeadFormValues>({
     defaultValues: {
-      name: leadData?.name || '',
+      first_name: leadData?.first_name || '',
+      last_name: leadData?.last_name || '',
       email: leadData?.email || '',
-      mobile: leadData?.mobile || '',
-      course: leadData?.course || '',
+      phone: leadData?.phone || '',
+      city: leadData?.city || '',
+      state: leadData?.state || '',
+      country: leadData?.country || '',
       source: leadData?.source || '',
-      medium: leadData?.medium || '',
-      campaign: leadData?.campaign || '',
-      lead_stage: leadData?.lead_stage || 'Untouched',
+      remarks: leadData?.remarks || '',
+      utm_source: leadData?.utm_source || '',
+      utm_medium: leadData?.utm_medium || '',
+      utm_campaign: leadData?.utm_campaign || '',
+      utm_term: leadData?.utm_term || '',
+      utm_content: leadData?.utm_content || '',
+      landing_page: leadData?.landing_page || '',
+      referrer: leadData?.referrer || '',
     },
   });
 
   const onSubmit = async (data: LeadFormValues) => {
     setSubmitting(true);
     try {
-      await dispatch(
-        createLead({
-          name: data.name.trim(),
+      // Only send fields the user filled in
+      const payload = Object.fromEntries(
+        Object.entries({
+          first_name: data.first_name.trim(),
+          last_name: data.last_name.trim(),
+          phone: data.phone.trim(),
           email: data.email.trim(),
-          mobile: data.mobile.trim(),
-          course: data.course.trim(),
-          source: data.source || 'direct',
-          medium: data.medium.trim() || 'direct',
-          campaign: data.campaign.trim() || 'direct',
-          lead_stage: data.lead_stage,
-        })
-      ).unwrap();
+          city: data.city.trim(),
+          state: data.state.trim(),
+          country: data.country.trim(),
+          source: data.source,
+          remarks: data.remarks.trim(),
+          utm_source: data.utm_source.trim(),
+          utm_medium: data.utm_medium.trim(),
+          utm_campaign: data.utm_campaign.trim(),
+          utm_term: data.utm_term.trim(),
+          utm_content: data.utm_content.trim(),
+          landing_page: data.landing_page.trim(),
+          referrer: data.referrer.trim(),
+        }).filter(([, value]) => value !== '')
+      ) as Lead;
+
+      await dispatch(createLead(payload)).unwrap();
       toast.success('Lead created successfully');
       dispatch(fetchLeads());
       reset();
@@ -83,23 +110,34 @@ const LeadForm: React.FC<LeadFormProps> = ({ leadData }) => {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Name */}
+        {/* First Name */}
         <div>
           <label className="block text-xs font-semibold text-crmText mb-1.5">
-            Registered Name <span className="text-red-500">*</span>
+            First Name <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
-            {...register('name', {
-              required: 'Name is required',
-              minLength: { value: 2, message: 'Name must be at least 2 characters' },
-              validate: (val) => val.trim().length > 0 || 'Name cannot be empty or only spaces',
+            {...register('first_name', {
+              required: 'First name is required',
+              minLength: { value: 2, message: 'First name must be at least 2 characters' },
+              validate: (val) => val.trim().length > 0 || 'First name cannot be empty or only spaces',
             })}
-            placeholder="e.g. Rahul Kumar"
+            placeholder="e.g. Riya"
             autoFocus
-            className={inputClass(!!errors.name)}
+            className={inputClass(!!errors.first_name)}
           />
-          {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>}
+          {errors.first_name && <p className="mt-1 text-xs text-red-500">{errors.first_name.message}</p>}
+        </div>
+
+        {/* Last Name */}
+        <div>
+          <label className="block text-xs font-semibold text-crmText mb-1.5">Last Name</label>
+          <input
+            type="text"
+            {...register('last_name')}
+            placeholder="e.g. Sharma"
+            className={inputClass(false)}
+          />
         </div>
 
         {/* Email */}
@@ -113,36 +151,58 @@ const LeadForm: React.FC<LeadFormProps> = ({ leadData }) => {
               required: 'Email is required',
               pattern: { value: /^\S+@\S+\.\S+$/, message: 'Enter a valid email address' },
             })}
-            placeholder="e.g. rahul.kumar@gmail.com"
+            placeholder="e.g. riya.sharma@example.com"
             className={inputClass(!!errors.email)}
           />
           {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email.message}</p>}
         </div>
 
-        {/* Mobile */}
+        {/* Phone */}
         <div>
           <label className="block text-xs font-semibold text-crmText mb-1.5">
-            Registered Mobile <span className="text-red-500">*</span>
+            Registered Phone <span className="text-red-500">*</span>
           </label>
           <input
             type="tel"
-            {...register('mobile', {
-              required: 'Mobile is required',
-              pattern: { value: /^[0-9+\-\s]{10,15}$/, message: 'Enter a valid mobile number' },
+            {...register('phone', {
+              required: 'Phone is required',
+              pattern: { value: /^[0-9+\-\s]{10,15}$/, message: 'Enter a valid phone number' },
             })}
-            placeholder="e.g. 9910000017"
-            className={inputClass(!!errors.mobile)}
+            placeholder="e.g. 9179066647"
+            className={inputClass(!!errors.phone)}
           />
-          {errors.mobile && <p className="mt-1 text-xs text-red-500">{errors.mobile.message}</p>}
+          {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone.message}</p>}
         </div>
 
-        {/* Course */}
+        {/* City */}
         <div>
-          <label className="block text-xs font-semibold text-crmText mb-1.5">Course</label>
+          <label className="block text-xs font-semibold text-crmText mb-1.5">City</label>
           <input
             type="text"
-            {...register('course')}
-            placeholder="e.g. MBA, BTech..."
+            {...register('city')}
+            placeholder="e.g. Pune"
+            className={inputClass(false)}
+          />
+        </div>
+
+        {/* State */}
+        <div>
+          <label className="block text-xs font-semibold text-crmText mb-1.5">State</label>
+          <input
+            type="text"
+            {...register('state')}
+            placeholder="e.g. Maharashtra"
+            className={inputClass(false)}
+          />
+        </div>
+
+        {/* Country */}
+        <div>
+          <label className="block text-xs font-semibold text-crmText mb-1.5">Country</label>
+          <input
+            type="text"
+            {...register('country')}
+            placeholder="e.g. India"
             className={inputClass(false)}
           />
         </div>
@@ -159,39 +219,53 @@ const LeadForm: React.FC<LeadFormProps> = ({ leadData }) => {
             ))}
           </select>
         </div>
+      </div>
 
-        {/* Medium */}
-        <div>
-          <label className="block text-xs font-semibold text-crmText mb-1.5">Medium</label>
-          <input
-            type="text"
-            {...register('medium')}
-            placeholder="e.g. banner, searchAd..."
-            className={inputClass(false)}
-          />
+      {/* Remarks */}
+      <div>
+        <label className="block text-xs font-semibold text-crmText mb-1.5">Remarks</label>
+        <textarea
+          {...register('remarks')}
+          placeholder="e.g. Asked about MBA"
+          rows={2}
+          className={`${inputClass(false)} resize-y`}
+        />
+      </div>
+
+      {/* Marketing Attribution (optional) */}
+      <div>
+        <div className="text-[10px] font-bold text-crmText-tertiary uppercase tracking-wider mb-2">
+          Marketing Attribution (optional)
         </div>
-
-        {/* Campaign */}
-        <div>
-          <label className="block text-xs font-semibold text-crmText mb-1.5">Campaign</label>
-          <input
-            type="text"
-            {...register('campaign')}
-            placeholder="e.g. launch, BTech..."
-            className={inputClass(false)}
-          />
-        </div>
-
-        {/* Lead Stage */}
-        <div>
-          <label className="block text-xs font-semibold text-crmText mb-1.5">Lead Stage</label>
-          <select {...register('lead_stage')} className={`${inputClass(false)} cursor-pointer appearance-none`}>
-            {LEAD_STAGES.map((stage) => (
-              <option key={stage} value={stage}>
-                {stage}
-              </option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-crmText mb-1.5">UTM Source</label>
+            <input type="text" {...register('utm_source')} placeholder="e.g. google" className={inputClass(false)} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-crmText mb-1.5">UTM Medium</label>
+            <input type="text" {...register('utm_medium')} placeholder="e.g. cpc" className={inputClass(false)} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-crmText mb-1.5">UTM Campaign</label>
+            <input type="text" {...register('utm_campaign')} placeholder="e.g. admissions_2026" className={inputClass(false)} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-crmText mb-1.5">UTM Term</label>
+            <input type="text" {...register('utm_term')} placeholder="e.g. mba admission" className={inputClass(false)} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-crmText mb-1.5">UTM Content</label>
+            <input type="text" {...register('utm_content')} placeholder="e.g. ad_1" className={inputClass(false)} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-crmText mb-1.5">Landing Page</label>
+            <input type="text" {...register('landing_page')} placeholder="e.g. https://example.com/mba" className={inputClass(false)} />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-crmText mb-1.5">Referrer</label>
+            <input type="text" {...register('referrer')} placeholder="e.g. https://www.google.com/" className={inputClass(false)} />
+          </div>
         </div>
       </div>
 

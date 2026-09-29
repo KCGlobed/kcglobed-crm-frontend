@@ -276,22 +276,44 @@ export interface LeadActivity {
   created_at?: string;
 }
 
-export interface Lead {
+// Stage
+export interface Stage {
   id?: number;
   name?: string;
-  email?: string;
-  mobile?: string;
-  source?: string;
-  medium?: string;
-  campaign?: string;
-  course?: string;
-  lead_stage?: string;
-  city?: string;
-  state?: string;
-  assigned_to?: string;
-  last_activity?: string;
-  queries?: LeadQuery[];
-  activities?: LeadActivity[];
+  code?: string;
+  kind?: string;
+  color?: string;
+  sort_order?: number;
+  is_default?: boolean;
+  is_active?: boolean;
+  lead_count?: number;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface Lead {
+  uid?: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  email?: string;
+  city?: string;
+  source?: string;
+  stage?: Stage;
+  assigned_to?: string | null;
+  utm_source?: string;
+  utm_campaign?: string;
+  created_at?: string;
+  updated_at?: string;
+  state?: string;
+  country?: string;
+  remarks?: string;
+  utm_medium?: string;
+  utm_term?: string;
+  utm_content?: string;
+  landing_page?: string;
+  referrer?: string;
+  queries?: LeadQuery[];
+  activities?: LeadActivity[];
 }

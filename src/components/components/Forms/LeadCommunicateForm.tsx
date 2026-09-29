@@ -30,7 +30,7 @@ const LeadCommunicateForm: React.FC<LeadCommunicateFormProps> = ({ leadData, bul
   const { hideModal } = useModal();
   const [submitting, setSubmitting] = useState(false);
 
-  const recipient = leadData?.name || `${bulkCount ?? 0} filtered leads`;
+  const recipient = leadData?.full_name || `${bulkCount ?? 0} filtered leads`;
 
   const {
     register,

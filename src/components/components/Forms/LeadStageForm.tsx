@@ -1,39 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useModal } from '../../../context/ModalContext';
 import { useAppDispatch } from '../../../hooks/useAppDispatch';
-import { updateLeadStage } from '../../../store/slices/leadSlice';
-import { LEAD_STAGES } from '../../../utils/mockLeads';
+import { useAppSelector } from '../../../hooks/useRedux';
+import { updateLeadStage, fetchStageOptions } from '../../../store/slices/leadSlice';
 import toast from 'react-hot-toast';
 import type { Lead } from '../../../utils/types';
 
 interface LeadStageFormProps {
   leadData?: Lead;
-  bulkIds?: number[];
+  bulkUids?: string[];
 }
 
-const LeadStageForm: React.FC<LeadStageFormProps> = ({ leadData, bulkIds }) => {
+const LeadStageForm: React.FC<LeadStageFormProps> = ({ leadData, bulkUids }) => {
   const dispatch = useAppDispatch();
   const { hideModal } = useModal();
-  const [stage, setStage] = useState(leadData?.lead_stage || '');
+  const { stageOptions, stageOptionsLoading } = useAppSelector((state) => state.leads);
+  const [stageCode, setStageCode] = useState(leadData?.stage?.code || '');
+  const [remark, setRemark] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const ids = leadData?.id != null ? [leadData.id] : bulkIds || [];
-  const target = leadData?.name || `${ids.length} filtered leads`;
+  // Load stage options for the dropdown
+  useEffect(() => {
+    if (!stageOptions || stageOptions.length === 0) {
+      dispatch(fetchStageOptions());
+    }
+  }, [dispatch, stageOptions]);
+
+  const uids = leadData?.uid != null ? [leadData.uid] : bulkUids || [];
+  const target = leadData?.full_name || `${uids.length} filtered leads`;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!stage) {
+    const selected = (stageOptions || []).find((s) => s.code === stageCode);
+    if (!selected) {
       toast.error('Please select a lead stage');
       return;
     }
-    if (ids.length === 0) {
+    if (uids.length === 0) {
       toast.error('No leads to update');
       return;
     }
     setSubmitting(true);
     try {
-      await dispatch(updateLeadStage({ ids, lead_stage: stage })).unwrap();
-      toast.success(`Lead stage changed to ${stage} for ${target}`);
+      await dispatch(updateLeadStage({ uids, stage: selected, remark: remark.trim() || undefined })).unwrap();
+      toast.success(`Lead stage changed to ${selected.name} for ${target}`);
       hideModal();
     } catch (err: any) {
       toast.error(err?.message || err || 'Failed to update lead stage');
@@ -46,9 +56,9 @@ const LeadStageForm: React.FC<LeadStageFormProps> = ({ leadData, bulkIds }) => {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="p-3 rounded-xl border border-crmBorder bg-major-tint text-xs text-crmText-secondary">
         Changing stage for: <span className="font-bold text-crmText">{target}</span>
-        {leadData?.lead_stage && (
+        {leadData?.stage?.name && (
           <>
-            {' '}(current: <span className="font-bold text-crmText">{leadData.lead_stage}</span>)
+            {' '}(current: <span className="font-bold text-crmText">{leadData.stage.name}</span>)
           </>
         )}
       </div>
@@ -58,17 +68,29 @@ const LeadStageForm: React.FC<LeadStageFormProps> = ({ leadData, bulkIds }) => {
           Lead Stage <span className="text-red-500">*</span>
         </label>
         <select
-          value={stage}
-          onChange={(e) => setStage(e.target.value)}
-          className="w-full px-3.5 py-2.5 bg-major border border-crmBorder focus:border-primary rounded-xl text-sm text-crmText outline-none transition-all shadow-sm focus:ring-2 focus:ring-primary-ring cursor-pointer appearance-none"
+          value={stageCode}
+          onChange={(e) => setStageCode(e.target.value)}
+          disabled={stageOptionsLoading}
+          className="w-full px-3.5 py-2.5 bg-major border border-crmBorder focus:border-primary rounded-xl text-sm text-crmText outline-none transition-all shadow-sm focus:ring-2 focus:ring-primary-ring cursor-pointer appearance-none disabled:opacity-60"
         >
-          <option value="">Select Stage</option>
-          {LEAD_STAGES.map((s) => (
-            <option key={s} value={s}>
-              {s}
+          <option value="">{stageOptionsLoading ? 'Loading stages...' : 'Select Stage'}</option>
+          {(stageOptions || []).map((s) => (
+            <option key={s.id ?? s.code} value={s.code}>
+              {s.name}
             </option>
           ))}
         </select>
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-crmText mb-1.5">Remark</label>
+        <textarea
+          value={remark}
+          onChange={(e) => setRemark(e.target.value)}
+          placeholder="e.g. Called, interested"
+          rows={2}
+          className="w-full px-3.5 py-2.5 bg-major border border-crmBorder focus:border-primary rounded-xl text-sm text-crmText outline-none transition-all shadow-sm focus:ring-2 focus:ring-primary-ring resize-y"
+        />
       </div>
 
       {/* Actions */}

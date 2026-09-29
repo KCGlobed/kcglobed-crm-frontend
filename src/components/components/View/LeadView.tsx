@@ -26,18 +26,19 @@ const LeadView: React.FC<LeadViewProps> = ({ leadData, initialTab = 'details' })
     }
   };
 
-  const campaign = [leadData.source, leadData.medium, leadData.campaign].filter(Boolean).join('/');
-
   const detailFields = [
+    { label: 'First Name', value: leadData.first_name },
+    { label: 'Last Name', value: leadData.last_name },
     { label: 'Registered Email', value: leadData.email },
-    { label: 'Registered Mobile', value: leadData.mobile },
-    { label: 'Course', value: leadData.course },
+    { label: 'Registered Phone', value: leadData.phone },
     { label: 'City', value: leadData.city },
-    { label: 'State', value: leadData.state },
-    { label: 'Primary Registration Campaign', value: campaign },
-    { label: 'Assigned To', value: leadData.assigned_to },
+    { label: 'Source', value: leadData.source },
+    { label: 'UTM Source', value: leadData.utm_source },
+    { label: 'UTM Campaign', value: leadData.utm_campaign },
+    { label: 'Lead Stage', value: leadData.stage?.name },
+    { label: 'Assigned To', value: leadData.assigned_to || 'Unassigned' },
     { label: 'Registration Date', value: formatDate(leadData.created_at) },
-    { label: 'Last Activity', value: leadData.last_activity },
+    { label: 'Last Updated', value: formatDate(leadData.updated_at) },
   ];
 
   return (
@@ -45,18 +46,24 @@ const LeadView: React.FC<LeadViewProps> = ({ leadData, initialTab = 'details' })
       {/* Header */}
       <div className="flex items-start gap-4 p-4 rounded-2xl bg-minor-soft border border-minor-subtle">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-minor text-white text-xl font-bold shadow-sm">
-          {(leadData.name || '?').charAt(0).toUpperCase()}
+          {(leadData.full_name || '?').charAt(0).toUpperCase()}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-bold text-crmText truncate">{leadData.name || '-'}</h3>
-            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border">
-              {leadData.lead_stage || 'Untouched'}
+            <h3 className="text-base font-bold text-crmText truncate">{leadData.full_name || '-'}</h3>
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-major-tint text-crmText-secondary border-crmBorder"
+            >
+              <span
+                className="inline-block h-2 w-2 rounded-full shrink-0"
+                style={{ backgroundColor: leadData.stage?.color || '#2563eb' }}
+              />
+              {leadData.stage?.name || '-'}
             </span>
           </div>
-          <div className="mt-0.5 text-xs font-mono text-crmText-tertiary">{campaign || '-'}</div>
+          <div className="mt-0.5 text-xs font-mono text-crmText-tertiary">{leadData.uid || '-'}</div>
           <p className="mt-2 text-xs leading-relaxed text-crmText-secondary">
-            {leadData.mobile || '-'} · {leadData.city || '-'}, {leadData.state || '-'}
+            {leadData.phone || '-'} · {leadData.city || '-'}
           </p>
         </div>
       </div>

@@ -106,6 +106,56 @@ export const deleteModuleApi = async (moduleId: number | string): Promise<any> =
   return await apiRequest(`/access/modules/${moduleId}/`, "DELETE");
 };
 
+// ----------------Lead service------- //
+export const fetchLeadsApi = async (params?: { page?: number; page_size?: number }): Promise<any> => {
+  const query = new URLSearchParams();
+  if (params?.page) query.append("page", String(params.page));
+  if (params?.page_size) query.append("page_size", String(params.page_size));
+  const queryString = query.toString();
+  return await apiRequest(`/leads/${queryString ? `?${queryString}` : ""}`, "GET");
+};
+
+export const createLeadApi = async (payload: any): Promise<any> => {
+  return await apiRequest("/leads/", "POST", payload);
+};
+
+export const deleteLeadApi = async (leadUid: string): Promise<any> => {
+  return await apiRequest(`/leads/${leadUid}/`, "DELETE");
+};
+
+export const updateLeadStageApi = async (leadUid: string, payload: any): Promise<any> => {
+  return await apiRequest(`/leads/${leadUid}/stage/`, "PATCH", payload);
+};
+
+export const fetchStageOptionsApi = async (): Promise<any> => {
+  return await apiRequest("/leads/stages/options/", "GET");
+};
+
+// ----------------Stage service------- //
+export const fetchStagesApi = async (params?: { page?: number; page_size?: number }): Promise<any> => {
+  const query = new URLSearchParams();
+  if (params?.page) query.append("page", String(params.page));
+  if (params?.page_size) query.append("page_size", String(params.page_size));
+  const queryString = query.toString();
+  return await apiRequest(`/leads/stages/${queryString ? `?${queryString}` : ""}`, "GET");
+};
+
+export const fetchStageByIdApi = async (stageId: number): Promise<any> => {
+  return await apiRequest(`/leads/stages/${stageId}/`, "GET");
+};
+
+export const createStageApi = async (payload: any): Promise<any> => {
+  return await apiRequest("/leads/stages/", "POST", payload);
+};
+
+export const updateStageApi = async (stageId: number, payload: any): Promise<any> => {
+  return await apiRequest(`/leads/stages/${stageId}/`, "PATCH", payload);
+};
+
+export const deleteStageApi = async (stageId: number): Promise<any> => {
+  return await apiRequest(`/leads/stages/${stageId}/`, "DELETE");
+};
+
 // ----------------User service------- //
 export const fetchUsersApi = async (params?: { page?: number; page_size?: number; search?: string; role?: string; is_active?: boolean | string }): Promise<any> => {
   const query = new URLSearchParams();

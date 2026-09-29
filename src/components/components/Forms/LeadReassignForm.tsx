@@ -25,7 +25,7 @@ const LeadReassignForm: React.FC<LeadReassignFormProps> = ({ leadData }) => {
     const selected = MOCK_COUNSELORS.find((c) => c.value === counselor);
     setSubmitting(true);
     try {
-      await dispatch(reassignLead({ id: leadData.id, assigned_to: selected?.label })).unwrap();
+      await dispatch(reassignLead({ uid: leadData.uid, assigned_to: selected?.label })).unwrap();
       toast.success(`Lead re-assigned to ${selected?.label}`);
       hideModal();
     } catch (err: any) {
@@ -38,7 +38,7 @@ const LeadReassignForm: React.FC<LeadReassignFormProps> = ({ leadData }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="p-3 rounded-xl border border-crmBorder bg-major-tint text-xs text-crmText-secondary">
-        <span className="font-bold text-crmText">{leadData.name || '-'}</span> is currently assigned
+        <span className="font-bold text-crmText">{leadData.full_name || '-'}</span> is currently assigned
         to <span className="font-bold text-crmText">{leadData.assigned_to || 'Unassigned'}</span>
       </div>
 
