@@ -41,7 +41,7 @@ const LoginPage = () => {
       const actionResult = await dispatch(loginUser({ email: data.email.trim(), password: data.password }));
       if (loginUser.fulfilled.match(actionResult)) {
         toast.success('Login successful');
-        navigate('/dashboard');
+        navigate('/');
       } else {
         toast.error((actionResult.payload as string) || 'Login failed');
       }

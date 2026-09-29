@@ -242,3 +242,56 @@ export interface ReportingOption {
   email?: string;
   role?: string;
 }
+
+// Menu
+export interface MenuPermissions {
+  view?: boolean;
+  add?: boolean;
+  change?: boolean;
+  delete?: boolean;
+  export?: boolean;
+}
+
+export interface MenuItem {
+  code?: string;
+  name?: string;
+  icon?: string;
+  path?: string;
+  permissions?: MenuPermissions;
+  children?: MenuItem[];
+}
+
+// Lead
+export interface LeadQuery {
+  id?: number;
+  question?: string;
+  status?: string;
+  created_at?: string;
+}
+
+export interface LeadActivity {
+  id?: number;
+  action?: string;
+  description?: string;
+  created_at?: string;
+}
+
+export interface Lead {
+  id?: number;
+  name?: string;
+  email?: string;
+  mobile?: string;
+  source?: string;
+  medium?: string;
+  campaign?: string;
+  course?: string;
+  lead_stage?: string;
+  city?: string;
+  state?: string;
+  assigned_to?: string;
+  last_activity?: string;
+  queries?: LeadQuery[];
+  activities?: LeadActivity[];
+  created_at?: string;
+  updated_at?: string;
+}

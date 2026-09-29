@@ -6,7 +6,7 @@ export const PublicRoutes: React.FC = () => {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
 
   if (isAuthenticated) {
-    return <Navigate to="/roles" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return <Outlet />;

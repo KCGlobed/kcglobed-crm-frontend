@@ -4,17 +4,16 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronUp,
-  LayoutDashboard,
   LogOut,
   User as UserIcon,
-  Users,
   X,
-  SettingsIcon,
-  Network,
 } from 'lucide-react';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
 import { logout } from '../../store/slices/authSlice';
+import { resolveMenuPath } from '../../store/slices/menuSlice';
+import { getMenuIcon } from '../../utils/menuIcons';
+import type { MenuItem } from '../../utils/types';
 
 interface SidebarProps {
   activePage?: string;
@@ -25,24 +24,7 @@ interface SidebarProps {
   onCloseMobile?: () => void;
 }
 
-interface SubMenuItem {
-  id: string;
-  name: string;
-  path: string;
-  badge?: string;
-}
-
-interface NavItem {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  path?: string;
-  badge?: string;
-  submenu?: SubMenuItem[];
-}
-
 export const Sidebar: React.FC<SidebarProps> = ({
-  activePage,
   onSelectPage,
   isCollapsed,
   onToggleCollapse,
@@ -54,16 +36,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const location = useLocation();
 
   const { user, access } = useAppSelector((state) => state.auth);
-  // const { data: roles } = useAppSelector((state) => state.roles);
-  const { data: users } = useAppSelector((state) => state.users);
+  const { data: menuItems, loading: menuLoading, error: menuError } = useAppSelector(
+    (state) => state.menu
+  );
 
   // Submenu accordion & user profile dropdown states (Instalearn pattern)
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-
-  // Derive current page either from prop or URL pathname
-  const currentPath = location?.pathname ? location.pathname.replace(/^\//, '') : '';
-  const currentPage = activePage || currentPath || 'dashboard';
 
   const fullNameFromParts = [user?.first_name, user?.last_name].filter(Boolean).join(' ');
   const displayName: string =
@@ -85,18 +64,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
       .substring(0, 2)
       .toUpperCase() || 'SA';
 
-  const toggleSubmenu = (id: string) => {
+  const toggleSubmenu = (code: string) => {
     if (isCollapsed) {
       onToggleCollapse(); // expand sidebar if collapsed so user can see submenu
     }
-    setOpenSubmenu(openSubmenu === id ? null : id);
+    setOpenSubmenu(openSubmenu === code ? null : code);
   };
 
-  const handleNavClick = (id: string, path?: string) => {
+  const handleNavClick = (code: string, path?: string) => {
     if (onSelectPage) {
-      onSelectPage(id);
+      onSelectPage(code);
     }
-    navigate(path || `/${id}`);
+    navigate(path || `/${code}`);
     onCloseMobile?.();
   };
 
@@ -106,132 +85,62 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onCloseMobile?.();
   };
 
-  const hasAccess = (moduleId: string) => {
-    if (!access) return false;
-    if (access.full_access) return true;
+  // The menu API is the single source of truth; only view=true items render
+  // (Super Admin sees everything the API returned).
+  const filterVisible = (items: MenuItem[]): MenuItem[] =>
+    (items || [])
+      .filter((item) => access?.full_access || item.permissions?.view === true)
+      .map((item) => ({
+        ...item,
+        children: item.children ? filterVisible(item.children) : [],
+      }))
+      .filter((item) => (item.children && item.children.length > 0) || resolveMenuPath(item));
 
-    // Map internal IDs to permission keys if necessary
-    const permissionKey = moduleId === 'reporting' ? 'reports' : moduleId;
+  const navItems = filterVisible(menuItems);
 
-    // Some static paths might always be accessible, like dashboard
-    if (moduleId === 'dashboard') return true;
-
-    // Check if the permission exists and 'view' is true
-    const modulePerms = access.permissions?.[permissionKey as keyof typeof access.permissions] as any;
-    return modulePerms?.view === true;
+  const isPathActive = (item: MenuItem): boolean => {
+    const path = resolveMenuPath(item);
+    return !!path && (location.pathname === path || location.pathname.startsWith(`${path}/`));
   };
 
-  // CRM Navigation items structured with Instalearn's accordion submenu pattern
-  const allNavItems: NavItem[] = [
-    {
-      id: 'dashboard',
-      label: 'Dashboard',
-      path: '/dashboard',
-      icon: <LayoutDashboard size={19} />,
-    },
-    {
-      id: 'users',
-      label: 'Users & Staff',
-      path: '/users',
-      badge: users && users.length > 0 ? `${users.length}` : undefined,
-      icon: <Users size={19} />,
-    },
-    {
-      id: 'reports', // Match the permission key 'reports'
-      label: 'Reporting Graph',
-      path: '/reporting',
-      icon: <Network size={19} />,
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: <SettingsIcon size={19} />,
-      submenu: [
-        { id: 'module', name: 'Module', path: '/modules' },
-        { id: 'roles', name: 'Roles & Permissions', path: '/roles' },
-      ],
-    },
-    // {
-    //   id: 'leads',
-    //   label: 'Leads & Pipeline',
-    //   icon: <BarChart3 size={19} />,
-    //   submenu: [
-    //     { id: 'leads', name: 'All Leads', path: '/leads' },
-    //     { id: 'pipeline', name: 'Pipeline View', path: '/leads/pipeline' },
-    //   ],
-    // },
-    // {
-    //   id: 'admissions',
-    //   label: 'Admissions',
-    //   icon: <GraduationCap size={19} />,
-    //   submenu: [
-    //     { id: 'admissions', name: 'All Admissions', path: '/admissions' },
-    //     { id: 'applications', name: 'Applications', path: '/admissions/applications' },
-    //   ],
-    // },
-    // {
-    //   id: 'followups',
-    //   label: 'Follow-ups & Notes',
-    //   path: '/followups',
-    //   icon: <MessageSquare size={19} />,
-    // },
-    // {
-    //   id: 'reports',
-    //   label: 'Reports & Export',
-    //   icon: <PieChart size={19} />,
-    //   submenu: [
-    //     { id: 'reports', name: 'Reports Overview', path: '/reports' },
-    //     { id: 'reports-export', name: 'Export Data', path: '/reports/export' },
-    //   ],
-    // },
-  ];
-
-  // Filter the navigation items based on user's access
-  const navItems = allNavItems.filter((item) => {
-    if (!hasAccess(item.id)) return false;
-
-    // If it has a submenu, filter the submenu items as well
-    if (item.submenu) {
-      item.submenu = item.submenu.filter((sub) => {
-        // Fallback to parent access if sub item isn't in permissions
-        if (access && !access.full_access && access.permissions) {
-          const subPerms = access.permissions[sub.id as keyof typeof access.permissions] as any;
-          if (subPerms) {
-            return subPerms.view === true;
-          }
-        }
-        return true;
-      });
-      return item.submenu.length > 0;
-    }
-
-    return true;
-  });
+  const isTreeActive = (item: MenuItem): boolean =>
+    isPathActive(item) || !!item.children?.some((child) => isTreeActive(child));
 
   // Auto-expand submenu if current path matches any of its children
   useEffect(() => {
     navItems.forEach((item) => {
-      if (
-        item.submenu?.some(
-          (sub) =>
-            location.pathname === sub.path ||
-            currentPath === sub.id ||
-            currentPage === sub.id
-        )
-      ) {
-        setOpenSubmenu(item.id);
+      if (item.children && item.children.length > 0 && isTreeActive(item)) {
+        setOpenSubmenu(item.code ?? null);
       }
     });
-  }, [location.pathname, currentPath, currentPage]);
+  }, [location.pathname, menuItems]);
 
-  const isSubmenuActive = (item: NavItem) => {
-    return !!item.submenu?.some(
-      (sub) =>
-        location.pathname === sub.path ||
-        currentPath === sub.id ||
-        currentPage === sub.id
-    );
-  };
+  // Recursive renderer for nested children (accordion body)
+  const renderChildren = (items: MenuItem[], depth = 0) => (
+    <div
+      className={`mt-1 mb-2 flex flex-col space-y-1 border-l-2 border-crmBorder pl-2.5 ${depth === 0 ? 'ml-6' : 'ml-3'}`}
+    >
+      {items.map((child) => {
+        const childPath = resolveMenuPath(child);
+        const isChildActive = isPathActive(child);
+        return (
+          <React.Fragment key={child.code ?? child.name}>
+            <Link
+              to={childPath || '#'}
+              onClick={() => handleNavClick(child.code ?? '', childPath)}
+              className={`flex items-center justify-between rounded-lg p-2 text-xs font-medium transition-colors ${isChildActive
+                ? 'bg-minor text-white font-semibold shadow-sm'
+                : 'text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
+                }`}
+            >
+              <span className="truncate">{child.name}</span>
+            </Link>
+            {child.children && child.children.length > 0 && renderChildren(child.children, depth + 1)}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
 
   return (
     <>
@@ -305,124 +214,90 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           <nav className="flex flex-col space-y-1">
-            {navItems.map((item) => {
-              const hasSubmenu = !!item.submenu && item.submenu.length > 0;
-              const isSubActive = isSubmenuActive(item);
-              const isActive =
-                currentPage === item.id ||
-                currentPath === item.id ||
-                location.pathname === item.path ||
-                isSubActive;
-              const isSubOpen = openSubmenu === item.id;
+            {menuLoading ? (
+              // Skeleton rows while the menu loads
+              [1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center gap-3.5 rounded-xl px-3.5 py-2.5">
+                  <div className="h-5 w-5 shrink-0 animate-pulse rounded-md bg-major-tint" />
+                  <div className={`h-3.5 flex-1 animate-pulse rounded-md bg-major-tint ${isCollapsed ? 'lg:hidden' : ''}`} />
+                </div>
+              ))
+            ) : navItems.length === 0 ? (
+              // No hardcoded fallback menus — the API is the only source
+              <div className={`px-3.5 py-2.5 text-xs text-crmText-tertiary italic ${isCollapsed ? 'lg:hidden' : ''}`}>
+                {menuError ? 'Menu unavailable' : 'No modules assigned'}
+              </div>
+            ) : (
+              navItems.map((item) => {
+                const code = item.code ?? '';
+                const itemPath = resolveMenuPath(item);
+                const hasSubmenu = !!item.children && item.children.length > 0;
+                const isActive = isTreeActive(item);
+                const isSubOpen = openSubmenu === code;
 
-              return (
-                <div key={item.id}>
-                  {hasSubmenu ? (
-                    <>
-                      {/* Parent Item with Accordion Toggle */}
+                return (
+                  <div key={code || item.name}>
+                    {hasSubmenu ? (
+                      <>
+                        {/* Parent Item with Accordion Toggle */}
+                        <button
+                          type="button"
+                          onClick={() => toggleSubmenu(code)}
+                          className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-sans text-sm font-semibold transition-all ${isActive
+                            ? 'bg-minor-soft text-minor-contrast'
+                            : 'bg-transparent text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
+                            } ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
+                          title={isCollapsed ? item.name : undefined}
+                        >
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+                              {getMenuIcon(item.icon)}
+                            </span>
+                            <span className={`truncate text-sm ${isCollapsed ? 'lg:hidden' : ''}`}>
+                              {item.name}
+                            </span>
+                          </div>
+
+                          {!isCollapsed && (
+                            <div className="ml-auto flex items-center gap-1.5 pl-2 shrink-0">
+                              {isSubOpen ? (
+                                <ChevronUp size={14} className="text-crmText-tertiary" />
+                              ) : (
+                                <ChevronDown size={14} className="text-crmText-tertiary" />
+                              )}
+                            </div>
+                          )}
+                        </button>
+
+                        {/* Accordion Submenu Items (recursive for nested children) */}
+                        {!isCollapsed && isSubOpen && renderChildren(item.children ?? [])}
+                      </>
+                    ) : (
+                      /* Regular Single Link Item */
                       <button
                         type="button"
-                        onClick={() => toggleSubmenu(item.id)}
                         className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-sans text-sm font-semibold transition-all ${isActive
-                          ? 'bg-minor-soft text-minor-contrast'
+                          ? 'bg-minor text-white shadow-crm-accent'
                           : 'bg-transparent text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
                           } ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
-                        title={isCollapsed ? item.label : undefined}
+                        onClick={() => handleNavClick(code, itemPath)}
+                        title={isCollapsed ? item.name : undefined}
+                        aria-current={isActive ? 'page' : undefined}
                       >
                         <div className="flex items-center gap-3.5 min-w-0">
                           <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-                            {item.icon}
+                            {getMenuIcon(item.icon)}
                           </span>
                           <span className={`truncate text-sm ${isCollapsed ? 'lg:hidden' : ''}`}>
-                            {item.label}
+                            {item.name}
                           </span>
                         </div>
-
-                        {!isCollapsed && (
-                          <div className="ml-auto flex items-center gap-1.5 pl-2 shrink-0">
-                            {item.badge && (
-                              <span className="rounded-full bg-secondary-soft px-2 py-0.5 text-[0.72rem] font-bold text-secondary-contrast border border-secondary/25">
-                                {item.badge}
-                              </span>
-                            )}
-                            {isSubOpen ? (
-                              <ChevronUp size={14} className="text-crmText-tertiary" />
-                            ) : (
-                              <ChevronDown size={14} className="text-crmText-tertiary" />
-                            )}
-                          </div>
-                        )}
                       </button>
-
-                      {/* Accordion Submenu Items */}
-                      {!isCollapsed && isSubOpen && (
-                        <div className="ml-6 mt-1 mb-2 flex flex-col space-y-1 border-l-2 border-crmBorder pl-2.5">
-                          {item.submenu?.map((subItem) => {
-                            const isChildActive =
-                              location.pathname === subItem.path ||
-                              currentPath === subItem.id ||
-                              currentPage === subItem.id;
-
-                            return (
-                              <Link
-                                key={subItem.id}
-                                to={subItem.path}
-                                onClick={() => handleNavClick(subItem.id, subItem.path)}
-                                className={`flex items-center justify-between rounded-lg p-2 text-xs font-medium transition-colors ${isChildActive
-                                  ? 'bg-minor text-white font-semibold shadow-sm'
-                                  : 'text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
-                                  }`}
-                              >
-                                <span className="truncate">{subItem.name}</span>
-                                {subItem.badge && (
-                                  <span
-                                    className={`ml-1.5 rounded-full px-1.5 py-0.2 text-[9px] font-bold ${isChildActive
-                                      ? 'bg-white/20 text-white'
-                                      : 'bg-crmBorder text-crmText-secondary'
-                                      }`}
-                                  >
-                                    {subItem.badge}
-                                  </span>
-                                )}
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    /* Regular Single Link Item */
-                    <button
-                      type="button"
-                      className={`flex w-full cursor-pointer items-center justify-between rounded-xl px-3.5 py-2.5 text-left font-sans text-sm font-semibold transition-all ${isActive
-                        ? 'bg-minor text-white shadow-crm-accent'
-                        : 'bg-transparent text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
-                        } ${isCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
-                      onClick={() => handleNavClick(item.id, item.path)}
-                      title={isCollapsed ? item.label : undefined}
-                      aria-current={isActive ? 'page' : undefined}
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-                          {item.icon}
-                        </span>
-                        <span className={`truncate text-sm ${isCollapsed ? 'lg:hidden' : ''}`}>
-                          {item.label}
-                        </span>
-                      </div>
-                      {!isCollapsed && item.badge && (
-                        <span
-                          className={`ml-auto rounded-full px-2 py-0.5 text-[0.72rem] font-bold ${isActive ? 'bg-white/25 text-white' : 'bg-secondary-soft text-secondary-contrast border border-secondary/25'
-                            }`}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+                    )}
+                  </div>
+                );
+              })
+            )}
           </nav>
         </div>
 

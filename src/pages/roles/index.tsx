@@ -5,6 +5,7 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
 import { fetchRoles, updateRoleStatus, deleteRole } from '../../store/slices/roleSlice';
 import useDebounce from '../../hooks/useDebounce';
+import useModulePermissions from '../../hooks/useModulePermissions';
 import moment from 'moment';
 import RoleForm from '../../components/components/Forms/RoleForm';
 import { useModal } from '../../context/ModalContext';
@@ -45,9 +46,7 @@ const ActionMenu = ({ row, dispatch }: { row: Role; dispatch: any }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
     const { showModal } = useModal();
-    const { access } = useAppSelector((state) => state.auth);
-
-    console.log()
+    const rolePerms = useModulePermissions('roles_permissions');
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -96,7 +95,7 @@ const ActionMenu = ({ row, dispatch }: { row: Role; dispatch: any }) => {
                         <Eye size={14} /> View Details
                     </button>
 
-                    {access?.permissions?.roles_permissions?.change && (
+                    {rolePerms.change && (
 
                         <button
                             onClick={closeAndDo(() => showModal({ title: `Edit Role: ${row.name}`, content: <RoleForm roleData={row} />, type: 'success', size: 'xl' }))}
@@ -106,7 +105,7 @@ const ActionMenu = ({ row, dispatch }: { row: Role; dispatch: any }) => {
                         </button>
                     )}
 
-                    {access?.permissions?.roles_permissions?.change && (
+                    {rolePerms.change && (
                         <button
                             onClick={closeAndDo(handleToggleStatus)}
                             className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left border-t border-crmBorder mt-1 pt-2 ${row.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
@@ -115,7 +114,7 @@ const ActionMenu = ({ row, dispatch }: { row: Role; dispatch: any }) => {
                         </button>
                     )}
 
-                    {access?.permissions?.roles?.delete && !row.is_system && (
+                    {rolePerms.delete && !row.is_system && (
                         <button
                             onClick={closeAndDo(() => showModal({
                                 title: 'Delete Role',

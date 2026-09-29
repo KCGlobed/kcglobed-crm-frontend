@@ -1,5 +1,6 @@
 import type { FilterField } from '../components/components/common/DynamicFilter';
 import { fetchRoleOptionsApi } from '../services/apiServices';
+import { LEAD_STAGES, LEAD_SOURCES } from './mockLeads';
 export const roleFilterConfig: FilterField[] = [
     {
         type: 'text',
@@ -50,6 +51,39 @@ export const userFilterConfig: FilterField[] = [
             { label: 'Active', value: 'true' },
             { label: 'Inactive', value: 'false' },
         ],
+    },
+];
+
+export const leadFilterConfig: FilterField[] = [
+    {
+        type: 'text',
+        label: 'Registered Name',
+        name: 'name',
+        placeholder: 'Filter by name...',
+    },
+    {
+        type: 'text',
+        label: 'Registered Email',
+        name: 'email',
+        placeholder: 'Filter by email...',
+    },
+    {
+        type: 'text',
+        label: 'Registered Mobile',
+        name: 'mobile',
+        placeholder: 'Filter by mobile...',
+    },
+    {
+        type: 'select',
+        label: 'Lead Stage',
+        name: 'lead_stage',
+        options: LEAD_STAGES.map((stage) => ({ label: stage, value: stage })),
+    },
+    {
+        type: 'select',
+        label: 'Source',
+        name: 'source',
+        options: LEAD_SOURCES.map((source) => ({ label: source, value: source })),
     },
 ];
 

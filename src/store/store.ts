@@ -10,6 +10,8 @@ import profileReducer from "./slices/profileSlice";
 import questionReducer from "./slices/questionSlice";
 import exhibitReducer from "./slices/exhibitSlice";
 import metaReducer from "./slices/metaSlice";
+import leadReducer from "./slices/leadSlice";
+import menuReducer from "./slices/menuSlice";
 
 export const store = configureStore({
   reducer: {
@@ -24,6 +26,8 @@ export const store = configureStore({
     question: questionReducer,
     exhibit: exhibitReducer,
     meta: metaReducer,
+    leads: leadReducer,
+    menu: menuReducer,
   },
 });
 

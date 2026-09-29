@@ -1,13 +1,16 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import PrivateRoutes from './privateRoutes';
 import PublicRoutes from './publicRoutes';
+import ProtectedRoute from './protectedRoute';
+import HomeRedirect from './homeRedirect';
 // Application Page Views
 import LoginPage from '../pages/login';
 import AppLayout from '../components/common/AppLayout';
 import RolesPage from '../pages/roles';
 import ModulesPage from '../pages/module';
 import UsersPage from '../pages/users';
+import LeadsPage from '../pages/leads';
 import ReportingPage from '../pages/reporting';
 import NotFoundPage from '../pages/notFound';
 import DashboardPage from '../pages/dashboard';
@@ -32,17 +35,18 @@ export const AppRoutes: React.FC = () => {
       {/* Protected Routes */}
       <Route element={<PrivateRoutes />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Navigate to="/roles" replace />} />
+          <Route path="/" element={<HomeRedirect />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/modules" element={<ModulesPage />} />
-          <Route path="/roles" element={<RolesPage />} />
-          <Route path="/users" element={<UsersPage />} />
+          <Route path="/modules" element={<ProtectedRoute code="module"><ModulesPage /></ProtectedRoute>} />
+          <Route path="/roles" element={<ProtectedRoute code="roles_permissions"><RolesPage /></ProtectedRoute>} />
+          <Route path="/users" element={<ProtectedRoute code="users"><UsersPage /></ProtectedRoute>} />
+          <Route path="/leads" element={<ProtectedRoute code="leads"><LeadsPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProfilePage />} />
           {/* <Route path="/reporting" element={<ReportingPage />} /> */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
         <Route>
-          <Route path="/reporting" element={<ReportingPage />} />
+          <Route path="/reporting" element={<ProtectedRoute code="reporting_graph"><ReportingPage /></ProtectedRoute>} />
         </Route>
       </Route>
     </Routes>

@@ -5,6 +5,7 @@ import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
 import { fetchUsers, activateUser, deactivateUser } from '../../store/slices/userSlice';
 import useDebounce from '../../hooks/useDebounce';
+import useModulePermissions from '../../hooks/useModulePermissions';
 import { useModal } from '../../context/ModalContext';
 import toast from 'react-hot-toast';
 import UserView from '../../components/components/View/UserView';
@@ -46,7 +47,7 @@ const ActionMenu = ({ row, onToggleStatus }: { row: User; onToggleStatus: (user:
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const { showModal } = useModal();
-  const { access } = useAppSelector((state) => state.auth);
+  const userPerms = useModulePermissions('users');
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,7 +87,7 @@ const ActionMenu = ({ row, onToggleStatus }: { row: User; onToggleStatus: (user:
             <Eye size={14} /> View Details
           </button>
 
-          {access?.permissions?.users?.change && (
+          {userPerms.change && (
             <button
               onClick={closeAndDo(() => showModal({ title: 'Edit User', content: <UserForm userData={row} />, type: 'custom', size: 'lg' }))}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-green-600 hover:bg-green-50 transition-colors text-left"
@@ -95,7 +96,7 @@ const ActionMenu = ({ row, onToggleStatus }: { row: User; onToggleStatus: (user:
             </button>
           )}
 
-          {access?.permissions?.users?.change && (
+          {userPerms.change && (
             <button
               onClick={closeAndDo(() => showModal({ title: 'Update User Role', content: <UpdateRoleForm userData={row} />, type: 'success', size: 'md' }))}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-blue-600 hover:bg-blue-50 transition-colors text-left"
@@ -104,7 +105,7 @@ const ActionMenu = ({ row, onToggleStatus }: { row: User; onToggleStatus: (user:
             </button>
           )}
 
-          {access?.permissions?.users?.change && (
+          {userPerms.change && (
             <button
               onClick={closeAndDo(() => showModal({ title: 'Update Reporting Manager', content: <UpdateReporterForm userData={row} />, type: 'success', size: 'md' }))}
               className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-indigo-600 hover:bg-indigo-50 transition-colors text-left"
@@ -113,7 +114,7 @@ const ActionMenu = ({ row, onToggleStatus }: { row: User; onToggleStatus: (user:
             </button>
           )}
 
-          {access?.permissions?.users?.change && (
+          {userPerms.change && (
             <button
               onClick={closeAndDo(() => onToggleStatus(row))}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left border-t border-crmBorder mt-1 pt-2 ${row.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
@@ -139,7 +140,7 @@ const ManageUsers: React.FC = () => {
   const current_page = pagination?.current_page;
   const page_size = pagination?.page_size;
   const total_results = pagination?.total_results;
-  const { access } = useAppSelector((state) => state.auth);
+  const userPerms = useModulePermissions('users');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
@@ -482,7 +483,7 @@ const ManageUsers: React.FC = () => {
               Total: {totalCount} users
             </span>
             {
-              access?.permissions?.users?.add && (
+              userPerms.add && (
                 <button
                   className="flex items-center gap-1.5 px-4 py-2 bg-minor hover:bg-minor-hover text-white rounded-xl text-xs font-bold hover:shadow-lg transition-all active:scale-95 shadow-minor/20 shadow-sm cursor-pointer border-none"
                   onClick={() =>

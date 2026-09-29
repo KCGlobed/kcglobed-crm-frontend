@@ -39,6 +39,11 @@ export const changePasswordApi = async (payload: any): Promise<any> => {
   return await apiRequest("/auth/change-password/", "POST", payload);
 };
 
+// ----------------Menu service------- //
+export const fetchMyMenuApi = async (): Promise<any> => {
+  return await apiRequest("/access/me/menu/", "GET");
+};
+
 // ----------------Role service------- //
 export const fetchRolesApi = async (params?: { page?: number; page_size?: number }): Promise<any> => {
   const query = new URLSearchParams();
