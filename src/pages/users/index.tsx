@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, Plus, Columns, Check, MoreVertical, Eye, Shield, Users, Power, Filter } from 'lucide-react';
+import { ChevronDown, Plus, Columns, Check, MoreVertical, Eye, Shield, Users, Power, Filter, KeyRound, Trash2 } from 'lucide-react';
 import DynamicServerTable from '../../components/components/Table/Table';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
-import { fetchUsers, activateUser, deactivateUser } from '../../store/slices/userSlice';
+import { fetchUsers, activateUser, deactivateUser, deleteUser } from '../../store/slices/userSlice';
 import useDebounce from '../../hooks/useDebounce';
 import useModulePermissions from '../../hooks/useModulePermissions';
 import { useModal } from '../../context/ModalContext';
@@ -12,7 +12,9 @@ import UserView from '../../components/components/View/UserView';
 import UserForm from '../../components/components/Forms/UserForm';
 import UpdateRoleForm from '../../components/components/Forms/UpdateRoleForm';
 import UpdateReporterForm from '../../components/components/Forms/UpdateReporterForm';
+import SetPasswordForm from '../../components/components/Forms/SetPasswordForm';
 import StatusConfirmationModal from '../../components/components/Modal/StatusConfirmationModal';
+import DeleteConfirmationModal from '../../components/components/Modal/DeleteModal';
 import SearchInput from '../../components/components/common/SearchInput';
 import DynamicFilter from '../../components/components/common/DynamicFilter';
 import { userFilterConfig } from '../../utils/filterConfiguration';
@@ -48,6 +50,7 @@ const ActionMenu = ({ row, onToggleStatus }: { row: User; onToggleStatus: (user:
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const { showModal } = useModal();
   const userPerms = useModulePermissions('users');
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -116,10 +119,41 @@ const ActionMenu = ({ row, onToggleStatus }: { row: User; onToggleStatus: (user:
 
           {userPerms.change && (
             <button
+              onClick={closeAndDo(() => showModal({ title: 'Set Password', content: <SetPasswordForm userData={row} />, type: 'custom', size: 'md' }))}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-amber-600 hover:bg-amber-50 transition-colors text-left"
+            >
+              <KeyRound size={14} /> Set Password
+            </button>
+          )}
+
+          {userPerms.change && (
+            <button
               onClick={closeAndDo(() => onToggleStatus(row))}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left border-t border-crmBorder mt-1 pt-2 ${row.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
             >
               <Power size={14} /> {row.is_active ? 'Deactivate User' : 'Activate User'}
+            </button>
+          )}
+
+          {userPerms.delete && (
+            <button
+              onClick={closeAndDo(() => showModal({
+                title: 'Delete User',
+                content: (
+                  <DeleteConfirmationModal
+                    id={row.uid!}
+                    name={[row.first_name, row.last_name].filter(Boolean).join(' ') || row.email || 'this user'}
+                    onDelete={async (id) => {
+                      await dispatch(deleteUser(id as string)).unwrap();
+                    }}
+                  />
+                ),
+                type: 'custom',
+                size: 'md',
+              }))}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors text-left"
+            >
+              <Trash2 size={14} /> Delete User
             </button>
           )}
         </div>
@@ -144,6 +178,7 @@ const ManageUsers: React.FC = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [ordering, setOrdering] = useState<string>('');
   const [showFilter, setShowFilter] = useState(false);
   const [filterValues, setFilterValues] = useState<Record<string, any>>({});
   const activeFilterCount = Object.keys(filterValues).filter((k) => filterValues[k] !== '' && filterValues[k] !== 'all').length;
@@ -166,7 +201,7 @@ const ManageUsers: React.FC = () => {
   const isMounted = React.useRef(false);
   const columnDropdownRef = React.useRef<HTMLDivElement>(null);
 
-  const defaultVisibleColumns = ['first_name', 'email', 'phone1', 'role', 'reports_to', 'is_active', 'is_admin', 'actions'];
+  const defaultVisibleColumns = ['first_name', 'email', 'phone1', 'role', 'reports_to', 'team', 'department', 'is_active', 'is_admin', 'actions'];
   const [visibleColumns, setVisibleColumns] = useState<string[]>(defaultVisibleColumns);
   const [showColumnDropdown, setShowColumnDropdown] = useState(false);
 
@@ -197,16 +232,22 @@ const ManageUsers: React.FC = () => {
     }
   }, [current_page]);
 
-  // Fetch users on page/pageSize change
+  // Fetch users on page/pageSize/ordering change
   useEffect(() => {
-    dispatch(fetchUsers({ 
-      page: currentPage, 
-      page_size: pageSize, 
+    dispatch(fetchUsers({
+      page: currentPage,
+      page_size: pageSize,
       search: debouncedSearchTerm,
+      ordering: ordering || undefined,
       ...filterValues
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, currentPage, pageSize, debouncedSearchTerm, JSON.stringify(filterValues)]);
+  }, [dispatch, currentPage, pageSize, debouncedSearchTerm, ordering, JSON.stringify(filterValues)]);
+
+  const handleSort = (key: string, direction: 'asc' | 'desc') => {
+    const orderPrefix = direction === 'desc' ? '-' : '';
+    setOrdering(`${orderPrefix}${key}`);
+  };
 
   // Reset to page 1 on search or filter changes
   useEffect(() => {
@@ -304,7 +345,7 @@ const ManageUsers: React.FC = () => {
       render: (_: any, row: User) => (
         <span className="text-crmText-secondary text-xs">{row.phone1 || row.phone || '-'}</span>
       ),
-      sortable: true,
+      sortable: false,
       width: '140px',
     },
     {
@@ -366,6 +407,34 @@ const ManageUsers: React.FC = () => {
       width: '160px',
     },
     {
+      key: 'team',
+      title: 'Team',
+      render: (_: any, row: User) => {
+        const teamName = typeof row.team === 'object' && row.team ? row.team.name : null;
+        return (
+          <span className={`text-xs whitespace-nowrap ${teamName ? 'text-crmText-secondary font-medium' : 'text-crmText-tertiary italic'}`}>
+            {teamName || 'No team'}
+          </span>
+        );
+      },
+      sortable: true,
+      width: '140px',
+    },
+    {
+      key: 'department',
+      title: 'Department',
+      render: (_: any, row: User) => {
+        const departmentName = typeof row.department === 'object' && row.department ? row.department.name : null;
+        return (
+          <span className={`text-xs whitespace-nowrap ${departmentName ? 'text-crmText-secondary font-medium' : 'text-crmText-tertiary italic'}`}>
+            {departmentName || '-'}
+          </span>
+        );
+      },
+      sortable: true,
+      width: '140px',
+    },
+    {
       key: 'is_active',
       title: 'Status',
       render: (value: boolean, _row: User) => (
@@ -401,7 +470,7 @@ const ManageUsers: React.FC = () => {
       ),
       width: '100px',
       align: 'center',
-      sortable: true,
+      sortable: false,
     },
     {
       key: 'actions',
@@ -522,7 +591,7 @@ const ManageUsers: React.FC = () => {
           totalCount={totalCount}
           loading={loading}
           error={error}
-          onRetry={() => dispatch(fetchUsers({ page: currentPage, page_size: pageSize, search: debouncedSearchTerm, ...filterValues }))}
+          onRetry={() => dispatch(fetchUsers({ page: currentPage, page_size: pageSize, search: debouncedSearchTerm, ordering: ordering || undefined, ...filterValues }))}
           emptyTitle="No users found"
           emptyDescription="There are no users to display at the moment."
           rowKey={(row: User) => row.uid ?? String(Math.random())}
@@ -540,6 +609,7 @@ const ManageUsers: React.FC = () => {
               size: 'lg',
             })
           }
+          onSort={handleSort}
           className="rounded-none border-none shadow-none"
           maxHeight="100%"
         />

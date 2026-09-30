@@ -194,10 +194,16 @@ const ManageRoles: React.FC = () => {
         }
     }, [current_page]);
 
+    // Server-side filters supported by GET /access/roles/ (search + active)
+    const serverFilters = useMemo(() => ({
+        search: debouncedSearchTerm || undefined,
+        active: debouncedFilters.status === 'active' ? true : debouncedFilters.status === 'deactive' ? false : undefined,
+    }), [debouncedSearchTerm, debouncedFilters.status]);
+
     // Fetch roles when currentPage or pageSize changes
     useEffect(() => {
-        dispatch(fetchRoles({ page: currentPage, page_size: pageSize }));
-    }, [dispatch, currentPage, pageSize]);
+        dispatch(fetchRoles({ page: currentPage, page_size: pageSize, ...serverFilters }));
+    }, [dispatch, currentPage, pageSize, serverFilters]);
 
     const roleList = useMemo(() => {
         if (Array.isArray(roles)) return roles;
@@ -216,7 +222,7 @@ const ManageRoles: React.FC = () => {
         if (currentPage !== 1) {
             setCurrentPage(1);
         } else {
-            dispatch(fetchRoles({ page: 1, page_size: pageSize }));
+            dispatch(fetchRoles({ page: 1, page_size: pageSize, ...serverFilters }));
         }
     }, [debouncedSearchTerm, debouncedFilters, startDate, endDate]);
 
@@ -450,7 +456,7 @@ const ManageRoles: React.FC = () => {
                     totalCount={totalCount}
                     loading={loading}
                     error={error}
-                    onRetry={() => dispatch(fetchRoles({ page: currentPage, page_size: pageSize }))}
+                    onRetry={() => dispatch(fetchRoles({ page: currentPage, page_size: pageSize, ...serverFilters }))}
                     emptyTitle="No roles found"
                     emptyDescription="There are no roles to display at the moment."
                     rowKey={(row: Role) => row.id ?? row.slug ?? row.name ?? Math.random()}

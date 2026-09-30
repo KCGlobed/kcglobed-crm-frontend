@@ -1,16 +1,18 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
 import {
   fetchLeadsApi,
+  fetchLeadByIdApi,
+  fetchLeadAssigneesApi,
   createLeadApi,
   deleteLeadApi,
   updateLeadStageApi,
   fetchStageOptionsApi,
 } from "../../services/apiServices";
-import type { Pagination, PaginationInfo, Lead, Stage } from "../../utils/types";
+import type { Pagination, PaginationInfo, Lead, Stage, ReportsTo } from "../../utils/types";
 
-// TODO: reassignLead is still stubbed (`await ""`) — the backend has no
-// re-assign endpoint yet. Swap the stub body once it ships. List/create/
-// delete/stage-change are wired to the real /leads/ API.
+// TODO: reassignLead is still stubbed (`await ""`) — the backend exposes the
+// assignee options (GET /leads/assignees/) but no re-assign endpoint yet.
+// Swap the stub body once it ships. Everything else is wired to the real API.
 
 interface LeadState extends Pagination<Lead> {
   selectedLead: Lead | null;
@@ -18,6 +20,8 @@ interface LeadState extends Pagination<Lead> {
   actionLoading: boolean;
   stageOptions: Stage[];
   stageOptionsLoading: boolean;
+  assignees: ReportsTo[];
+  assigneesLoading: boolean;
 }
 
 const initialState: LeadState = {
@@ -40,6 +44,8 @@ const initialState: LeadState = {
   actionLoading: false,
   stageOptions: [],
   stageOptionsLoading: false,
+  assignees: [],
+  assigneesLoading: false,
 };
 
 export const fetchLeads = createAsyncThunk<
@@ -74,6 +80,37 @@ export const fetchLeads = createAsyncThunk<
       if (leads?.loading) {
         return false; // prevent duplicate in-flight request
       }
+      return true;
+    },
+  }
+);
+
+export const fetchLeadById = createAsyncThunk<Lead, string>(
+  "leads/fetchLeadById",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await fetchLeadByIdApi(leadUid);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch lead details");
+    }
+  }
+);
+
+export const fetchLeadAssignees = createAsyncThunk<ReportsTo[]>(
+  "leads/fetchLeadAssignees",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetchLeadAssigneesApi();
+      return response.data || [];
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch assignees");
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { leads } = getState() as { leads: { assigneesLoading: boolean } };
+      if (leads?.assigneesLoading) return false;
       return true;
     },
   }
@@ -185,6 +222,39 @@ const leadSlice = createSlice({
       })
       .addCase(fetchLeads.rejected, (state, action) => {
         state.loading = false;
+        state.error = action.payload as string;
+      })
+
+      // Fetch lead by uid (GET /api/leads/{uid}/)
+      .addCase(fetchLeadById.pending, (state) => {
+        state.selectedLeadLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchLeadById.fulfilled, (state, action) => {
+        state.selectedLeadLoading = false;
+        state.selectedLead = action.payload;
+        if (state.data && state.data.length > 0 && action.payload?.uid) {
+          const idx = state.data.findIndex((l) => l.uid === action.payload.uid);
+          if (idx !== -1) {
+            state.data[idx] = { ...state.data[idx], ...action.payload };
+          }
+        }
+      })
+      .addCase(fetchLeadById.rejected, (state, action) => {
+        state.selectedLeadLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Fetch assignees (GET /api/leads/assignees/)
+      .addCase(fetchLeadAssignees.pending, (state) => {
+        state.assigneesLoading = true;
+      })
+      .addCase(fetchLeadAssignees.fulfilled, (state, action) => {
+        state.assigneesLoading = false;
+        state.assignees = action.payload || [];
+      })
+      .addCase(fetchLeadAssignees.rejected, (state, action) => {
+        state.assigneesLoading = false;
         state.error = action.payload as string;
       })
 

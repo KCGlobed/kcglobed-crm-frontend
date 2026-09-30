@@ -4,7 +4,7 @@ import { ChevronDown, LogOut, Settings, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
-import { logout } from '../../store/slices/authSlice';
+import { logoutDevice } from '../../store/slices/authSlice';
 import useClickOutside from '../../hooks/useClickOutside';
 
 /** Header account dropdown: identity summary + Profile / Settings / Logout. */
@@ -40,7 +40,7 @@ export const ProfileMenu: React.FC = () => {
 
   const handleLogout = () => {
     close();
-    dispatch(logout());
+    dispatch(logoutDevice());
     navigate('/login');
     toast.success('You have been logged out');
   };

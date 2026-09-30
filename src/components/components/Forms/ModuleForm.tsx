@@ -37,12 +37,10 @@ const ModuleForm: React.FC<ModuleFormProps> = ({ moduleData, onSuccess }) => {
   const isEdit = !!moduleData;
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch modules if list is empty
+  // Fetch modules once when the modal opens
   useEffect(() => {
-    if (!modules || modules.length === 0) {
-      dispatch(fetchModules());
-    }
-  }, [dispatch, modules]);
+    dispatch(fetchModules());
+  }, [dispatch]);
 
   // Suggest the next free slot so new modules land after existing ones
   const nextSortOrder = useMemo(() => {

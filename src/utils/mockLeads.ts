@@ -1,7 +1,7 @@
 /**
- * Remaining placeholder options for the Lead Manager module. Lead stages now
- * come from the Stage API; leads list/create/delete use the /leads/ API.
- * Replace these once source-options and counselor endpoints exist.
+ * Static source options for the Lead Manager module. Leads, stages and
+ * assignees all come from the real API now; replace this once a
+ * source-options endpoint exists.
  */
 export const LEAD_SOURCES = [
   "website",
@@ -13,11 +13,4 @@ export const LEAD_SOURCES = [
   "facebook",
   "walk-in",
   "telephony",
-];
-
-export const MOCK_COUNSELORS = [
-  { label: "Neha Kapoor", value: "neha-kapoor" },
-  { label: "Arjun Mehta", value: "arjun-mehta" },
-  { label: "Priya Raman", value: "priya-raman" },
-  { label: "Rohan Das", value: "rohan-das" },
 ];

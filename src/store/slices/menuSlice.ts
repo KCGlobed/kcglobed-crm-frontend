@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { fetchMyMenuApi } from "../../services/apiServices";
-import { logout, logoutAllDevices } from "./authSlice";
+import { logout, logoutDevice, logoutAllDevices } from "./authSlice";
 import type { MenuItem } from "../../utils/types";
 
 interface MenuState {
@@ -95,6 +95,7 @@ const menuSlice = createSlice({
       })
       // Clear the menu when the session ends so the next user loads fresh
       .addCase(logout, () => initialState)
+      .addCase(logoutDevice.fulfilled, () => initialState)
       .addCase(logoutAllDevices.fulfilled, () => initialState);
   },
 });

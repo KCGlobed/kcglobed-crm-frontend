@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
-import { logout } from '../../store/slices/authSlice';
+import { logoutDevice } from '../../store/slices/authSlice';
 import { resolveMenuPath } from '../../store/slices/menuSlice';
 import { getMenuIcon } from '../../utils/menuIcons';
 import type { MenuItem } from '../../utils/types';
@@ -80,7 +80,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const handleLogout = () => {
-    dispatch(logout());
+    dispatch(logoutDevice());
     navigate('/login');
     onCloseMobile?.();
   };
@@ -96,7 +96,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }))
       .filter((item) => (item.children && item.children.length > 0) || resolveMenuPath(item));
 
-  const navItems = filterVisible(menuItems);
+  // The menu API can return a child module both nested under its parent AND as
+  // a separate top-level row. Render each module exactly once: drop top-level
+  // rows that already appear as someone's child, and drop repeated codes.
+  const normalizeTree = (items: MenuItem[]): MenuItem[] => {
+    const childCodes = new Set<string>();
+    const collect = (list: MenuItem[]) =>
+      list.forEach((item) => {
+        (item.children || []).forEach((child) => {
+          if (child.code) childCodes.add(child.code);
+        });
+        collect(item.children || []);
+      });
+    collect(items || []);
+
+    const dedupe = (list: MenuItem[]): MenuItem[] => {
+      const seen = new Set<string>();
+      return list
+        .filter((item) => {
+          const key = item.code ?? item.name ?? '';
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .map((item) => ({ ...item, children: dedupe(item.children || []) }));
+    };
+
+    return dedupe((items || []).filter((item) => !item.code || !childCodes.has(item.code)));
+  };
+
+  const navItems = filterVisible(normalizeTree(menuItems));
 
   const isPathActive = (item: MenuItem): boolean => {
     const path = resolveMenuPath(item);

@@ -8,14 +8,25 @@ import {
   updateUserReportsToApi,
   activateUserApi,
   deactivateUserApi,
+  setUserPasswordApi,
+  deleteUserApi,
+  fetchRoleOptionsApi,
+  fetchTeamOptionsApi,
+  fetchDepartmentOptionsApi,
 } from "../../services/apiServices";
-import type { Pagination, PaginationInfo, User } from "../../utils/types";
+import type { Pagination, PaginationInfo, User, Role, Team, Department } from "../../utils/types";
 
 
 interface UserState extends Pagination<User> {
   selectedUser: User | null;
   selectedUserLoading: boolean;
   actionLoading: boolean;
+  roleOptions: Role[];
+  roleOptionsLoading: boolean;
+  teamOptions: Team[];
+  teamOptionsLoading: boolean;
+  departmentOptions: Department[];
+  departmentOptionsLoading: boolean;
 }
 
 const initialState: UserState = {
@@ -36,11 +47,17 @@ const initialState: UserState = {
   selectedUser: null,
   selectedUserLoading: false,
   actionLoading: false,
+  roleOptions: [],
+  roleOptionsLoading: false,
+  teamOptions: [],
+  teamOptionsLoading: false,
+  departmentOptions: [],
+  departmentOptionsLoading: false,
 };
 
 export const fetchUsers = createAsyncThunk<
   { data: User[]; pagination?: PaginationInfo },
-  { page?: number; page_size?: number; search?: string; role?: string; is_active?: boolean | string } | void
+  { page?: number; page_size?: number; search?: string; role?: string; is_active?: boolean | string; team?: number | string; department?: number | string; reports_to?: string; ordering?: string } | void
 >(
   "users/fetchUsers",
   async (params, { rejectWithValue }) => {
@@ -145,6 +162,90 @@ export const deactivateUser = createAsyncThunk(
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to deactivate user");
     }
+  }
+);
+
+export const setUserPassword = createAsyncThunk<
+  { userUid: string },
+  { userUid: string; new_password: string; confirm_password: string }
+>(
+  "users/setUserPassword",
+  async ({ userUid, new_password, confirm_password }, { rejectWithValue }) => {
+    try {
+      await setUserPasswordApi(userUid, { new_password, confirm_password });
+      return { userUid };
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to set password");
+    }
+  }
+);
+
+export const deleteUser = createAsyncThunk<string, string>(
+  "users/deleteUser",
+  async (userUid, { rejectWithValue }) => {
+    try {
+      await deleteUserApi(userUid);
+      return userUid;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to delete user");
+    }
+  }
+);
+
+export const fetchRoleOptions = createAsyncThunk<Role[]>(
+  "users/fetchRoleOptions",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetchRoleOptionsApi();
+      return response.data || [];
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch role options");
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { users } = getState() as { users: { roleOptionsLoading: boolean } };
+      if (users?.roleOptionsLoading) return false;
+      return true;
+    },
+  }
+);
+
+export const fetchTeamOptions = createAsyncThunk<Team[]>(
+  "users/fetchTeamOptions",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetchTeamOptionsApi();
+      return response.data || [];
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch team options");
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { users } = getState() as { users: { teamOptionsLoading: boolean } };
+      if (users?.teamOptionsLoading) return false;
+      return true;
+    },
+  }
+);
+
+export const fetchDepartmentOptions = createAsyncThunk<Department[]>(
+  "users/fetchDepartmentOptions",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetchDepartmentOptionsApi();
+      return response.data || [];
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch department options");
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { users } = getState() as { users: { departmentOptionsLoading: boolean } };
+      if (users?.departmentOptionsLoading) return false;
+      return true;
+    },
   }
 );
 
@@ -335,6 +436,71 @@ const userSlice = createSlice({
       })
       .addCase(updateUserRole.rejected, (state, action) => {
         state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Set password (PATCH /access/users/{uid}/set-password/)
+      .addCase(setUserPassword.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(setUserPassword.fulfilled, (state) => {
+        state.actionLoading = false;
+      })
+      .addCase(setUserPassword.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Delete user (DELETE /access/users/{uid}/)
+      .addCase(deleteUser.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(deleteUser.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        state.data = (state.data || []).filter((u) => u.uid !== action.payload);
+        if (state.selectedUser?.uid === action.payload) {
+          state.selectedUser = null;
+        }
+      })
+      .addCase(deleteUser.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Dropdown options (GET /access/roles|teams|departments/options/)
+      .addCase(fetchRoleOptions.pending, (state) => {
+        state.roleOptionsLoading = true;
+      })
+      .addCase(fetchRoleOptions.fulfilled, (state, action) => {
+        state.roleOptionsLoading = false;
+        state.roleOptions = action.payload || [];
+      })
+      .addCase(fetchRoleOptions.rejected, (state, action) => {
+        state.roleOptionsLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(fetchTeamOptions.pending, (state) => {
+        state.teamOptionsLoading = true;
+      })
+      .addCase(fetchTeamOptions.fulfilled, (state, action) => {
+        state.teamOptionsLoading = false;
+        state.teamOptions = action.payload || [];
+      })
+      .addCase(fetchTeamOptions.rejected, (state, action) => {
+        state.teamOptionsLoading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(fetchDepartmentOptions.pending, (state) => {
+        state.departmentOptionsLoading = true;
+      })
+      .addCase(fetchDepartmentOptions.fulfilled, (state, action) => {
+        state.departmentOptionsLoading = false;
+        state.departmentOptions = action.payload || [];
+      })
+      .addCase(fetchDepartmentOptions.rejected, (state, action) => {
+        state.departmentOptionsLoading = false;
         state.error = action.payload as string;
       })
 

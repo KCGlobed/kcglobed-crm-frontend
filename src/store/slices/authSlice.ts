@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import { storeToken, storeRefreshToken, getToken, clearToken, storeUserID, storeUser, storeAccess, getUser, getAccess } from "../../utils/tokenStorage"; // utils to persist tokens
+import { storeToken, storeRefreshToken, getToken, getRefreshToken, clearToken, storeUserID, storeUser, storeAccess, getUser, getAccess } from "../../utils/tokenStorage"; // utils to persist tokens
 import {
   loginApi,
+  logoutApi,
   logoutAllApi,
   sendPasswordResetLinkApi,
   validateResetLinkApi,
@@ -40,6 +41,23 @@ export const loginUser = createAsyncThunk<LoginResponse["data"], LoginCred>(
     } catch (error: any) {
       return rejectWithValue(error?.message || "Login failed");
     }
+  }
+);
+
+// Revokes this device's refresh token on the backend (POST /auth/logout/).
+// Always fulfills so the local session is cleared even if the API call fails.
+export const logoutDevice = createAsyncThunk<any>(
+  "auth/logoutDevice",
+  async () => {
+    const refresh = getRefreshToken();
+    if (refresh) {
+      try {
+        await logoutApi({ refresh });
+      } catch {
+        // Token may already be revoked/expired — still clear the local session
+      }
+    }
+    return null;
   }
 );
 
@@ -130,6 +148,14 @@ const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      // Logout this device: refresh token revoked server-side, then clear locally
+      .addCase(logoutDevice.fulfilled, (state) => {
+        state.token = null;
+        state.isAuthenticated = false;
+        state.user = null;
+        state.access = null;
+        clearToken();
       })
       // Logout from all devices: clear the local session only after the backend confirms
       .addCase(logoutAllDevices.pending, (state) => {

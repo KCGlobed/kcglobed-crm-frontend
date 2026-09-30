@@ -77,6 +77,7 @@ export interface AuthAccess {
   };
   full_access: boolean;
   permissions: Record<string, any>;
+  scopes?: Record<string, string>;
 }
 
 export type LoginResponse = ApiResponse<{
@@ -149,12 +150,20 @@ export interface Module {
 export interface RolePermission {
   module?: string;
   module_name?: string;
+  icon?: string;
+  path?: string;
+  show_in_menu?: boolean;
   parent?: string | null;
   can_view?: boolean;
   can_add?: boolean;
   can_change?: boolean;
   can_delete?: boolean;
   can_export?: boolean;
+  can_import?: boolean;
+  can_assign?: boolean;
+  can_approve?: boolean;
+  can_manage?: boolean;
+  data_scope?: string;
 }
 
 export interface RoleAccess {
@@ -185,6 +194,41 @@ export interface ReportsTo {
   uid?: string;
   name?: string;
   email?: string;
+  role?: string;
+}
+
+// Department
+export interface Department {
+  id?: number;
+  name?: string;
+  code?: string;
+  description?: string;
+  head?: ReportsTo | null;
+  member_count?: number;
+  team_count?: number;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  head_uid?: string | null;
+}
+
+// Team
+export interface Team {
+  id?: number;
+  name?: string;
+  code?: string;
+  description?: string;
+  department?: Department | number | null;
+  department_detail?: Department | null;
+  parent?: number | null;
+  parent_detail?: Team | null;
+  leader?: ReportsTo | null;
+  member_count?: number;
+  child_count?: number;
+  is_active?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  leader_uid?: string | null;
 }
 
 // User / Staff
@@ -203,6 +247,8 @@ export interface User {
   dob?: string | null;
   role?: Role | number | string | null;
   reports_to?: ReportsTo | number | null;
+  team?: Team | number | null;
+  department?: Department | number | null;
   is_active?: boolean;
   is_admin?: boolean;
   id?: number;
@@ -301,7 +347,7 @@ export interface Lead {
   city?: string;
   source?: string;
   stage?: Stage;
-  assigned_to?: string | null;
+  assigned_to?: ReportsTo | null;
   utm_source?: string;
   utm_campaign?: string;
   created_at?: string;
@@ -316,4 +362,46 @@ export interface Lead {
   referrer?: string;
   queries?: LeadQuery[];
   activities?: LeadActivity[];
+}
+
+// Audit Log
+export interface AuditLog {
+  id?: number;
+  actor?: ReportsTo | null;
+  actor_email?: string;
+  action?: string;
+  action_display?: string;
+  module?: string;
+  object_type?: string;
+  object_id?: string;
+  object_repr?: string;
+  success?: boolean;
+  message?: string;
+  ip_address?: string;
+  user_agent?: string;
+  request_id?: string;
+  created_at?: string;
+  old_data?: Record<string, any> | null;
+  new_data?: Record<string, any> | null;
+  metadata?: Record<string, any> | null;
+}
+
+// Configuration
+export interface Configuration {
+  id?: number;
+  key?: string;
+  name?: string;
+  group?: string;
+  description?: string;
+  data_type?: string;
+  value?: any;
+  default_value?: any;
+  choices?: any[] | null;
+  min_value?: number | null;
+  max_value?: number | null;
+  is_system?: boolean;
+  is_active?: boolean;
+  updated_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }

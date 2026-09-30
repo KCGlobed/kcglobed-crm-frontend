@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { FileText, HelpCircle, Clock } from 'lucide-react';
+import { useAppDispatch } from '../../../hooks/useAppDispatch';
+import { useAppSelector } from '../../../hooks/useRedux';
+import { fetchLeadById } from '../../../store/slices/leadSlice';
 import type { Lead } from '../../../utils/types';
 import moment from 'moment';
 
@@ -14,8 +17,23 @@ const TABS: { key: 'details' | 'queries' | 'activity'; label: string; icon: Reac
   { key: 'activity', label: 'Activity', icon: Clock },
 ];
 
-const LeadView: React.FC<LeadViewProps> = ({ leadData, initialTab = 'details' }) => {
+const LeadView: React.FC<LeadViewProps> = ({ leadData: leadRow, initialTab = 'details' }) => {
   const [activeTab, setActiveTab] = useState<'details' | 'queries' | 'activity'>(initialTab);
+  const dispatch = useAppDispatch();
+  const { selectedLead } = useAppSelector((state) => state.leads);
+
+  // Fetch live lead detail by uid on mount (GET /api/leads/{uid}/)
+  useEffect(() => {
+    if (leadRow.uid) {
+      dispatch(fetchLeadById(leadRow.uid));
+    }
+  }, [dispatch, leadRow.uid]);
+
+  // Show the table row immediately, then refine it with the detail response
+  const leadData = useMemo(
+    () => (selectedLead?.uid === leadRow.uid ? { ...leadRow, ...selectedLead } : leadRow),
+    [leadRow, selectedLead]
+  );
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '-';
@@ -36,7 +54,7 @@ const LeadView: React.FC<LeadViewProps> = ({ leadData, initialTab = 'details' })
     { label: 'UTM Source', value: leadData.utm_source },
     { label: 'UTM Campaign', value: leadData.utm_campaign },
     { label: 'Lead Stage', value: leadData.stage?.name },
-    { label: 'Assigned To', value: leadData.assigned_to || 'Unassigned' },
+    { label: 'Assigned To', value: leadData.assigned_to?.name || leadData.assigned_to?.email || 'Unassigned' },
     { label: 'Registration Date', value: formatDate(leadData.created_at) },
     { label: 'Last Updated', value: formatDate(leadData.updated_at) },
   ];

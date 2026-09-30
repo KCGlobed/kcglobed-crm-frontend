@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { fetchProfileApi, changePasswordApi } from "../../services/apiServices";
+import { storeToken, storeRefreshToken } from "../../utils/tokenStorage";
 import type { User } from "../../utils/types";
 
 interface ProfileState {
@@ -40,6 +41,9 @@ export const changePassword = createAsyncThunk<any, User>(
   async (payload, { rejectWithValue }) => {
     try {
       const response = await changePasswordApi(payload);
+      // Backend revokes every session and returns fresh tokens — keep this device signed in
+      if (response?.data?.access_token) storeToken(response.data.access_token);
+      if (response?.data?.refresh_token) storeRefreshToken(response.data.refresh_token);
       return response.data;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to change password");

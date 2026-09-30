@@ -12,6 +12,10 @@ import ModulesPage from '../pages/module';
 import UsersPage from '../pages/users';
 import LeadsPage from '../pages/leads';
 import StagesPage from '../pages/stage';
+import DepartmentsPage from '../pages/department';
+import TeamsPage from '../pages/team';
+import AuditLogsPage from '../pages/auditLogs';
+import ConfigurationsPage from '../pages/configuration';
 import ReportingPage from '../pages/reporting';
 import NotFoundPage from '../pages/notFound';
 import DashboardPage from '../pages/dashboard';
@@ -42,8 +46,12 @@ export const AppRoutes: React.FC = () => {
           <Route path="/roles" element={<ProtectedRoute code="roles_permissions"><RolesPage /></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute code="users"><UsersPage /></ProtectedRoute>} />
           <Route path="/leads" element={<ProtectedRoute code="leads"><LeadsPage /></ProtectedRoute>} />
-          {/* Wrap with <ProtectedRoute code="..."> once the backend Module record for stages exists */}
+          {/* Wrap with <ProtectedRoute code="..."> once the backend Module records for these exist */}
           <Route path="/stages" element={<StagesPage />} />
+          <Route path="/departments" element={<DepartmentsPage />} />
+          <Route path="/teams" element={<TeamsPage />} />
+          <Route path="/audit-logs" element={<AuditLogsPage />} />
+          <Route path="/configurations" element={<ConfigurationsPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           {/* <Route path="/reporting" element={<ReportingPage />} /> */}
           <Route path="*" element={<NotFoundPage />} />

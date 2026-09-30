@@ -17,6 +17,10 @@ const ACTIONS: { key: keyof RolePermission; label: string }[] = [
   { key: 'can_change', label: 'Change' },
   { key: 'can_delete', label: 'Delete' },
   { key: 'can_export', label: 'Export' },
+  { key: 'can_import', label: 'Import' },
+  { key: 'can_assign', label: 'Assign' },
+  { key: 'can_approve', label: 'Approve' },
+  { key: 'can_manage', label: 'Manage' },
 ];
 
 const RoleView: React.FC<RoleViewProps> = ({ roleData }) => {
@@ -144,16 +148,19 @@ const RoleView: React.FC<RoleViewProps> = ({ roleData }) => {
           </div>
         ) : (
           <div className="overflow-x-auto border border-crmBorder rounded-xl bg-major">
-            <table className="w-full border-collapse min-w-[520px]">
+            <table className="w-full border-collapse min-w-[780px]">
               <thead>
                 <tr className="bg-major-tint border-b border-crmBorder">
                   <th className="text-left px-3.5 py-2.5 text-[10px] font-bold text-crmText-tertiary uppercase tracking-wider">
                     Module
                   </th>
+                  <th className="text-left px-2 py-2.5 text-[10px] font-bold text-crmText-tertiary uppercase tracking-wider">
+                    Scope
+                  </th>
                   {ACTIONS.map(({ key, label }) => (
                     <th
                       key={key as string}
-                      className="px-2 py-2.5 text-[10px] font-bold text-crmText-tertiary uppercase tracking-wider text-center w-[72px]"
+                      className="px-2 py-2.5 text-[10px] font-bold text-crmText-tertiary uppercase tracking-wider text-center w-[64px]"
                     >
                       {label}
                     </th>
@@ -170,6 +177,11 @@ const RoleView: React.FC<RoleViewProps> = ({ roleData }) => {
                       <div className="text-[10px] font-mono text-crmText-tertiary">
                         {perm.module}
                       </div>
+                    </td>
+                    <td className="px-2 py-2.5">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-major-tint text-crmText-secondary border-crmBorder whitespace-nowrap">
+                        {perm.data_scope || 'own'}
+                      </span>
                     </td>
                     {ACTIONS.map(({ key }) => (
                       <td key={key as string} className="px-2 py-2.5 text-center">

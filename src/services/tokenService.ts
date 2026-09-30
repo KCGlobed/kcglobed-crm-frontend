@@ -5,7 +5,7 @@ const tryRefreshToken = async (): Promise<boolean> => {
   const refreshToken = getRefreshToken();
   if (!refreshToken) return false;
   try {
-    const response = await fetch(`${BASE_URL}api/auth/refresh/`, {
+    const response = await fetch(`${BASE_URL}/auth/refresh/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -20,8 +20,10 @@ const tryRefreshToken = async (): Promise<boolean> => {
     }
 
     const data = await response.json();
-    if (data?.access) {
-      storeToken(data.access);
+    // Backend envelope: { success, message, status, data: { access } }
+    const access = data?.data?.access ?? data?.access;
+    if (access) {
+      storeToken(access);
       return true;
     } else {
       clearToken();

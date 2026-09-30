@@ -1,16 +1,22 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { PhoneInput } from 'react-international-phone';
 import 'react-international-phone/style.css';
 import { useModal } from '../../../context/ModalContext';
 import { useAppDispatch } from '../../../hooks/useAppDispatch';
 import { useAppSelector } from '../../../hooks/useRedux';
-import { createUser, updateUser, fetchUsers } from '../../../store/slices/userSlice';
-import { fetchRoles } from '../../../store/slices/roleSlice';
+import {
+  createUser,
+  updateUser,
+  fetchUsers,
+  fetchRoleOptions,
+  fetchTeamOptions,
+  fetchDepartmentOptions,
+} from '../../../store/slices/userSlice';
 import { fetchReportingManagementOptions } from '../../../store/slices/reportingMangementSlice';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff } from 'lucide-react';
-import type { User, Role, ReportingOption } from '../../../utils/types';
+import type { User, ReportingOption } from '../../../utils/types';
 
 interface UserFormProps {
   userData?: User;
@@ -23,39 +29,38 @@ type UserFormValues = {
   phone1: string;
   role: string;
   reports_to: string | null;
+  team: string;
+  department: string;
+  city: string;
+  country: string;
   password?: string;
 };
 
 const UserForm: React.FC<UserFormProps> = ({ userData }) => {
   const dispatch = useAppDispatch();
   const { hideModal } = useModal();
-  const { data: roles, loading: rolesLoading } = useAppSelector((state) => state.roles);
+  const {
+    roleOptions,
+    roleOptionsLoading,
+    teamOptions,
+    teamOptionsLoading,
+    departmentOptions,
+    departmentOptionsLoading,
+  } = useAppSelector((state) => state.users);
   const { data: reportingUsers, loading: reportingLoading } = useAppSelector((state) => state.reportingManagement);
 
   const isEdit = !!userData;
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const roleList: Role[] = useMemo(() => {
-    if (Array.isArray(roles)) return roles;
-    if (Array.isArray((roles as any)?.results)) return (roles as any).results;
-    if (Array.isArray((roles as any)?.data)) return (roles as any).data;
-    return [];
-  }, [roles]);
-
-  // Fetch roles if not already in store
+  // Dropdown data: fetch once when the modal opens. Never depend on the
+  // fetched lists here — an empty result would re-trigger the effect forever.
   useEffect(() => {
-    if (!roleList || roleList.length === 0) {
-      dispatch(fetchRoles());
-    }
-  }, [dispatch, roleList]);
-
-  // Fetch reporting options if not already in store
-  useEffect(() => {
-    if (!reportingUsers || reportingUsers.length === 0) {
-      dispatch(fetchReportingManagementOptions({ page_size: 1000 }));
-    }
-  }, [dispatch, reportingUsers]);
+    dispatch(fetchRoleOptions());
+    dispatch(fetchTeamOptions());
+    dispatch(fetchDepartmentOptions());
+    dispatch(fetchReportingManagementOptions({ page_size: 1000 }));
+  }, [dispatch]);
 
   const initialRoleId = (() => {
     if (typeof userData?.role === 'object' && userData?.role?.id != null) {
@@ -77,6 +82,26 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
     return '';
   })();
 
+  const initialTeam = (() => {
+    if (typeof userData?.team === 'object' && userData?.team?.id != null) {
+      return String(userData.team.id);
+    }
+    if (typeof userData?.team === 'number' || typeof userData?.team === 'string') {
+      return String(userData.team);
+    }
+    return '';
+  })();
+
+  const initialDepartment = (() => {
+    if (typeof userData?.department === 'object' && userData?.department?.id != null) {
+      return String(userData.department.id);
+    }
+    if (typeof userData?.department === 'number' || typeof userData?.department === 'string') {
+      return String(userData.department);
+    }
+    return '';
+  })();
+
   const {
     register,
     handleSubmit,
@@ -91,6 +116,10 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
       phone1: userData?.phone1 || userData?.phone || '',
       role: initialRoleId,
       reports_to: initialReportsTo,
+      team: initialTeam,
+      department: initialDepartment,
+      city: userData?.city || '',
+      country: userData?.country || '',
       password: '',
     },
   });
@@ -104,10 +133,14 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
         phone1: userData.phone1 || userData.phone || '',
         role: initialRoleId,
         reports_to: initialReportsTo,
+        team: initialTeam,
+        department: initialDepartment,
+        city: userData.city || '',
+        country: userData.country || '',
         password: '',
       });
     }
-  }, [userData, initialRoleId, reset]);
+  }, [userData, initialRoleId, initialReportsTo, initialTeam, initialDepartment, reset]);
 
   const onSubmit = async (data: UserFormValues) => {
     setSubmitting(true);
@@ -121,6 +154,10 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
         phone1: formattedPhone,
         role: data.role,
         reports_to: data.reports_to || null,
+        team: data.team ? Number(data.team) : null,
+        department: data.department ? Number(data.department) : null,
+        city: data.city.trim(),
+        country: data.country.trim(),
       };
 
       if (data.password) {
@@ -280,15 +317,15 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
             {...register('role', {
               required: 'Please select a role',
             })}
-            disabled={rolesLoading}
+            disabled={roleOptionsLoading}
             className={`w-full px-3.5 py-2.5 bg-major border rounded-xl text-sm text-crmText outline-none transition-all shadow-sm ${
               errors.role
                 ? 'border-red-500 focus:ring-2 focus:ring-red-500/20'
                 : 'border-crmBorder focus:border-primary focus:ring-2 focus:ring-primary-ring'
             }`}
           >
-            <option value="">{rolesLoading ? 'Loading roles...' : 'Select a role...'}</option>
-            {roleList.map((r) => (
+            <option value="">{roleOptionsLoading ? 'Loading roles...' : 'Select a role...'}</option>
+            {(roleOptions || []).map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
               </option>
@@ -297,6 +334,64 @@ const UserForm: React.FC<UserFormProps> = ({ userData }) => {
           {errors.role && (
             <p className="mt-1 text-xs text-red-500">{errors.role.message}</p>
           )}
+        </div>
+      </div>
+
+      {/* Team & Department Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-semibold text-crmText mb-1.5">Team</label>
+          <select
+            {...register('team')}
+            disabled={teamOptionsLoading}
+            className="w-full px-3.5 py-2.5 bg-major border border-crmBorder rounded-xl text-sm text-crmText outline-none focus:border-primary focus:ring-2 focus:ring-primary-ring transition-all shadow-sm"
+          >
+            <option value="">{teamOptionsLoading ? 'Loading teams...' : 'Select team (Optional)'}</option>
+            {(teamOptions || []).map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-crmText mb-1.5">Department</label>
+          <select
+            {...register('department')}
+            disabled={departmentOptionsLoading}
+            className="w-full px-3.5 py-2.5 bg-major border border-crmBorder rounded-xl text-sm text-crmText outline-none focus:border-primary focus:ring-2 focus:ring-primary-ring transition-all shadow-sm"
+          >
+            <option value="">{departmentOptionsLoading ? 'Loading departments...' : 'Inherit from team (Optional)'}</option>
+            {(departmentOptions || []).map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* City & Country Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-semibold text-crmText mb-1.5">City</label>
+          <input
+            type="text"
+            {...register('city')}
+            placeholder="e.g. Delhi"
+            className="w-full px-3.5 py-2.5 bg-major border border-crmBorder rounded-xl text-sm text-crmText outline-none focus:border-primary focus:ring-2 focus:ring-primary-ring transition-all shadow-sm"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-crmText mb-1.5">Country</label>
+          <input
+            type="text"
+            {...register('country')}
+            placeholder="e.g. India"
+            className="w-full px-3.5 py-2.5 bg-major border border-crmBorder rounded-xl text-sm text-crmText outline-none focus:border-primary focus:ring-2 focus:ring-primary-ring transition-all shadow-sm"
+          />
         </div>
       </div>
 

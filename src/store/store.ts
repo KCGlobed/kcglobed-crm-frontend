@@ -13,6 +13,10 @@ import metaReducer from "./slices/metaSlice";
 import leadReducer from "./slices/leadSlice";
 import menuReducer from "./slices/menuSlice";
 import stageReducer from "./slices/stageSlice";
+import departmentReducer from "./slices/departmentSlice";
+import teamReducer from "./slices/teamSlice";
+import auditLogReducer from "./slices/auditLogSlice";
+import configurationReducer from "./slices/configurationSlice";
 
 export const store = configureStore({
   reducer: {
@@ -30,6 +34,10 @@ export const store = configureStore({
     leads: leadReducer,
     menu: menuReducer,
     stages: stageReducer,
+    departments: departmentReducer,
+    teams: teamReducer,
+    auditLogs: auditLogReducer,
+    configurations: configurationReducer,
   },
 });
 

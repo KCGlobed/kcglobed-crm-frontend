@@ -52,12 +52,10 @@ const UpdateRoleForm: React.FC<UpdateRoleFormProps> = ({ userData }) => {
     },
   });
 
-  // Fetch available roles if not already in store
+  // Fetch available roles once when the modal opens
   useEffect(() => {
-    if (!roleList || roleList.length === 0) {
-      dispatch(fetchRoles());
-    }
-  }, [dispatch, roleList]);
+    dispatch(fetchRoles());
+  }, [dispatch]);
 
   useEffect(() => {
     reset({ roleId: initialRoleId });

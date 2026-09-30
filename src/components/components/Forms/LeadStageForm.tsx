@@ -19,12 +19,10 @@ const LeadStageForm: React.FC<LeadStageFormProps> = ({ leadData, bulkUids }) => 
   const [remark, setRemark] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Load stage options for the dropdown
+  // Load stage options once when the modal opens
   useEffect(() => {
-    if (!stageOptions || stageOptions.length === 0) {
-      dispatch(fetchStageOptions());
-    }
-  }, [dispatch, stageOptions]);
+    dispatch(fetchStageOptions());
+  }, [dispatch]);
 
   const uids = leadData?.uid != null ? [leadData.uid] : bulkUids || [];
   const target = leadData?.full_name || `${uids.length} filtered leads`;

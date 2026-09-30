@@ -1,5 +1,11 @@
 import type { FilterField } from '../components/components/common/DynamicFilter';
-import { fetchRoleOptionsApi, fetchStageOptionsApi } from '../services/apiServices';
+import {
+    fetchRoleOptionsApi,
+    fetchStageOptionsApi,
+    fetchTeamOptionsApi,
+    fetchDepartmentOptionsApi,
+    fetchAuditLogOptionsApi,
+} from '../services/apiServices';
 import { LEAD_SOURCES } from './mockLeads';
 export const roleFilterConfig: FilterField[] = [
     {
@@ -38,6 +44,36 @@ export const userFilterConfig: FilterField[] = [
                 return response.data.map((r: any) => ({ label: r.name, value: r.slug }));
             } catch (err) {
                 console.error("Failed to fetch roles", err);
+                return [];
+            }
+        }
+    },
+    {
+        type: 'select',
+        label: 'Team',
+        name: 'team',
+        placeholder: 'Select a team...',
+        getOptions: async () => {
+            try {
+                const response = await fetchTeamOptionsApi();
+                return (response.data || []).map((t: any) => ({ label: t.name, value: t.id }));
+            } catch (err) {
+                console.error("Failed to fetch teams", err);
+                return [];
+            }
+        }
+    },
+    {
+        type: 'select',
+        label: 'Department',
+        name: 'department',
+        placeholder: 'Select a department...',
+        getOptions: async () => {
+            try {
+                const response = await fetchDepartmentOptionsApi();
+                return (response.data || []).map((d: any) => ({ label: d.name, value: d.id }));
+            } catch (err) {
+                console.error("Failed to fetch departments", err);
                 return [];
             }
         }
@@ -118,6 +154,143 @@ export const stageFilterConfig: FilterField[] = [
             { label: 'Won', value: 'won' },
             { label: 'Lost', value: 'lost' },
         ],
+    },
+    {
+        type: 'status',
+        label: 'Status',
+        name: 'status',
+        options: [
+            { label: 'All', value: 'all' },
+            { label: 'Active', value: 'active' },
+            { label: 'Inactive', value: 'deactive' },
+        ],
+    },
+];
+
+export const departmentFilterConfig: FilterField[] = [
+    {
+        type: 'text',
+        label: 'Department Name',
+        name: 'name',
+        placeholder: 'Filter by department name...',
+    },
+    {
+        type: 'status',
+        label: 'Status',
+        name: 'status',
+        options: [
+            { label: 'All', value: 'all' },
+            { label: 'Active', value: 'active' },
+            { label: 'Inactive', value: 'deactive' },
+        ],
+    },
+];
+
+export const teamFilterConfig: FilterField[] = [
+    {
+        type: 'text',
+        label: 'Team Name',
+        name: 'name',
+        placeholder: 'Filter by team name...',
+    },
+    {
+        type: 'select',
+        label: 'Department',
+        name: 'department',
+        placeholder: 'Select a department...',
+        getOptions: async () => {
+            try {
+                const response = await fetchDepartmentOptionsApi();
+                return (response.data || []).map((d: any) => ({ label: d.name, value: d.id }));
+            } catch (err) {
+                console.error("Failed to fetch departments", err);
+                return [];
+            }
+        }
+    },
+    {
+        type: 'status',
+        label: 'Status',
+        name: 'status',
+        options: [
+            { label: 'All', value: 'all' },
+            { label: 'Active', value: 'active' },
+            { label: 'Inactive', value: 'deactive' },
+        ],
+    },
+];
+
+export const auditLogFilterConfig: FilterField[] = [
+    {
+        type: 'text',
+        label: 'User',
+        name: 'user',
+        placeholder: 'Filter by uid or email...',
+    },
+    {
+        type: 'select',
+        label: 'Action',
+        name: 'action',
+        placeholder: 'Select an action...',
+        getOptions: async () => {
+            try {
+                const response = await fetchAuditLogOptionsApi();
+                const actions = response?.data?.actions || [];
+                return actions.map((a: any) =>
+                    typeof a === 'object'
+                        ? { label: a.label ?? a.value, value: a.value }
+                        : { label: a, value: a }
+                );
+            } catch (err) {
+                console.error("Failed to fetch audit log options", err);
+                return [];
+            }
+        }
+    },
+    {
+        type: 'select',
+        label: 'Module',
+        name: 'module',
+        placeholder: 'Select a module...',
+        getOptions: async () => {
+            try {
+                const response = await fetchAuditLogOptionsApi();
+                const modules = response?.data?.modules || [];
+                return modules.map((m: any) =>
+                    typeof m === 'object'
+                        ? { label: m.label ?? m.name ?? m.value, value: m.value ?? m.code }
+                        : { label: m, value: m }
+                );
+            } catch (err) {
+                console.error("Failed to fetch audit log options", err);
+                return [];
+            }
+        }
+    },
+    {
+        type: 'status',
+        label: 'Result',
+        name: 'success',
+        options: [
+            { label: 'All', value: 'all' },
+            { label: 'Success', value: 'true' },
+            { label: 'Failure', value: 'false' },
+        ],
+    },
+];
+
+export const configurationFilterConfig: FilterField[] = [
+    {
+        type: 'text',
+        label: 'Key / Name',
+        name: 'search',
+        placeholder: 'Filter by key or name...',
+    },
+    {
+        type: 'text',
+        label: 'Group',
+        name: 'group',
+        placeholder: 'e.g. masking, security, leads...',
     },
     {
         type: 'status',

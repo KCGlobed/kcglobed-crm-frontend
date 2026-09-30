@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useModal } from '../../../context/ModalContext';
 import { useAppDispatch } from '../../../hooks/useAppDispatch';
-import { reassignLead } from '../../../store/slices/leadSlice';
-import { MOCK_COUNSELORS } from '../../../utils/mockLeads';
+import { useAppSelector } from '../../../hooks/useRedux';
+import { reassignLead, fetchLeadAssignees } from '../../../store/slices/leadSlice';
 import toast from 'react-hot-toast';
 import type { Lead } from '../../../utils/types';
 
@@ -13,20 +13,26 @@ interface LeadReassignFormProps {
 const LeadReassignForm: React.FC<LeadReassignFormProps> = ({ leadData }) => {
   const dispatch = useAppDispatch();
   const { hideModal } = useModal();
-  const [counselor, setCounselor] = useState('');
+  const { assignees, assigneesLoading } = useAppSelector((state) => state.leads);
+  const [assigneeUid, setAssigneeUid] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Load assignee options once when the modal opens (GET /api/leads/assignees/)
+  useEffect(() => {
+    dispatch(fetchLeadAssignees());
+  }, [dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!counselor) {
-      toast.error('Please select a counselor');
+    const selected = (assignees || []).find((a) => a.uid === assigneeUid);
+    if (!selected) {
+      toast.error('Please select an assignee');
       return;
     }
-    const selected = MOCK_COUNSELORS.find((c) => c.value === counselor);
     setSubmitting(true);
     try {
-      await dispatch(reassignLead({ uid: leadData.uid, assigned_to: selected?.label })).unwrap();
-      toast.success(`Lead re-assigned to ${selected?.label}`);
+      await dispatch(reassignLead({ uid: leadData.uid, assigned_to: selected })).unwrap();
+      toast.success(`Lead re-assigned to ${selected.name || selected.email}`);
       hideModal();
     } catch (err: any) {
       toast.error(err?.message || err || 'Failed to re-assign lead');
@@ -39,7 +45,7 @@ const LeadReassignForm: React.FC<LeadReassignFormProps> = ({ leadData }) => {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="p-3 rounded-xl border border-crmBorder bg-major-tint text-xs text-crmText-secondary">
         <span className="font-bold text-crmText">{leadData.full_name || '-'}</span> is currently assigned
-        to <span className="font-bold text-crmText">{leadData.assigned_to || 'Unassigned'}</span>
+        to <span className="font-bold text-crmText">{leadData.assigned_to?.name || 'Unassigned'}</span>
       </div>
 
       <div>
@@ -47,14 +53,15 @@ const LeadReassignForm: React.FC<LeadReassignFormProps> = ({ leadData }) => {
           Re-assign To <span className="text-red-500">*</span>
         </label>
         <select
-          value={counselor}
-          onChange={(e) => setCounselor(e.target.value)}
-          className="w-full px-3.5 py-2.5 bg-major border border-crmBorder focus:border-primary rounded-xl text-sm text-crmText outline-none transition-all shadow-sm focus:ring-2 focus:ring-primary-ring cursor-pointer appearance-none"
+          value={assigneeUid}
+          onChange={(e) => setAssigneeUid(e.target.value)}
+          disabled={assigneesLoading}
+          className="w-full px-3.5 py-2.5 bg-major border border-crmBorder focus:border-primary rounded-xl text-sm text-crmText outline-none transition-all shadow-sm focus:ring-2 focus:ring-primary-ring cursor-pointer appearance-none disabled:opacity-60"
         >
-          <option value="">Select Counselor</option>
-          {MOCK_COUNSELORS.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
+          <option value="">{assigneesLoading ? 'Loading assignees...' : 'Select Assignee'}</option>
+          {(assignees || []).map((a) => (
+            <option key={a.uid} value={a.uid}>
+              {a.name || a.email}
             </option>
           ))}
         </select>

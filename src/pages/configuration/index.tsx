@@ -1,0 +1,451 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import toast from 'react-hot-toast';
+import { Filter, Plus, ChevronDown, MoreVertical, Eye, Power, Trash2 } from 'lucide-react';
+import DynamicServerTable from '../../components/components/Table/Table';
+import { useAppDispatch } from '../../hooks/useAppDispatch';
+import { useAppSelector } from '../../hooks/useRedux';
+import { fetchConfigurations, updateConfigurationStatus, deleteConfiguration } from '../../store/slices/configurationSlice';
+import useDebounce from '../../hooks/useDebounce';
+import moment from 'moment';
+import { useModal } from '../../context/ModalContext';
+import { FiEdit } from 'react-icons/fi';
+import ConfigurationForm from '../../components/components/Forms/ConfigurationForm';
+import ConfigurationView from '../../components/components/View/ConfigurationView';
+import DeleteConfirmationModal from '../../components/components/Modal/DeleteModal';
+import SearchInput from '../../components/components/common/SearchInput';
+import DateRangeDropdown from '../../components/components/common/DateRangeDropdown';
+import DynamicFilter from '../../components/components/common/DynamicFilter';
+import { configurationFilterConfig } from '../../utils/filterConfiguration';
+import type { Configuration } from '../../utils/types';
+
+// Interface matching the Table component's column requirement
+interface ColumnDef {
+    key: string;
+    title: string;
+    render?: (value: any, row: any) => React.ReactNode;
+    width?: string;
+    align?: 'left' | 'center' | 'right';
+    sortable?: boolean;
+}
+
+const shortValue = (value: any): string => {
+    if (value === null || value === undefined) return '-';
+    const str = typeof value === 'object' ? JSON.stringify(value) : String(value);
+    return str.length > 40 ? `${str.slice(0, 40)}…` : str;
+};
+
+const ActionMenu = ({ row, onToggleStatus }: { row: Configuration; onToggleStatus: (row: Configuration) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+  const { showModal } = useModal();
+  const dispatch = useAppDispatch();
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  const closeAndDo = (action: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsOpen(false);
+    action();
+  };
+
+  return (
+    <div className="relative flex justify-center" ref={dropdownRef}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className="p-1.5 text-crmText-secondary hover:text-minor hover:bg-minor-soft rounded-lg transition-colors cursor-pointer"
+      >
+        <MoreVertical size={18} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-48 bg-major rounded-xl shadow-lg border border-crmBorder py-1.5 z-[99] overflow-hidden">
+          <button
+            onClick={closeAndDo(() => showModal({ title: 'Configuration Details', content: <ConfigurationView configurationData={row} />, type: 'success', size: 'xl' }))}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-minor hover:bg-major-tint transition-colors text-left"
+          >
+            <Eye size={14} /> View Details
+          </button>
+
+          <button
+            onClick={closeAndDo(() => showModal({ title: `Edit Configuration: ${row.name || row.key}`, content: <ConfigurationForm configurationData={row} />, type: 'custom', size: 'lg' }))}
+            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-green-600 hover:bg-green-50 transition-colors text-left"
+          >
+            <FiEdit size={14} /> Edit Configuration
+          </button>
+
+          <button
+            onClick={closeAndDo(() => onToggleStatus(row))}
+            className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-colors text-left border-t border-crmBorder mt-1 pt-2 ${row.is_active ? 'text-red-600 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'}`}
+          >
+            <Power size={14} /> {row.is_active ? 'Deactivate' : 'Activate'}
+          </button>
+
+          {!row.is_system && (
+            <button
+              onClick={closeAndDo(() => showModal({
+                  title: 'Delete Configuration',
+                  content: (
+                      <DeleteConfirmationModal
+                          id={row.id!}
+                          name={row.key || 'this configuration'}
+                          onDelete={async (id) => {
+                              await dispatch(deleteConfiguration(id as number)).unwrap();
+                          }}
+                      />
+                  ),
+                  type: 'custom',
+                  size: 'md'
+              }))}
+              className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors text-left"
+            >
+              <Trash2 size={14} /> Delete Configuration
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const ManageConfigurations: React.FC = () => {
+    const [currentPage, setCurrentPage] = useState(1);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [ordering, setOrdering] = useState<string>('');
+    const [showFilter, setShowFilter] = useState(false);
+    const { showModal } = useModal();
+
+    // Filter states
+    const [filters, setFilters] = useState({
+        search: '',
+        group: '',
+        status: 'all' as 'all' | 'active' | 'deactive',
+    });
+    const [startDate, setStartDate] = useState<string>('');
+    const [endDate, setEndDate] = useState<string>('');
+
+    const debouncedSearchTerm = useDebounce(searchTerm, 500);
+    const debouncedFilters = useDebounce(filters, 500);
+
+    const dispatch = useAppDispatch();
+    const {
+        data: configurations,
+        loading,
+        error,
+        pagination,
+    } = useAppSelector((state) => state.configurations);
+
+    const total_results = pagination?.total_results;
+    const current_page = pagination?.current_page;
+    const page_size = pagination?.page_size;
+
+    const [pageSize, setPageSize] = useState(page_size || 10);
+    const isMounted = React.useRef(false);
+
+    // Server-side filters supported by GET /access/configurations/
+    const serverFilters = useMemo(() => ({
+        search: debouncedSearchTerm || debouncedFilters.search || undefined,
+        group: debouncedFilters.group || undefined,
+        is_active: debouncedFilters.status === 'active' ? true : debouncedFilters.status === 'deactive' ? false : undefined,
+    }), [debouncedSearchTerm, debouncedFilters]);
+
+    const activeFilterCount = useMemo(() => {
+        let count = 0;
+        if (filters.search) count++;
+        if (filters.group) count++;
+        if (filters.status && filters.status !== 'all') count++;
+        if (ordering) count++;
+        if (startDate || endDate) count++;
+        return count;
+    }, [filters, ordering, startDate, endDate]);
+
+    // Sync with Redux current_page if it changes
+    useEffect(() => {
+        if (current_page && current_page !== currentPage) {
+            setCurrentPage(current_page);
+        }
+    }, [current_page]);
+
+    // Fetch configurations when currentPage or pageSize changes
+    useEffect(() => {
+        dispatch(fetchConfigurations({ page: currentPage, page_size: pageSize, ...serverFilters }));
+    }, [dispatch, currentPage, pageSize, serverFilters]);
+
+    const configurationList = useMemo(() => configurations || [], [configurations]);
+    const totalCount = total_results ?? configurationList.length;
+
+    // Reset to first page when search or filters change
+    useEffect(() => {
+        if (!isMounted.current) {
+            isMounted.current = true;
+            return;
+        }
+        if (currentPage !== 1) {
+            setCurrentPage(1);
+        }
+    }, [debouncedSearchTerm, debouncedFilters, startDate, endDate]);
+
+    const handleFilterChange = (name: string, value: any) => {
+        setFilters((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const clearFilters = () => {
+        setFilters({
+            search: '',
+            group: '',
+            status: 'all',
+        });
+        setSearchTerm('');
+        setStartDate('');
+        setEndDate('');
+        setOrdering('');
+    };
+
+    const handleSort = (key: string, direction: 'asc' | 'desc') => {
+        const orderPrefix = direction === 'desc' ? '-' : '';
+        setOrdering(`${orderPrefix}${key}`);
+    };
+
+    const handleDirectionSort = (direction: 'asc' | 'desc') => {
+        const currentKey = ordering.replace(/^-/, '') || 'key';
+        handleSort(currentKey, direction);
+    };
+
+    const handleToggleStatus = async (row: Configuration) => {
+        if (row.id == null) return;
+        const newStatus = !row.is_active;
+        try {
+            await dispatch(updateConfigurationStatus({ id: row.id, is_active: newStatus })).unwrap();
+            toast.success(`Configuration is ${newStatus ? 'active' : 'inactive'}`);
+        } catch (error: any) {
+            toast.error(error?.message || error || 'Failed to update status');
+        }
+    };
+
+    // Column definitions
+    const columns: ColumnDef[] = [
+        {
+            key: 'key',
+            title: 'Setting',
+            render: (_: any, row: Configuration) => (
+                <div className="flex flex-col">
+                    <span className="font-semibold text-crmText text-sm whitespace-nowrap">{row.name}</span>
+                    <span className="text-[11px] text-crmText-tertiary font-mono whitespace-nowrap">{row.key}</span>
+                </div>
+            ),
+            sortable: true,
+            width: '260px',
+        },
+        {
+            key: 'group',
+            title: 'Group',
+            render: (value: string) => (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap bg-major-tint text-crmText-secondary border-crmBorder">
+                    {value || '-'}
+                </span>
+            ),
+            width: '110px',
+            align: 'center',
+        },
+        {
+            key: 'data_type',
+            title: 'Type',
+            render: (value: string) => (
+                <span className="text-[11px] font-mono text-crmText-secondary whitespace-nowrap">{value || '-'}</span>
+            ),
+            width: '90px',
+            align: 'center',
+        },
+        {
+            key: 'value',
+            title: 'Value',
+            render: (value: any) => (
+                <span className="text-xs font-mono text-crmText whitespace-nowrap" title={typeof value === 'object' ? JSON.stringify(value) : String(value)}>
+                    {shortValue(value)}
+                </span>
+            ),
+            width: '180px',
+        },
+        {
+            key: 'is_system',
+            title: 'Kind',
+            render: (value: boolean) => (
+                <span
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border whitespace-nowrap ${
+                        value
+                            ? 'bg-secondary-soft text-secondary-contrast border-secondary/30'
+                            : 'bg-major-tint text-crmText-secondary border-crmBorder'
+                    }`}
+                >
+                    {value ? 'System' : 'Custom'}
+                </span>
+            ),
+            width: '100px',
+            align: 'center',
+        },
+        {
+            key: 'updated_at',
+            title: 'Updated On',
+            render: (value: string) => (
+                <div className="flex flex-col">
+                    <span className="text-crmText text-xs font-medium">{value ? moment(value).format('MMM DD, YYYY') : '-'}</span>
+                    <span className="text-crmText-tertiary text-[10px] uppercase">{value ? moment(value).format('hh:mm A') : ''}</span>
+                </div>
+            ),
+            sortable: true,
+            width: '130px',
+        },
+        {
+            key: 'is_active',
+            title: 'Status',
+            render: (value: boolean, _row: Configuration) => (
+                <span
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+                        value
+                            ? 'bg-crmSuccess-bg text-crmSuccess border-crmSuccess-border'
+                            : 'bg-crmDanger-bg text-crmDanger border-crmDanger-border'
+                    }`}
+                >
+                    {value ? 'Active' : 'Inactive'}
+                </span>
+            ),
+            width: '100px',
+            align: 'center',
+        },
+        {
+            key: 'id',
+            title: 'Actions',
+            render: (_: any, row: Configuration) => (
+                <ActionMenu row={row} onToggleStatus={handleToggleStatus} />
+            ),
+            width: '120px',
+            align: 'right',
+        },
+    ];
+
+    return (
+        <div className="flex flex-col gap-4 w-full h-[calc(100vh-6rem)] max-w-full min-w-0 animate-in fade-in duration-500">
+            {/* Premium Top Action Bar */}
+            <div className="flex flex-col bg-major rounded-2xl shadow-crm-card border border-crmBorder relative">
+                <div className="flex flex-wrap items-center justify-between px-4 py-3 gap-3">
+                    <div className="flex items-center gap-3 sm:gap-4 shrink-0 flex-wrap">
+                        <button
+                            onClick={() => setShowFilter(!showFilter)}
+                            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all active:scale-95 border ${
+                                showFilter || activeFilterCount > 0
+                                    ? 'border-minor/30 text-minor-contrast bg-minor-soft'
+                                    : 'border-crmBorder text-crmText-secondary hover:border-crmBorder-strong hover:bg-major-tint'
+                            }`}
+                        >
+                            <Filter size={16} className={showFilter || activeFilterCount > 0 ? "text-minor-contrast" : "text-crmText-tertiary"} />
+                            <span>Filter</span>
+                            <ChevronDown
+                                size={14}
+                                className={`text-crmText-secondary transition-transform duration-200 ${showFilter ? 'rotate-180' : ''}`}
+                            />
+                            {activeFilterCount > 0 && (
+                                <span className="min-w-[18px] h-4.5 px-1.5 rounded-full bg-secondary text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+                                    {activeFilterCount}
+                                </span>
+                            )}
+                        </button>
+
+                        <DateRangeDropdown
+                            startDate={startDate}
+                            endDate={endDate}
+                            defaultPreset="all"
+                            onDateChange={(start, end) => {
+                                setStartDate(start);
+                                setEndDate(end);
+                            }}
+                        />
+                    </div>
+
+                    <SearchInput
+                        value={searchTerm}
+                        onChange={setSearchTerm}
+                        placeholder="Search configurations..."
+                        className="mx-4"
+                    />
+
+                    <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                        <button
+                            className="flex items-center gap-1.5 px-4 py-2 bg-minor hover:bg-minor-hover text-white rounded-xl text-xs font-bold hover:shadow-lg transition-all active:scale-95 shadow-minor/20 shadow-sm cursor-pointer border-none"
+                            onClick={() =>
+                                showModal({
+                                    title: "Add Configuration",
+                                    content: <ConfigurationForm />,
+                                    type: 'custom',
+                                    size: 'lg',
+                                })
+                            }
+                        >
+                            <Plus size={18} strokeWidth={2.5} />
+                            Add Configuration
+                        </button>
+                    </div>
+                </div>
+
+                {/* Inline General Filter Section */}
+                <DynamicFilter
+                    show={showFilter}
+                    config={configurationFilterConfig}
+                    values={filters}
+                    onChange={handleFilterChange}
+                    onClear={clearFilters}
+                    onClose={() => setShowFilter(false)}
+                    ordering={ordering}
+                    onDirectionSort={handleDirectionSort}
+                />
+            </div>
+
+            {/* Main Table Content */}
+            <div className="flex flex-col bg-major rounded-2xl shadow-crm-card overflow-hidden border border-crmBorder w-full max-w-full min-w-0">
+                <DynamicServerTable
+                    data={configurationList}
+                    columns={columns as any}
+                    currentPage={currentPage}
+                    pageSize={pageSize}
+                    totalCount={totalCount}
+                    loading={loading}
+                    error={error}
+                    onRetry={() => dispatch(fetchConfigurations({ page: currentPage, page_size: pageSize, ...serverFilters }))}
+                    emptyTitle="No configurations found"
+                    emptyDescription="There are no configurations to display at the moment."
+                    rowKey={(row: Configuration) => row.id ?? row.key ?? Math.random()}
+                    onPageChange={(page) => setCurrentPage(page)}
+                    onPageSizeChange={(size) => {
+                        setPageSize(size);
+                        setCurrentPage(1); // Reset to first page when size changes
+                    }}
+                    onRowClick={(row) =>
+                        showModal({
+                            title: 'Configuration Details',
+                            content: <ConfigurationView configurationData={row} />,
+                            type: 'success',
+                            size: 'xl',
+                        })
+                    }
+                    onSort={handleSort}
+                    className="rounded-none border-none shadow-none"
+                    maxHeight="100%"
+                />
+            </div>
+        </div>
+    );
+};
+
+export const ConfigurationsPage = ManageConfigurations;
+export default ManageConfigurations;

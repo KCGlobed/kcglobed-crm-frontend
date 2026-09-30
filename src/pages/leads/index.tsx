@@ -241,7 +241,7 @@ const HeaderActionMenu = ({ leadList }: { leadList: Lead[] }) => {
                     l.utm_source,
                     l.utm_campaign,
                     l.stage?.name,
-                    l.assigned_to,
+                    l.assigned_to?.name || l.assigned_to?.email,
                     l.created_at ? moment(l.created_at).format('YYYY-MM-DD HH:mm') : '',
                     l.updated_at ? moment(l.updated_at).format('YYYY-MM-DD HH:mm') : '',
                 ]
@@ -507,12 +507,14 @@ const ManageLeads: React.FC = () => {
         {
             key: 'assigned_to',
             title: 'Assigned To',
-            render: (value: string | null) => (
-                <span className={`text-xs whitespace-nowrap ${value ? 'font-semibold text-crmText' : 'text-crmText-tertiary italic'}`}>
-                    {value || 'Unassigned'}
-                </span>
-            ),
-            sortable: true,
+            render: (_: any, row: Lead) => {
+                const name = row.assigned_to?.name || row.assigned_to?.email;
+                return (
+                    <span className={`text-xs whitespace-nowrap ${name ? 'font-semibold text-crmText' : 'text-crmText-tertiary italic'}`}>
+                        {name || 'Unassigned'}
+                    </span>
+                );
+            },
             width: '140px',
         },
         {

@@ -3,10 +3,12 @@ import {
   fetchRolesApi,
   fetchRoleByIdApi,
   createRoleApi,
+  updateRoleApi,
   fetchRolePermissionsApi,
   updateRolePermissionsApi,
   deleteRoleApi,
   fetchModulesApi,
+  fetchPermissionCatalogApi,
 } from "../../services/apiServices";
 import type {
   Pagination,
@@ -15,15 +17,14 @@ import type {
   RoleAccess,
   RolePermission,
   Module,
-  ModulePermissionsGroup,
 } from "../../utils/types";
 
 
 interface RoleState extends Pagination<Role> {
   modules: Module[];
   modulesLoading: boolean;
-  permissionsByModule: ModulePermissionsGroup[];
-  permissionsLoading: boolean;
+  catalog: { actions?: string[]; scopes?: { value: string; label: string }[]; modules?: Module[] } | null;
+  catalogLoading: boolean;
   selectedRole: Role | null;
   selectedRoleLoading: boolean;
   rolePermissions: RoleAccess | null;
@@ -48,8 +49,8 @@ const initialState: RoleState = {
   error: null,
   modules: [],
   modulesLoading: false,
-  permissionsByModule: [],
-  permissionsLoading: false,
+  catalog: null,
+  catalogLoading: false,
   selectedRole: null,
   selectedRoleLoading: false,
   rolePermissions: null,
@@ -59,7 +60,7 @@ const initialState: RoleState = {
 
 export const fetchRoles = createAsyncThunk<
   { data: Role[]; pagination?: PaginationInfo },
-  { page?: number; page_size?: number } | void
+  { page?: number; page_size?: number; search?: string; active?: boolean | string } | void
 >(
   "roles/fetchRoles",
   async (params, { rejectWithValue }) => {
@@ -118,6 +119,21 @@ export const createRole = createAsyncThunk<Role, Role>(
   }
 );
 
+export const updateRole = createAsyncThunk<
+  Role,
+  { id: number; payload: Role }
+>(
+  "roles/updateRole",
+  async ({ id, payload }, { rejectWithValue }) => {
+    try {
+      const response = await updateRoleApi(id, payload);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to update role");
+    }
+  }
+);
+
 export const fetchRolePermissions = createAsyncThunk<RoleAccess, number>(
   "roles/fetchRolePermissions",
   async (roleId, { rejectWithValue }) => {
@@ -170,26 +186,14 @@ export const updateRoleStatus = createAsyncThunk<Role, Role>(
   "roles/updateRoleStatus",
   async (payload, { getState, rejectWithValue }) => {
     try {
-      const response = await "";
+      const response = await updateRoleApi(payload.id as number, { is_active: payload.is_active });
       const { roles } = getState() as { roles: RoleState };
       const existing = (roles.data || []).find((r) => r.id === payload.id);
-      return (
-        (response as unknown as Role) || {
-          ...(existing || {
-            id: payload.id,
-            name: `Role #${payload.id}`,
-            slug: `role-${payload.id}`,
-            description: "",
-            is_system: false,
-            is_default: false,
-            user_count: 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          }),
-          is_active: payload.is_active ?? true,
-          updated_at: new Date().toISOString(),
-        }
-      );
+      return {
+        ...(existing || { id: payload.id }),
+        ...(response?.data ?? {}),
+        is_active: payload.is_active ?? true,
+      };
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to update role status");
     }
@@ -208,20 +212,21 @@ export const deleteRole = createAsyncThunk<number, number>(
   }
 );
 
-export const fetchPermissionsByModule = createAsyncThunk<ModulePermissionsGroup[]>(
-  "roles/fetchPermissionsByModule",
+// Permission catalog (GET /api/access/permissions/): actions, data scopes and modules
+export const fetchPermissionCatalog = createAsyncThunk<RoleState["catalog"]>(
+  "roles/fetchPermissionCatalog",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await "";
-      return (response as unknown as ModulePermissionsGroup[]) || [];
+      const response = await fetchPermissionCatalogApi();
+      return response.data;
     } catch (err: any) {
-      return rejectWithValue(err.message || "Failed to fetch permissions");
+      return rejectWithValue(err.message || "Failed to fetch permission catalog");
     }
   },
   {
     condition: (_, { getState }) => {
-      const { roles } = getState() as { roles: { permissionsLoading: boolean } };
-      if (roles?.permissionsLoading) {
+      const { roles } = getState() as { roles: { catalogLoading: boolean } };
+      if (roles?.catalogLoading) {
         return false; // prevent duplicate in-flight request
       }
       return true;
@@ -376,15 +381,36 @@ const roleSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      .addCase(fetchPermissionsByModule.pending, (state) => {
-        state.permissionsLoading = true;
+      .addCase(fetchPermissionCatalog.pending, (state) => {
+        state.catalogLoading = true;
       })
-      .addCase(fetchPermissionsByModule.fulfilled, (state, action) => {
-        state.permissionsLoading = false;
-        state.permissionsByModule = action.payload;
+      .addCase(fetchPermissionCatalog.fulfilled, (state, action) => {
+        state.catalogLoading = false;
+        state.catalog = action.payload || null;
       })
-      .addCase(fetchPermissionsByModule.rejected, (state) => {
-        state.permissionsLoading = false;
+      .addCase(fetchPermissionCatalog.rejected, (state) => {
+        state.catalogLoading = false;
+      })
+
+      // Update role (PATCH /api/access/roles/{id}/)
+      .addCase(updateRole.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(updateRole.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const updated = action.payload;
+        if (updated && updated.id != null) {
+          const idx = (state.data || []).findIndex((r) => r.id === updated.id);
+          if (idx !== -1 && state.data) state.data[idx] = { ...state.data[idx], ...updated };
+          if (state.selectedRole?.id === updated.id) {
+            state.selectedRole = { ...state.selectedRole, ...updated };
+          }
+        }
+      })
+      .addCase(updateRole.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
       });
   },
 });
