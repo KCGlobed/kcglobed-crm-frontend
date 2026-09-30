@@ -4,7 +4,7 @@ import { Filter, Plus, ChevronDown, MoreVertical, Eye, Power, Trash2 } from 'luc
 import DynamicServerTable from '../../components/components/Table/Table';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
 import { useAppSelector } from '../../hooks/useRedux';
-import { fetchModules, updateModule, deleteModule } from '../../store/slices/moduleSlice';
+import { fetchModules, updateModule, deleteModule, activateModule, deactivateModule } from '../../store/slices/moduleSlice';
 import useDebounce from '../../hooks/useDebounce';
 import moment from 'moment';
 import { useModal } from '../../context/ModalContext';
@@ -239,7 +239,11 @@ const ManageModules: React.FC = () => {
         if (row.id == null) return;
         const newStatus = !row.is_active;
         try {
-            await dispatch(updateModule({ id: row.id, payload: { is_active: newStatus } as Module })).unwrap();
+            if (newStatus) {
+                await dispatch(activateModule({ id: row.id, include_submodules: true })).unwrap();
+            } else {
+                await dispatch(deactivateModule(row.id)).unwrap();
+            }
             toast.success(`Module is ${newStatus ? 'active' : 'inactive'}`);
         } catch (error: any) {
             console.error("Failed to update status", error);

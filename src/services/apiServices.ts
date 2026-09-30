@@ -101,6 +101,14 @@ export const deleteModuleApi = async (moduleId: number | string): Promise<any> =
   return await apiRequest(`/access/modules/${moduleId}/`, "DELETE");
 };
 
+export const activateModuleApi = async (moduleId: number | string, payload: { include_submodules: boolean }): Promise<any> => {
+  return await apiRequest(`/access/modules/${moduleId}/activate/`, "PATCH", payload);
+};
+
+export const deactivateModuleApi = async (moduleId: number | string): Promise<any> => {
+  return await apiRequest(`/access/modules/${moduleId}/deactivate/`, "PATCH");
+};
+
 // ----------------User service------- //
 export const fetchUsersApi = async (params?: { page?: number; page_size?: number; search?: string; role?: string; is_active?: boolean | string }): Promise<any> => {
   const query = new URLSearchParams();

@@ -5,6 +5,8 @@ import {
   createModuleApi,
   updateModuleApi,
   deleteModuleApi,
+  activateModuleApi,
+  deactivateModuleApi,
 } from "../../services/apiServices";
 import type { Pagination, PaginationInfo, Module } from "../../utils/types";
 
@@ -122,6 +124,36 @@ export const deleteModule = createAsyncThunk<number | string, number | string>(
   }
 );
 
+export const activateModule = createAsyncThunk<
+  Module,
+  { id: number | string; include_submodules: boolean }
+>(
+  "modules/activateModule",
+  async ({ id, include_submodules }, { rejectWithValue }) => {
+    try {
+      const response = await activateModuleApi(id, { include_submodules });
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to activate module");
+    }
+  }
+);
+
+export const deactivateModule = createAsyncThunk<
+  Module,
+  number | string
+>(
+  "modules/deactivateModule",
+  async (moduleId, { rejectWithValue }) => {
+    try {
+      const response = await deactivateModuleApi(moduleId);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to deactivate module");
+    }
+  }
+);
+
 const moduleSlice = createSlice({
   name: "modules",
   initialState,
@@ -233,6 +265,56 @@ const moduleSlice = createSlice({
         }
       })
       .addCase(deleteModule.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+      
+      // Activate module (PATCH /api/access/modules/{id}/activate/)
+      .addCase(activateModule.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(activateModule.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const updated = action.payload;
+        if (updated && updated.id != null) {
+          if (state.data && state.data.length > 0) {
+            const idx = state.data.findIndex((m) => m.id === updated.id);
+            if (idx !== -1) {
+              state.data[idx] = { ...state.data[idx], ...updated };
+            }
+          }
+          if (state.selectedModule?.id === updated.id) {
+            state.selectedModule = { ...state.selectedModule, ...updated };
+          }
+        }
+      })
+      .addCase(activateModule.rejected, (state, action) => {
+        state.actionLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Deactivate module (PATCH /api/access/modules/{id}/deactivate/)
+      .addCase(deactivateModule.pending, (state) => {
+        state.actionLoading = true;
+        state.error = null;
+      })
+      .addCase(deactivateModule.fulfilled, (state, action) => {
+        state.actionLoading = false;
+        const updated = action.payload;
+        if (updated && updated.id != null) {
+          if (state.data && state.data.length > 0) {
+            const idx = state.data.findIndex((m) => m.id === updated.id);
+            if (idx !== -1) {
+              state.data[idx] = { ...state.data[idx], ...updated };
+            }
+          }
+          if (state.selectedModule?.id === updated.id) {
+            state.selectedModule = { ...state.selectedModule, ...updated };
+          }
+        }
+      })
+      .addCase(deactivateModule.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload as string;
       });
