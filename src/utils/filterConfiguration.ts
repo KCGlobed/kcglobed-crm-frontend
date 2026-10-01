@@ -5,6 +5,8 @@ import {
     fetchTeamOptionsApi,
     fetchDepartmentOptionsApi,
     fetchAuditLogOptionsApi,
+    fetchLeadAssigneesApi,
+    fetchInterviewersApi,
 } from '../services/apiServices';
 import { LEAD_SOURCES } from './mockLeads';
 export const roleFilterConfig: FilterField[] = [
@@ -90,25 +92,8 @@ export const userFilterConfig: FilterField[] = [
     },
 ];
 
+// Server-side filters: names map 1:1 to GET /api/leads/ query params
 export const leadFilterConfig: FilterField[] = [
-    {
-        type: 'text',
-        label: 'Registered Name',
-        name: 'name',
-        placeholder: 'Filter by name...',
-    },
-    {
-        type: 'text',
-        label: 'Registered Email',
-        name: 'email',
-        placeholder: 'Filter by email...',
-    },
-    {
-        type: 'text',
-        label: 'Registered Phone',
-        name: 'phone',
-        placeholder: 'Filter by phone...',
-    },
     {
         type: 'select',
         label: 'Lead Stage',
@@ -126,9 +111,224 @@ export const leadFilterConfig: FilterField[] = [
     },
     {
         type: 'select',
+        label: 'Assigned To',
+        name: 'assigned_to',
+        placeholder: 'Select a counsellor...',
+        getOptions: async () => {
+            try {
+                const response = await fetchLeadAssigneesApi();
+                return [
+                    { label: 'Me', value: 'me' },
+                    ...(response.data || []).map((a: any) => ({ label: a.name || a.email, value: a.uid })),
+                ];
+            } catch (err) {
+                console.error("Failed to fetch assignees", err);
+                return [];
+            }
+        }
+    },
+    {
+        type: 'status',
+        label: 'Assignment',
+        name: 'unassigned',
+        options: [
+            { label: 'All', value: 'all' },
+            { label: 'Unassigned only', value: 'true' },
+        ],
+    },
+    {
+        type: 'text',
+        label: 'Program',
+        name: 'program',
+        placeholder: 'Filter by program...',
+    },
+    {
+        type: 'select',
         label: 'Source',
         name: 'source',
         options: LEAD_SOURCES.map((source) => ({ label: source, value: source })),
+    },
+];
+
+// Server-side filters for GET /api/leads/follow-ups/
+export const followUpFilterConfig: FilterField[] = [
+    {
+        type: 'select',
+        label: 'Status',
+        name: 'status',
+        placeholder: 'Select a status...',
+        options: [
+            { label: 'Pending', value: 'PENDING' },
+            { label: 'Completed', value: 'COMPLETED' },
+            { label: 'Missed', value: 'MISSED' },
+            { label: 'Cancelled', value: 'CANCELLED' },
+        ],
+    },
+    {
+        type: 'select',
+        label: 'Counsellor',
+        name: 'counsellor',
+        placeholder: 'Select a counsellor...',
+        getOptions: async () => {
+            try {
+                const response = await fetchLeadAssigneesApi();
+                return [
+                    { label: 'Me', value: 'me' },
+                    ...(response.data || []).map((a: any) => ({ label: a.name || a.email, value: a.uid })),
+                ];
+            } catch (err) {
+                console.error("Failed to fetch assignees", err);
+                return [];
+            }
+        }
+    },
+];
+
+// Server-side filters for GET /api/interviews/
+export const interviewFilterConfig: FilterField[] = [
+    {
+        type: 'select',
+        label: 'Status',
+        name: 'status',
+        placeholder: 'Select a status...',
+        options: [
+            { label: 'Scheduled', value: 'SCHEDULED' },
+            { label: 'Completed', value: 'COMPLETED' },
+            { label: 'No show', value: 'NO_SHOW' },
+            { label: 'Cancelled', value: 'CANCELLED' },
+            { label: 'Rescheduled', value: 'RESCHEDULED' },
+        ],
+    },
+    {
+        type: 'select',
+        label: 'Result',
+        name: 'result',
+        placeholder: 'Select a result...',
+        options: [
+            { label: 'Pending', value: 'PENDING' },
+            { label: 'Selected', value: 'SELECTED' },
+            { label: 'Not selected', value: 'NOT_SELECTED' },
+        ],
+    },
+    {
+        type: 'select',
+        label: 'Counsellor',
+        name: 'counsellor',
+        placeholder: 'Select a counsellor...',
+        getOptions: async () => {
+            try {
+                const response = await fetchLeadAssigneesApi();
+                return [
+                    { label: 'Me', value: 'me' },
+                    ...(response.data || []).map((a: any) => ({ label: a.name || a.email, value: a.uid })),
+                ];
+            } catch (err) {
+                console.error("Failed to fetch assignees", err);
+                return [];
+            }
+        }
+    },
+    {
+        type: 'select',
+        label: 'Interviewer',
+        name: 'interviewer',
+        placeholder: 'Select an interviewer...',
+        getOptions: async () => {
+            try {
+                const response = await fetchInterviewersApi();
+                return (response.data || []).map((i: any) => ({ label: i.name || i.email, value: i.uid }));
+            } catch (err) {
+                console.error("Failed to fetch interviewers", err);
+                return [];
+            }
+        }
+    },
+];
+
+// Server-side filters for GET /api/students/
+export const studentFilterConfig: FilterField[] = [
+    {
+        type: 'select',
+        label: 'Lead Stage',
+        name: 'stage',
+        placeholder: 'Select a stage...',
+        getOptions: async () => {
+            try {
+                const response = await fetchStageOptionsApi();
+                return (response.data || []).map((s: any) => ({ label: s.name, value: s.code }));
+            } catch (err) {
+                console.error("Failed to fetch stages", err);
+                return [];
+            }
+        }
+    },
+    {
+        type: 'status',
+        label: 'Profile Completed',
+        name: 'profile_status',
+        options: [
+            { label: 'All', value: 'all' },
+            { label: 'Completed', value: 'true' },
+            { label: 'Pending', value: 'false' },
+        ],
+    },
+    {
+        type: 'status',
+        label: 'Approved',
+        name: 'status',
+        options: [
+            { label: 'All', value: 'all' },
+            { label: 'Approved', value: 'true' },
+            { label: 'Pending', value: 'false' },
+        ],
+    },
+];
+
+// Document types for the pending-review queue (GET /api/students/documents/pending-review/)
+export const pendingDocumentFilterConfig: FilterField[] = [
+    {
+        type: 'select',
+        label: 'Document Type',
+        name: 'document_type',
+        placeholder: 'Select a type...',
+        options: [
+            { label: 'Aadhaar', value: 'aadhaar' },
+            { label: 'DOB certificate', value: 'dob_certificate' },
+            { label: 'Photograph', value: 'photo' },
+            { label: 'Signature', value: 'signature' },
+            { label: 'Resume', value: 'resume' },
+            { label: '10th marksheet', value: 'tenth_marksheet' },
+            { label: '12th marksheet', value: 'twelveth_marksheet' },
+            { label: 'Graduation marksheet', value: 'graduation_marksheet' },
+            { label: 'Other', value: 'other' },
+        ],
+    },
+];
+
+// Server-side filters for GET /api/payments/
+export const paymentFilterConfig: FilterField[] = [
+    {
+        type: 'select',
+        label: 'Status',
+        name: 'status',
+        placeholder: 'Select a status...',
+        options: [
+            { label: 'Pending', value: 'PENDING' },
+            { label: 'Success', value: 'SUCCESS' },
+            { label: 'Failed', value: 'FAILED' },
+            { label: 'Offline pending', value: 'OFFLINE_PENDING' },
+            { label: 'Verified', value: 'VERIFIED' },
+            { label: 'Rejected', value: 'REJECTED' },
+        ],
+    },
+    {
+        type: 'select',
+        label: 'Method',
+        name: 'method',
+        options: [
+            { label: 'Online', value: 'ONLINE' },
+            { label: 'Offline', value: 'OFFLINE' },
+        ],
     },
 ];
 

@@ -17,6 +17,10 @@ import departmentReducer from "./slices/departmentSlice";
 import teamReducer from "./slices/teamSlice";
 import auditLogReducer from "./slices/auditLogSlice";
 import configurationReducer from "./slices/configurationSlice";
+import followUpReducer from "./slices/followUpSlice";
+import interviewReducer from "./slices/interviewSlice";
+import paymentReducer from "./slices/paymentSlice";
+import studentReducer from "./slices/studentSlice";
 
 export const store = configureStore({
   reducer: {
@@ -38,6 +42,10 @@ export const store = configureStore({
     teams: teamReducer,
     auditLogs: auditLogReducer,
     configurations: configurationReducer,
+    followUps: followUpReducer,
+    interviews: interviewReducer,
+    payments: paymentReducer,
+    students: studentReducer,
   },
 });
 

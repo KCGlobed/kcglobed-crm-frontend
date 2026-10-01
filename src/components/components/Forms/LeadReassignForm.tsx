@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useModal } from '../../../context/ModalContext';
 import { useAppDispatch } from '../../../hooks/useAppDispatch';
 import { useAppSelector } from '../../../hooks/useRedux';
-import { reassignLead, fetchLeadAssignees } from '../../../store/slices/leadSlice';
+import { assignLead, fetchLeadAssignees, fetchLeadById } from '../../../store/slices/leadSlice';
 import toast from 'react-hot-toast';
 import type { Lead } from '../../../utils/types';
 
@@ -31,8 +31,10 @@ const LeadReassignForm: React.FC<LeadReassignFormProps> = ({ leadData }) => {
     }
     setSubmitting(true);
     try {
-      await dispatch(reassignLead({ uid: leadData.uid, assigned_to: selected })).unwrap();
+      // PATCH /api/leads/{uid}/assign/ (module leads-assign)
+      await dispatch(assignLead({ uid: leadData.uid!, assigned_to: selected.uid! })).unwrap();
       toast.success(`Lead re-assigned to ${selected.name || selected.email}`);
+      dispatch(fetchLeadById(leadData.uid!));
       hideModal();
     } catch (err: any) {
       toast.error(err?.message || err || 'Failed to re-assign lead');

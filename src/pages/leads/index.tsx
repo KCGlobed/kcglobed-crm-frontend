@@ -8,7 +8,6 @@ import {
     Eye,
     MessageSquare,
     UserCog,
-    HelpCircle,
     Clock,
     Upload,
     Download,
@@ -61,6 +60,8 @@ const ActionMenu = ({ row }: { row: Lead }) => {
     const dropdownRef = React.useRef<HTMLDivElement>(null);
     const { showModal } = useModal();
     const dispatch = useAppDispatch();
+    // Stage override (PATCH /leads/{uid}/stage/) is Super Admin only
+    const fullAccess = useAppSelector((state) => state.auth.access?.full_access) === true;
 
     // Rendered in a portal so the table's overflow/scroll containers can't clip it
     const MENU_WIDTH = 176; // matches w-44
@@ -143,12 +144,14 @@ const ActionMenu = ({ row }: { row: Lead }) => {
                         <Eye size={14} /> View Application
                     </button>
 
-                    <button
-                        onClick={closeAndDo(() => showModal({ title: `Change Lead Stage: ${row.full_name}`, content: <LeadStageForm leadData={row} />, type: 'custom', size: 'md' }))}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-minor hover:bg-major-tint transition-colors text-left"
-                    >
-                        <RefreshCw size={14} /> Change Stage
-                    </button>
+                    {fullAccess && (
+                        <button
+                            onClick={closeAndDo(() => showModal({ title: `Change Lead Stage: ${row.full_name}`, content: <LeadStageForm leadData={row} />, type: 'custom', size: 'md' }))}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-minor hover:bg-major-tint transition-colors text-left"
+                        >
+                            <RefreshCw size={14} /> Change Stage
+                        </button>
+                    )}
 
                     <button
                         onClick={closeAndDo(() => showModal({ title: `Re-assign Lead: ${row.full_name}`, content: <LeadReassignForm leadData={row} />, type: 'custom', size: 'md' }))}
@@ -158,14 +161,7 @@ const ActionMenu = ({ row }: { row: Lead }) => {
                     </button>
 
                     <button
-                        onClick={closeAndDo(() => showModal({ title: 'Lead Details', content: <LeadView leadData={row} initialTab="queries" />, type: 'success', size: 'xl' }))}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-minor hover:bg-major-tint transition-colors text-left"
-                    >
-                        <HelpCircle size={14} /> View Queries
-                    </button>
-
-                    <button
-                        onClick={closeAndDo(() => showModal({ title: 'Lead Details', content: <LeadView leadData={row} initialTab="activity" />, type: 'success', size: 'xl' }))}
+                        onClick={closeAndDo(() => showModal({ title: 'Lead Details', content: <LeadView leadData={row} initialTab="timeline" />, type: 'success', size: 'xl' }))}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-minor hover:bg-major-tint transition-colors text-left"
                     >
                         <Clock size={14} /> View Activity
@@ -316,12 +312,12 @@ const ManageLeads: React.FC = () => {
     const [showFilter, setShowFilter] = useState(false);
     const { showModal } = useModal();
 
-    // Filter states
+    // Filter states (names map 1:1 to GET /api/leads/ query params)
     const [filters, setFilters] = useState({
-        name: '',
-        email: '',
-        phone: '',
         stage: '',
+        assigned_to: '',
+        unassigned: '',
+        program: '',
         source: '',
     });
     const [startDate, setStartDate] = useState<string>('');
@@ -347,15 +343,28 @@ const ManageLeads: React.FC = () => {
 
     const activeFilterCount = useMemo(() => {
         let count = 0;
-        if (filters.name) count++;
-        if (filters.email) count++;
-        if (filters.phone) count++;
         if (filters.stage) count++;
+        if (filters.assigned_to) count++;
+        if (filters.unassigned && filters.unassigned !== 'all') count++;
+        if (filters.program) count++;
         if (filters.source) count++;
         if (ordering) count++;
         if (startDate || endDate) count++;
         return count;
     }, [filters, ordering, startDate, endDate]);
+
+    // Server-side query params built from search, filters, date range and sort
+    const serverParams = useMemo(() => ({
+        search: debouncedSearchTerm || undefined,
+        stage: debouncedFilters.stage || undefined,
+        assigned_to: debouncedFilters.assigned_to || undefined,
+        unassigned: debouncedFilters.unassigned === 'true' ? true : undefined,
+        program: debouncedFilters.program || undefined,
+        source: debouncedFilters.source || undefined,
+        created_from: startDate || undefined,
+        created_to: endDate || undefined,
+        ordering: ordering || undefined,
+    }), [debouncedSearchTerm, debouncedFilters, startDate, endDate, ordering]);
 
     // Sync with Redux current_page if it changes
     useEffect(() => {
@@ -366,13 +375,14 @@ const ManageLeads: React.FC = () => {
 
     // Fetch leads when currentPage or pageSize changes
     useEffect(() => {
-        dispatch(fetchLeads({ page: currentPage, page_size: pageSize }));
+        dispatch(fetchLeads({ page: currentPage, page_size: pageSize, ...serverParams }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dispatch, currentPage, pageSize]);
 
     const leadList = useMemo(() => leads || [], [leads]);
     const totalCount = total_results ?? leadList.length;
 
-    // Reset to first page when search or filters change
+    // Refetch from page 1 when search, filters, date range or sort change
     useEffect(() => {
         if (!isMounted.current) {
             isMounted.current = true;
@@ -381,9 +391,10 @@ const ManageLeads: React.FC = () => {
         if (currentPage !== 1) {
             setCurrentPage(1);
         } else {
-            dispatch(fetchLeads({ page: 1, page_size: pageSize }));
+            dispatch(fetchLeads({ page: 1, page_size: pageSize, ...serverParams }));
         }
-    }, [debouncedSearchTerm, debouncedFilters, startDate, endDate]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [serverParams]);
 
     const handleFilterChange = (name: string, value: any) => {
         setFilters((prev) => ({ ...prev, [name]: value }));
@@ -391,10 +402,10 @@ const ManageLeads: React.FC = () => {
 
     const clearFilters = () => {
         setFilters({
-            name: '',
-            email: '',
-            phone: '',
             stage: '',
+            assigned_to: '',
+            unassigned: '',
+            program: '',
             source: '',
         });
         setSearchTerm('');
@@ -463,6 +474,23 @@ const ManageLeads: React.FC = () => {
             width: '110px',
         },
         {
+            key: 'application_id',
+            title: 'Application ID',
+            render: (value: string) => (
+                <span className="text-[11px] font-mono text-crmText-secondary whitespace-nowrap">{value || '-'}</span>
+            ),
+            width: '140px',
+        },
+        {
+            key: 'program',
+            title: 'Program',
+            render: (value: string) => (
+                <span className="text-xs text-crmText-secondary whitespace-nowrap">{value || '-'}</span>
+            ),
+            sortable: true,
+            width: '120px',
+        },
+        {
             key: 'source',
             title: 'Source',
             render: (value: string) => (
@@ -472,22 +500,16 @@ const ManageLeads: React.FC = () => {
             width: '110px',
         },
         {
-            key: 'utm_source',
-            title: 'UTM Source',
+            key: 'next_follow_up_at',
+            title: 'Follow-up Date',
             render: (value: string) => (
-                <span className="text-[11px] font-mono text-crmText-secondary whitespace-nowrap">{value || '-'}</span>
+                <div className="flex flex-col">
+                    <span className="text-crmText text-xs font-semibold">{value ? moment(value).format('MMM DD, YYYY') : '-'}</span>
+                    <span className="text-crmText-tertiary text-[10px] uppercase font-bold">{value ? moment(value).format('hh:mm A') : ''}</span>
+                </div>
             ),
             sortable: true,
-            width: '110px',
-        },
-        {
-            key: 'utm_campaign',
-            title: 'UTM Campaign',
-            render: (value: string) => (
-                <span className="text-[11px] font-mono text-crmText-secondary whitespace-nowrap">{value || '-'}</span>
-            ),
-            sortable: true,
-            width: '150px',
+            width: '130px',
         },
         {
             key: 'stage',
@@ -638,7 +660,7 @@ const ManageLeads: React.FC = () => {
                     totalCount={totalCount}
                     loading={loading}
                     error={error}
-                    onRetry={() => dispatch(fetchLeads({ page: currentPage, page_size: pageSize }))}
+                    onRetry={() => dispatch(fetchLeads({ page: currentPage, page_size: pageSize, ...serverParams }))}
                     emptyTitle="No leads found"
                     emptyDescription="There are no leads to display at the moment."
                     rowKey={(row: Lead) => row.uid ?? row.email ?? row.full_name ?? Math.random()}

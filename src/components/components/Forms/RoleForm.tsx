@@ -50,7 +50,7 @@ const ACTIONS: { key: PermissionAction; label: string }[] = [
 const RoleForm: React.FC<RoleFormProps> = ({ roleData }) => {
   const dispatch = useAppDispatch();
   const { hideModal } = useModal();
-  const { modules, modulesLoading, rolePermissions, rolePermissionsLoading, catalog } = useAppSelector(
+  const { modules, modulesLoading, rolePermissions, rolePermissionsLoading, catalog, catalogLoading } = useAppSelector(
     (state) => state.roles
   );
 
@@ -131,15 +131,16 @@ const RoleForm: React.FC<RoleFormProps> = ({ roleData }) => {
     }
   }, [isEdit, rolePermissions]);
 
-  // Only active modules are selectable, ordered by the backend's sort_order
-  const availableModules = useMemo(
-    () =>
-      (modules || [])
-        .filter((m) => m.code && m.is_active !== false)
-        .slice()
-        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
-    [modules]
-  );
+  // The permission catalog is the authoritative module list for the matrix —
+  // it includes permission-only modules (e.g. sensitive-data, which controls
+  // data masking) that never appear in the menu-driven modules list.
+  const availableModules = useMemo(() => {
+    const source = catalog?.modules && catalog.modules.length > 0 ? catalog.modules : modules || [];
+    return source
+      .filter((m) => m.code && m.is_active !== false)
+      .slice()
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  }, [catalog, modules]);
 
   const isChecked = (code: string, action: PermissionAction) => !!permissions[code]?.[action];
 
@@ -319,9 +320,9 @@ const RoleForm: React.FC<RoleFormProps> = ({ roleData }) => {
         </label>
 
         <div className="max-h-[300px] overflow-y-auto border border-crmBorder rounded-xl bg-major divide-y divide-crmBorder">
-          {modulesLoading || (isEdit && rolePermissionsLoading) ? (
+          {(availableModules.length === 0 && (modulesLoading || catalogLoading)) || (isEdit && rolePermissionsLoading) ? (
             <div className="p-6 text-center text-crmText-tertiary text-xs">
-              {modulesLoading ? 'Loading modules...' : 'Loading permissions...'}
+              {availableModules.length === 0 ? 'Loading modules...' : 'Loading permissions...'}
             </div>
           ) : availableModules.length === 0 ? (
             <div className="p-6 text-center text-crmText-tertiary text-xs">

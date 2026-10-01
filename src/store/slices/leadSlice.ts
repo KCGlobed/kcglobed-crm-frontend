@@ -1,4 +1,4 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk, isAnyOf, type PayloadAction } from "@reduxjs/toolkit";
 import {
   fetchLeadsApi,
   fetchLeadByIdApi,
@@ -7,12 +7,44 @@ import {
   deleteLeadApi,
   updateLeadStageApi,
   fetchStageOptionsApi,
+  fetchLeadWorkflowApi,
+  assignLeadApi,
+  autoAssignLeadApi,
+  fetchLeadAssignmentsApi,
+  startLeadCallApi,
+  recordLeadCallApi,
+  fetchLeadCallsApi,
+  createLeadFollowUpApi,
+  markLeadInterestedApi,
+  fetchLeadActivitiesApi,
+  fetchLeadProfileApi,
+  updateLeadProfileApi,
+  completeLeadProfileApi,
+  sendDocumentEmailApi,
+  fetchLeadDocumentsApi,
+  approveLeadProfileApi,
+  fetchLeadLettersApi,
+  generateLeadLettersApi,
+  fetchLeadPaymentApi,
+  initiateLeadPaymentApi,
+  verifyLeadPaymentApi,
+  recordOfflinePaymentApi,
 } from "../../services/apiServices";
-import type { Pagination, PaginationInfo, Lead, Stage, ReportsTo } from "../../utils/types";
-
-// TODO: reassignLead is still stubbed (`await ""`) — the backend exposes the
-// assignee options (GET /leads/assignees/) but no re-assign endpoint yet.
-// Swap the stub body once it ships. Everything else is wired to the real API.
+import type {
+  Pagination,
+  PaginationInfo,
+  Lead,
+  Stage,
+  ReportsTo,
+  Workflow,
+  LeadActivity,
+  CallLog,
+  LeadAssignment,
+  Student,
+  StudentDocument,
+  Letter,
+  Payment,
+} from "../../utils/types";
 
 interface LeadState extends Pagination<Lead> {
   selectedLead: Lead | null;
@@ -22,6 +54,33 @@ interface LeadState extends Pagination<Lead> {
   stageOptionsLoading: boolean;
   assignees: ReportsTo[];
   assigneesLoading: boolean;
+  workflow: Workflow | null;
+  workflowLoading: boolean;
+  activities: LeadActivity[];
+  activitiesLoading: boolean;
+  calls: CallLog[];
+  callsLoading: boolean;
+  assignments: LeadAssignment[];
+  assignmentsLoading: boolean;
+  profile: {
+    application?: Student | null;
+    missing_fields?: string[];
+    documents?: StudentDocument[];
+    approval_problems?: Record<string, string[]>;
+  } | null;
+  profileLoading: boolean;
+  documents: StudentDocument[];
+  documentsProblems: Record<string, string[]> | null;
+  documentsLoading: boolean;
+  letters: Letter[];
+  lettersLoading: boolean;
+  leadPayment: {
+    amount?: string | number;
+    currency?: string;
+    settled?: boolean;
+    payments?: Payment[];
+  } | null;
+  leadPaymentLoading: boolean;
 }
 
 const initialState: LeadState = {
@@ -46,11 +105,28 @@ const initialState: LeadState = {
   stageOptionsLoading: false,
   assignees: [],
   assigneesLoading: false,
+  workflow: null,
+  workflowLoading: false,
+  activities: [],
+  activitiesLoading: false,
+  calls: [],
+  callsLoading: false,
+  assignments: [],
+  assignmentsLoading: false,
+  profile: null,
+  profileLoading: false,
+  documents: [],
+  documentsProblems: null,
+  documentsLoading: false,
+  letters: [],
+  lettersLoading: false,
+  leadPayment: null,
+  leadPaymentLoading: false,
 };
 
 export const fetchLeads = createAsyncThunk<
   { data: Lead[]; pagination?: PaginationInfo },
-  { page?: number; page_size?: number } | void
+  { page?: number; page_size?: number; search?: string; stage?: string; assigned_to?: string; unassigned?: boolean | string; program?: string; source?: string; created_from?: string; created_to?: string; follow_up_from?: string; follow_up_to?: string; ordering?: string } | void
 >(
   "leads/fetchLeads",
   async (params, { rejectWithValue }) => {
@@ -111,6 +187,25 @@ export const fetchLeadAssignees = createAsyncThunk<ReportsTo[]>(
     condition: (_, { getState }) => {
       const { leads } = getState() as { leads: { assigneesLoading: boolean } };
       if (leads?.assigneesLoading) return false;
+      return true;
+    },
+  }
+);
+
+export const fetchLeadWorkflow = createAsyncThunk<Workflow>(
+  "leads/fetchLeadWorkflow",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetchLeadWorkflowApi();
+      return response.data;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch workflow options");
+    }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { leads } = getState() as { leads: { workflowLoading: boolean } };
+      if (leads?.workflowLoading) return false;
       return true;
     },
   }
@@ -177,25 +272,297 @@ export const fetchStageOptions = createAsyncThunk<Stage[]>(
   }
 );
 
-export const reassignLead = createAsyncThunk<Lead, Lead>(
-  "leads/reassignLead",
-  async (payload, { getState, rejectWithValue }) => {
+// ---- Lead flow actions (each returns the refreshed lead detail, or {..., lead}) ----
+
+export const assignLead = createAsyncThunk<any, { uid: string; assigned_to: string | null; note?: string }>(
+  "leads/assignLead",
+  async ({ uid, assigned_to, note }, { rejectWithValue }) => {
     try {
-      const response = await "";
-      const { leads } = getState() as { leads: LeadState };
-      const existing = (leads.data || []).find((l) => l.uid === payload.uid);
-      return (
-        (response as unknown as Lead) || {
-          ...(existing || { uid: payload.uid }),
-          assigned_to: payload.assigned_to,
-          updated_at: new Date().toISOString(),
-        }
-      );
+      const response = await assignLeadApi(uid, note ? { assigned_to, note } : { assigned_to });
+      return response.data ?? response;
     } catch (err: any) {
-      return rejectWithValue(err.message || "Failed to re-assign lead");
+      return rejectWithValue(err.message || "Failed to assign lead");
     }
   }
 );
+
+export const autoAssignLead = createAsyncThunk<any, string>(
+  "leads/autoAssignLead",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await autoAssignLeadApi(leadUid);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to auto-assign lead");
+    }
+  }
+);
+
+export const startLeadCall = createAsyncThunk<any, string>(
+  "leads/startLeadCall",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await startLeadCallApi(leadUid);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to start call");
+    }
+  }
+);
+
+export const recordCallOutcome = createAsyncThunk<any, { uid: string; payload: any }>(
+  "leads/recordCallOutcome",
+  async ({ uid, payload }, { rejectWithValue }) => {
+    try {
+      const response = await recordLeadCallApi(uid, payload);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to record call outcome");
+    }
+  }
+);
+
+export const markLeadInterested = createAsyncThunk<any, { uid: string; notes?: string }>(
+  "leads/markLeadInterested",
+  async ({ uid, notes }, { rejectWithValue }) => {
+    try {
+      const response = await markLeadInterestedApi(uid, notes ? { notes } : {});
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to mark lead interested");
+    }
+  }
+);
+
+export const createLeadFollowUp = createAsyncThunk<any, { uid: string; payload: any }>(
+  "leads/createLeadFollowUp",
+  async ({ uid, payload }, { rejectWithValue }) => {
+    try {
+      const response = await createLeadFollowUpApi(uid, payload);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to create follow-up");
+    }
+  }
+);
+
+export const updateLeadProfile = createAsyncThunk<any, { uid: string; payload: any }>(
+  "leads/updateLeadProfile",
+  async ({ uid, payload }, { rejectWithValue }) => {
+    try {
+      const response = await updateLeadProfileApi(uid, payload);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to update profile");
+    }
+  }
+);
+
+export const completeLeadProfile = createAsyncThunk<any, string>(
+  "leads/completeLeadProfile",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await completeLeadProfileApi(leadUid);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to complete profile");
+    }
+  }
+);
+
+export const sendDocumentEmail = createAsyncThunk<any, string>(
+  "leads/sendDocumentEmail",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await sendDocumentEmailApi(leadUid);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to send document email");
+    }
+  }
+);
+
+export const approveLeadProfile = createAsyncThunk<any, string>(
+  "leads/approveLeadProfile",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await approveLeadProfileApi(leadUid);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to approve profile");
+    }
+  }
+);
+
+export const generateLeadLetters = createAsyncThunk<any, string>(
+  "leads/generateLeadLetters",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await generateLeadLettersApi(leadUid);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to generate letters");
+    }
+  }
+);
+
+export const initiateLeadPayment = createAsyncThunk<any, string>(
+  "leads/initiateLeadPayment",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await initiateLeadPaymentApi(leadUid);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to initiate payment");
+    }
+  }
+);
+
+export const verifyLeadPayment = createAsyncThunk<any, { uid: string; payload: any }>(
+  "leads/verifyLeadPayment",
+  async ({ uid, payload }, { rejectWithValue }) => {
+    try {
+      const response = await verifyLeadPaymentApi(uid, payload);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Payment failed. Please try again.");
+    }
+  }
+);
+
+export const recordOfflinePayment = createAsyncThunk<any, { uid: string; formData: FormData }>(
+  "leads/recordOfflinePayment",
+  async ({ uid, formData }, { rejectWithValue }) => {
+    try {
+      const response = await recordOfflinePaymentApi(uid, formData);
+      return response.data ?? response;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to record offline payment");
+    }
+  }
+);
+
+// ---- Lead detail sub-resources ----
+
+export const fetchLeadActivities = createAsyncThunk<LeadActivity[], string>(
+  "leads/fetchLeadActivities",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await fetchLeadActivitiesApi(leadUid);
+      return response.data || [];
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch lead timeline");
+    }
+  }
+);
+
+export const fetchLeadCalls = createAsyncThunk<CallLog[], string>(
+  "leads/fetchLeadCalls",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await fetchLeadCallsApi(leadUid);
+      return response.data || [];
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch call history");
+    }
+  }
+);
+
+export const fetchLeadAssignments = createAsyncThunk<LeadAssignment[], string>(
+  "leads/fetchLeadAssignments",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await fetchLeadAssignmentsApi(leadUid);
+      return response.data || [];
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch assignment history");
+    }
+  }
+);
+
+export const fetchLeadProfile = createAsyncThunk<any, string>(
+  "leads/fetchLeadProfile",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await fetchLeadProfileApi(leadUid);
+      return response.data;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch student profile");
+    }
+  }
+);
+
+export const fetchLeadDocuments = createAsyncThunk<any, string>(
+  "leads/fetchLeadDocuments",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await fetchLeadDocumentsApi(leadUid);
+      return response.data;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch documents");
+    }
+  }
+);
+
+export const fetchLeadLetters = createAsyncThunk<Letter[], string>(
+  "leads/fetchLeadLetters",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await fetchLeadLettersApi(leadUid);
+      // Response data is {letters: [...]} (with ?history=true it also carries history)
+      return response.data?.letters ?? response.data ?? [];
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch letters");
+    }
+  }
+);
+
+export const fetchLeadPayment = createAsyncThunk<any, string>(
+  "leads/fetchLeadPayment",
+  async (leadUid, { rejectWithValue }) => {
+    try {
+      const response = await fetchLeadPaymentApi(leadUid);
+      return response.data;
+    } catch (err: any) {
+      return rejectWithValue(err.message || "Failed to fetch payment info");
+    }
+  }
+);
+
+// Extracts the refreshed lead detail from a flow-action response
+const extractLead = (payload: any): Lead | null => {
+  if (payload?.lead?.uid) return payload.lead;
+  if (payload?.uid && payload?.stage) return payload;
+  return null;
+};
+
+const applyLeadDetail = (state: LeadState, lead: Lead | null) => {
+  if (!lead?.uid) return;
+  state.selectedLead = { ...(state.selectedLead || {}), ...lead };
+  if (state.data && state.data.length > 0) {
+    const idx = state.data.findIndex((l) => l.uid === lead.uid);
+    if (idx !== -1) {
+      state.data[idx] = { ...state.data[idx], ...lead };
+    }
+  }
+};
+
+const flowActionThunks = [
+  assignLead,
+  autoAssignLead,
+  startLeadCall,
+  recordCallOutcome,
+  markLeadInterested,
+  createLeadFollowUp,
+  updateLeadProfile,
+  completeLeadProfile,
+  sendDocumentEmail,
+  approveLeadProfile,
+  generateLeadLetters,
+  initiateLeadPayment,
+  verifyLeadPayment,
+  recordOfflinePayment,
+];
 
 const leadSlice = createSlice({
   name: "leads",
@@ -206,6 +573,17 @@ const leadSlice = createSlice({
     },
     clearLeadError: (state) => {
       state.error = null;
+    },
+    // Reset per-lead sub-resources when opening a different lead's detail view
+    clearLeadDetail: (state) => {
+      state.activities = [];
+      state.calls = [];
+      state.assignments = [];
+      state.profile = null;
+      state.documents = [];
+      state.documentsProblems = null;
+      state.letters = [];
+      state.leadPayment = null;
     },
   },
   extraReducers: (builder) => {
@@ -255,6 +633,19 @@ const leadSlice = createSlice({
       })
       .addCase(fetchLeadAssignees.rejected, (state, action) => {
         state.assigneesLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Workflow options (GET /api/leads/workflow/)
+      .addCase(fetchLeadWorkflow.pending, (state) => {
+        state.workflowLoading = true;
+      })
+      .addCase(fetchLeadWorkflow.fulfilled, (state, action) => {
+        state.workflowLoading = false;
+        state.workflow = action.payload || null;
+      })
+      .addCase(fetchLeadWorkflow.rejected, (state, action) => {
+        state.workflowLoading = false;
         state.error = action.payload as string;
       })
 
@@ -330,22 +721,113 @@ const leadSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      .addCase(reassignLead.pending, (state) => {
+      // Lead timeline (GET /api/leads/{uid}/activities/)
+      .addCase(fetchLeadActivities.pending, (state) => {
+        state.activitiesLoading = true;
+      })
+      .addCase(fetchLeadActivities.fulfilled, (state, action) => {
+        state.activitiesLoading = false;
+        state.activities = action.payload || [];
+      })
+      .addCase(fetchLeadActivities.rejected, (state, action) => {
+        state.activitiesLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Call history (GET /api/leads/{uid}/call/)
+      .addCase(fetchLeadCalls.pending, (state) => {
+        state.callsLoading = true;
+      })
+      .addCase(fetchLeadCalls.fulfilled, (state, action) => {
+        state.callsLoading = false;
+        state.calls = action.payload || [];
+      })
+      .addCase(fetchLeadCalls.rejected, (state, action) => {
+        state.callsLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Assignment history (GET /api/leads/{uid}/assignments/)
+      .addCase(fetchLeadAssignments.pending, (state) => {
+        state.assignmentsLoading = true;
+      })
+      .addCase(fetchLeadAssignments.fulfilled, (state, action) => {
+        state.assignmentsLoading = false;
+        state.assignments = action.payload || [];
+      })
+      .addCase(fetchLeadAssignments.rejected, (state, action) => {
+        state.assignmentsLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Student profile (GET /api/leads/{uid}/profile/)
+      .addCase(fetchLeadProfile.pending, (state) => {
+        state.profileLoading = true;
+      })
+      .addCase(fetchLeadProfile.fulfilled, (state, action) => {
+        state.profileLoading = false;
+        state.profile = action.payload || null;
+      })
+      .addCase(fetchLeadProfile.rejected, (state, action) => {
+        state.profileLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Documents checklist (GET /api/leads/{uid}/documents/)
+      .addCase(fetchLeadDocuments.pending, (state) => {
+        state.documentsLoading = true;
+      })
+      .addCase(fetchLeadDocuments.fulfilled, (state, action) => {
+        state.documentsLoading = false;
+        state.documents = action.payload?.documents || [];
+        state.documentsProblems = action.payload?.approval_problems || null;
+      })
+      .addCase(fetchLeadDocuments.rejected, (state, action) => {
+        state.documentsLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Letters (GET /api/leads/{uid}/letters/)
+      .addCase(fetchLeadLetters.pending, (state) => {
+        state.lettersLoading = true;
+      })
+      .addCase(fetchLeadLetters.fulfilled, (state, action) => {
+        state.lettersLoading = false;
+        state.letters = action.payload || [];
+      })
+      .addCase(fetchLeadLetters.rejected, (state, action) => {
+        state.lettersLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Lead payment info (GET /api/leads/{uid}/payment/)
+      .addCase(fetchLeadPayment.pending, (state) => {
+        state.leadPaymentLoading = true;
+      })
+      .addCase(fetchLeadPayment.fulfilled, (state, action) => {
+        state.leadPaymentLoading = false;
+        state.leadPayment = action.payload || null;
+      })
+      .addCase(fetchLeadPayment.rejected, (state, action) => {
+        state.leadPaymentLoading = false;
+        state.error = action.payload as string;
+      })
+
+      // Lead flow actions: shared actionLoading + refreshed lead detail
+      .addMatcher(isAnyOf(...flowActionThunks.map((t) => t.pending)), (state) => {
         state.actionLoading = true;
         state.error = null;
       })
-      .addCase(reassignLead.fulfilled, (state, action) => {
+      .addMatcher(isAnyOf(...flowActionThunks.map((t) => t.fulfilled)), (state, action) => {
         state.actionLoading = false;
-        const idx = (state.data || []).findIndex((l) => l.uid === action.payload.uid);
-        if (idx !== -1 && state.data) state.data[idx] = action.payload;
-        if (state.selectedLead?.uid === action.payload.uid) state.selectedLead = action.payload;
+        applyLeadDetail(state, extractLead(action.payload));
       })
-      .addCase(reassignLead.rejected, (state, action) => {
+      .addMatcher(isAnyOf(...flowActionThunks.map((t) => t.rejected)), (state, action) => {
         state.actionLoading = false;
         state.error = action.payload as string;
       });
   },
 });
 
-export const { setSelectedLead, clearLeadError } = leadSlice.actions;
+export const { setSelectedLead, clearLeadError, clearLeadDetail } = leadSlice.actions;
 export default leadSlice.reducer;

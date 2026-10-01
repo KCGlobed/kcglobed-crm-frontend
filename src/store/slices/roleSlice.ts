@@ -150,7 +150,8 @@ export const fetchModules = createAsyncThunk<Module[]>(
   "roles/fetchModules",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetchModulesApi();
+      // Full unpaginated list — the permission matrix needs every module
+      const response = await fetchModulesApi({ page_size: "all" });
       return response.data;
     } catch (err: any) {
       return rejectWithValue(err.message || "Failed to fetch modules");

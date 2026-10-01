@@ -86,7 +86,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   // The menu API is the single source of truth; only view=true items render
-  // (Super Admin sees everything the API returned).
+  // (Super Admin sees everything the API returned). Items whose path is "/"
+  // are permission flags without a screen (e.g. "Assign leads") — hide them.
   const filterVisible = (items: MenuItem[]): MenuItem[] =>
     (items || [])
       .filter((item) => access?.full_access || item.permissions?.view === true)
@@ -94,35 +95,56 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ...item,
         children: item.children ? filterVisible(item.children) : [],
       }))
-      .filter((item) => (item.children && item.children.length > 0) || resolveMenuPath(item));
+      .filter((item) => {
+        if (item.children && item.children.length > 0) return true;
+        const path = resolveMenuPath(item);
+        return !!path && path !== '/';
+      });
 
-  // The menu API can return a child module both nested under its parent AND as
-  // a separate top-level row. Render each module exactly once: drop top-level
-  // rows that already appear as someone's child, and drop repeated codes.
+  // The menu API can return a module twice: nested under its parent AND as a
+  // separate top-level row — sometimes with a different code but the same
+  // path. Render each module exactly once, keyed on BOTH code and path.
   const normalizeTree = (items: MenuItem[]): MenuItem[] => {
     const childCodes = new Set<string>();
+    const childPaths = new Set<string>();
     const collect = (list: MenuItem[]) =>
       list.forEach((item) => {
         (item.children || []).forEach((child) => {
           if (child.code) childCodes.add(child.code);
+          const childPath = resolveMenuPath(child);
+          if (childPath) childPaths.add(childPath);
         });
         collect(item.children || []);
       });
     collect(items || []);
 
     const dedupe = (list: MenuItem[]): MenuItem[] => {
-      const seen = new Set<string>();
+      const seenCodes = new Set<string>();
+      const seenPaths = new Set<string>();
       return list
         .filter((item) => {
-          const key = item.code ?? item.name ?? '';
-          if (seen.has(key)) return false;
-          seen.add(key);
+          const code = item.code ?? item.name ?? '';
+          const path = resolveMenuPath(item);
+          if (seenCodes.has(code)) return false;
+          if (path && seenPaths.has(path)) return false;
+          seenCodes.add(code);
+          if (path) seenPaths.add(path);
           return true;
         })
         .map((item) => ({ ...item, children: dedupe(item.children || []) }));
     };
 
-    return dedupe((items || []).filter((item) => !item.code || !childCodes.has(item.code)));
+    // Drop top-level rows that already appear as someone's child (same code
+    // OR same destination path), then drop repeats at every level.
+    return dedupe(
+      (items || []).filter((item) => {
+        if (item.code && childCodes.has(item.code)) return false;
+        const path = resolveMenuPath(item);
+        const hasChildren = !!item.children && item.children.length > 0;
+        if (!hasChildren && path && childPaths.has(path)) return false;
+        return true;
+      })
+    );
   };
 
   const navItems = filterVisible(normalizeTree(menuItems));
@@ -162,7 +184,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 : 'text-crmText-secondary hover:bg-minor-soft hover:text-minor-contrast'
                 }`}
             >
-              <span className="truncate">{child.name}</span>
+              <span className="truncate capitalize">{child.name}</span>
             </Link>
             {child.children && child.children.length > 0 && renderChildren(child.children, depth + 1)}
           </React.Fragment>

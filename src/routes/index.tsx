@@ -22,6 +22,10 @@ import DashboardPage from '../pages/dashboard';
 import ProfilePage from '../pages/profile';
 import ForgotPasswordPage from '../pages/forgotPassword';
 import ResetPasswordPage from '../pages/resetPassword';
+import FollowUpsPage from '../pages/followUps';
+import InterviewsPage from '../pages/interviews';
+import StudentsPage from '../pages/students';
+import PaymentsPage from '../pages/payments';
 
 
 export const AppRoutes: React.FC = () => {
@@ -45,7 +49,13 @@ export const AppRoutes: React.FC = () => {
           <Route path="/modules" element={<ProtectedRoute code="module"><ModulesPage /></ProtectedRoute>} />
           <Route path="/roles" element={<ProtectedRoute code="roles_permissions"><RolesPage /></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute code="users"><UsersPage /></ProtectedRoute>} />
-          <Route path="/leads" element={<ProtectedRoute code="leads"><LeadsPage /></ProtectedRoute>} />
+          {/* Backend menu module code for the leads screen is "lead_manager" */}
+          <Route path="/leads" element={<ProtectedRoute code="lead_manager"><LeadsPage /></ProtectedRoute>} />
+          {/* Follow-ups has no backend Module record yet; it reuses the leads permission */}
+          <Route path="/follow-ups" element={<ProtectedRoute code="lead_manager"><FollowUpsPage /></ProtectedRoute>} />
+          <Route path="/students" element={<ProtectedRoute code="students"><StudentsPage /></ProtectedRoute>} />
+          <Route path="/interviews" element={<ProtectedRoute code="interviews"><InterviewsPage /></ProtectedRoute>} />
+          <Route path="/payments" element={<ProtectedRoute code="payments"><PaymentsPage /></ProtectedRoute>} />
           {/* Wrap with <ProtectedRoute code="..."> once the backend Module records for these exist */}
           <Route path="/stages" element={<StagesPage />} />
           <Route path="/departments" element={<DepartmentsPage />} />

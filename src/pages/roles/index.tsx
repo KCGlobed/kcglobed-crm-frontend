@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Filter, Plus, ChevronDown, MoreVertical, Eye, Power, Trash2 } from 'lucide-react';
 import DynamicServerTable from '../../components/components/Table/Table';
 import { useAppDispatch } from '../../hooks/useAppDispatch';
@@ -44,20 +45,48 @@ const RoleThumbnail = ({ row }: { row: Role }) => {
 
 const ActionMenu = ({ row, dispatch }: { row: Role; dispatch: any }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+    const buttonRef = React.useRef<HTMLButtonElement>(null);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
     const { showModal } = useModal();
     const rolePerms = useModulePermissions('roles_permissions');
 
+    // Rendered in a portal so the table's overflow/scroll containers can't clip it
+    const MENU_WIDTH = 176; // matches w-44
+    const EST_MENU_HEIGHT = 220;
+
+    const openMenu = () => {
+        if (!buttonRef.current) return;
+        const rect = buttonRef.current.getBoundingClientRect();
+        const left = Math.max(8, Math.min(rect.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8));
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const style: React.CSSProperties =
+            spaceBelow < EST_MENU_HEIGHT && rect.top > spaceBelow
+                ? { left, bottom: window.innerHeight - rect.top + 4 }
+                : { left, top: rect.bottom + 4 };
+        setMenuStyle(style);
+        setIsOpen(true);
+    };
+
     useEffect(() => {
+        if (!isOpen) return;
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            if (
+                dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+                buttonRef.current && !buttonRef.current.contains(event.target as Node)
+            ) {
                 setIsOpen(false);
             }
         };
-        if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        const handleScrollOrResize = () => setIsOpen(false);
+        document.addEventListener('mousedown', handleClickOutside);
+        window.addEventListener('scroll', handleScrollOrResize, true);
+        window.addEventListener('resize', handleScrollOrResize);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            window.removeEventListener('scroll', handleScrollOrResize, true);
+            window.removeEventListener('resize', handleScrollOrResize);
+        };
     }, [isOpen]);
 
     const closeAndDo = (action: () => void) => (e: React.MouseEvent) => {
@@ -75,19 +104,28 @@ const ActionMenu = ({ row, dispatch }: { row: Role; dispatch: any }) => {
 
 
     return (
-        <div className="relative flex justify-center" ref={dropdownRef}>
+        <div className="relative flex justify-center">
             <button
+                ref={buttonRef}
                 onClick={(e) => {
                     e.stopPropagation();
-                    setIsOpen(!isOpen);
+                    if (isOpen) {
+                        setIsOpen(false);
+                    } else {
+                        openMenu();
+                    }
                 }}
                 className="p-1.5 text-crmText-secondary hover:text-minor hover:bg-minor-soft rounded-lg transition-colors cursor-pointer"
             >
                 <MoreVertical size={18} />
             </button>
 
-            {isOpen && (
-                <div className="absolute right-0 top-full mt-1 w-44 bg-major rounded-xl shadow-lg border border-crmBorder py-1.5 z-[99] overflow-hidden">
+            {isOpen && createPortal(
+                <div
+                    ref={dropdownRef}
+                    style={menuStyle}
+                    className="fixed w-44 bg-major rounded-xl shadow-lg border border-crmBorder py-1.5 z-[999] overflow-hidden"
+                >
                     <button
                         onClick={closeAndDo(() => showModal({ title: 'Role Details', content: <RoleView roleData={row} />, type: 'success', size: 'xl' }))}
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold text-crmText-secondary hover:text-minor hover:bg-major-tint transition-colors text-left"
@@ -137,7 +175,8 @@ const ActionMenu = ({ row, dispatch }: { row: Role; dispatch: any }) => {
                             <Trash2 size={14} /> Delete Role
                         </button>
                     )}
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

@@ -317,8 +317,17 @@ export interface LeadQuery {
 
 export interface LeadActivity {
   id?: number;
+  type?: string;
+  type_display?: string;
   action?: string;
   description?: string;
+  from_stage?: string | null;
+  to_stage?: string | null;
+  from_value?: string | null;
+  to_value?: string | null;
+  note?: string | null;
+  changes?: Record<string, any> | null;
+  actor?: ReportsTo | null;
   created_at?: string;
 }
 
@@ -335,19 +344,35 @@ export interface Stage {
   lead_count?: number;
   created_at?: string;
   updated_at?: string;
+  actions?: string[];
 }
 
 export interface Lead {
   uid?: string;
+  application_id?: string | null;
   full_name?: string;
   first_name?: string;
   last_name?: string;
   phone?: string;
+  alternate_phone?: string;
   email?: string;
   city?: string;
+  program?: string;
   source?: string;
   stage?: Stage;
   assigned_to?: ReportsTo | null;
+  assigned_by?: ReportsTo | null;
+  assigned_at?: string | null;
+  created_by?: ReportsTo | null;
+  application?: Student | null;
+  next_follow_up_at?: string | null;
+  lost_reason?: string;
+  lost_reason_detail?: string;
+  available_actions?: string[];
+  pending_follow_up?: FollowUp | null;
+  interview?: Interview | null;
+  payment?: Payment | null;
+  letters?: Letter[];
   utm_source?: string;
   utm_campaign?: string;
   created_at?: string;
@@ -362,6 +387,206 @@ export interface Lead {
   referrer?: string;
   queries?: LeadQuery[];
   activities?: LeadActivity[];
+}
+
+// Workflow (GET /api/leads/workflow/)
+export interface WorkflowOption {
+  value?: string;
+  label?: string;
+}
+
+export interface Workflow {
+  stages?: Stage[];
+  terminal_stages?: string[];
+  call_outcomes?: WorkflowOption[];
+  not_eligible_reasons?: WorkflowOption[];
+  follow_up_statuses?: WorkflowOption[];
+  action_permissions?: Record<string, { module?: string; action?: string }>;
+}
+
+// Follow-up
+export interface FollowUp {
+  id?: number;
+  lead?: Lead;
+  counsellor?: ReportsTo | null;
+  follow_up_date?: string;
+  follow_up_time?: string;
+  notes?: string;
+  status?: string;
+  outcome?: string;
+  is_overdue?: boolean;
+  completed_at?: string | null;
+  created_at?: string;
+}
+
+// Call Log
+export interface CallLog {
+  id?: number;
+  counsellor?: ReportsTo | null;
+  called_at?: string;
+  outcome?: string;
+  reason?: string;
+  reason_detail?: string;
+  notes?: string;
+  follow_up?: number | null;
+  created_at?: string;
+}
+
+// Lead Assignment history
+export interface LeadAssignment {
+  id?: number;
+  counsellor?: ReportsTo | null;
+  assignment_type?: string;
+  assigned_by?: ReportsTo | null;
+  note?: string;
+  assigned_at?: string;
+}
+
+// Student application (students module)
+export interface Student {
+  id?: number;
+  application_id?: string;
+  full_name?: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  date_of_birth?: string | null;
+  gender?: number | string | null;
+  nationality?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  tenth_passing_year?: string | number | null;
+  tenth_passing_percentage?: string | number | null;
+  tenth_score_type?: string;
+  tenth_medium?: string;
+  twelveth_passing_year?: string | number | null;
+  twelveth_passing_percentage?: string | number | null;
+  twelveth_score_type?: string;
+  twelveth_medium?: string;
+  medium_instruction?: string;
+  other_instruction?: string;
+  pg_status?: string;
+  pg_percentage?: string | number | null;
+  institution?: string;
+  higher_education_status?: string;
+  higher_qualification?: string;
+  higher_qualification_institution?: string;
+  ug_score_type?: string;
+  employement_status?: string;
+  student_experience?: string;
+  guardian_dropdown?: string;
+  guardian_name?: string;
+  guardian_phone?: string;
+  guardian_email?: string;
+  guardian_other_reason?: string;
+  guardian_key_status?: string;
+  initial_program?: string;
+  final_program?: string;
+  fee_waiver_category?: string;
+  referral_code?: string;
+  referred_code?: string;
+  profile_status?: boolean | string;
+  status?: boolean | string;
+  lead_uid?: string;
+  profile_completed_at?: string | null;
+  profile_completed_by?: ReportsTo | string | null;
+  approved_at?: string | null;
+  approved_by?: ReportsTo | string | null;
+  document_email_sent_at?: string | null;
+  // Full object on the lead detail payload; a plain stage code string on list rows
+  stage?: Stage | string;
+  lead?: Lead;
+  missing_fields?: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Student document (checklist row and pending-review row share this shape)
+export interface StudentDocument {
+  id?: number;
+  document_type?: string;
+  label?: string;
+  required?: boolean;
+  status?: string;
+  original_name?: string;
+  size?: number;
+  uploaded_at?: string;
+  uploaded_by?: ReportsTo | null;
+  reviewed_at?: string | null;
+  reviewed_by?: ReportsTo | null;
+  rejection_reason?: string | null;
+  download_url?: string;
+  document?: StudentDocument | null;
+  lead?: Lead;
+  application?: Student | null;
+  application_id?: string;
+  full_name?: string;
+  is_current?: boolean;
+}
+
+// Interview
+export interface Interview {
+  id?: number;
+  lead?: Lead;
+  application_id?: string;
+  full_name?: string;
+  counsellor?: ReportsTo | null;
+  interviewer?: ReportsTo | null;
+  scheduled_date?: string;
+  start_time?: string;
+  end_time?: string;
+  mode?: string;
+  meeting_link?: string;
+  location?: string;
+  notes?: string;
+  status?: string;
+  result?: string;
+  result_by?: ReportsTo | null;
+  result_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Payment
+export interface Payment {
+  uid?: string;
+  lead?: Lead;
+  purpose?: string;
+  amount?: string | number;
+  currency?: string;
+  method?: string;
+  status?: string;
+  gateway?: string;
+  gateway_order_id?: string | null;
+  gateway_payment_id?: string | null;
+  failure_reason?: string | null;
+  payment_mode?: string | null;
+  transaction_id?: string | null;
+  payment_date?: string | null;
+  proof_url?: string | null;
+  notes?: string;
+  created_by?: ReportsTo | null;
+  created_at?: string;
+  paid_at?: string | null;
+  verified_by?: ReportsTo | null;
+  verified_at?: string | null;
+}
+
+// Letter
+export interface Letter {
+  uid?: string;
+  letter_type?: string;
+  label?: string;
+  letter_number?: string;
+  is_current?: boolean;
+  generated_by?: ReportsTo | null;
+  generated_at?: string;
+  download_url?: string;
 }
 
 // Audit Log
