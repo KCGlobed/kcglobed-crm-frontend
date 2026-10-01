@@ -52,7 +52,7 @@ const ActionMenu = ({ row, onToggleStatus }: { row: User; onToggleStatus: (user:
   const buttonRef = React.useRef<HTMLButtonElement>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const { showModal } = useModal();
-  const userPerms = useModulePermissions('users');
+  const userPerms = useModulePermissions('/users');
   const dispatch = useAppDispatch();
 
   // Rendered in a portal so the table's overflow/scroll containers can't clip it
@@ -213,7 +213,7 @@ const ManageUsers: React.FC = () => {
   const current_page = pagination?.current_page;
   const page_size = pagination?.page_size;
   const total_results = pagination?.total_results;
-  const userPerms = useModulePermissions('users');
+  const userPerms = useModulePermissions('/users');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');

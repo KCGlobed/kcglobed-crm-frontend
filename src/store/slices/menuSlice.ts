@@ -48,6 +48,24 @@ export const PATH_ALIASES: Record<string, string> = {
 export const resolveMenuPath = (item: MenuItem): string =>
   PATH_ALIASES[item.code ?? ""] || item.path || "";
 
+// Menu item whose path owns the given URL path (exact match or a sub-path),
+// preferring the longest match. Lets access checks follow whatever module
+// codes the backend uses instead of hardcoding them in the frontend.
+export const findMenuItemByPath = (items: MenuItem[], pathname: string): MenuItem | undefined => {
+  const clean = pathname.replace(/\/+$/, "") || "/";
+  let best: MenuItem | undefined;
+  let bestLength = 0;
+  flattenMenu(items).forEach((item) => {
+    const itemPath = resolveMenuPath(item).replace(/\/+$/, "");
+    if (!itemPath) return;
+    if ((clean === itemPath || clean.startsWith(itemPath + "/")) && itemPath.length > bestLength) {
+      best = item;
+      bestLength = itemPath.length;
+    }
+  });
+  return best;
+};
+
 export const fetchMenu = createAsyncThunk<MenuItem[]>(
   "menu/fetchMenu",
   async (_, { rejectWithValue }) => {

@@ -27,9 +27,6 @@ import InterviewsPage from '../pages/interviews';
 import StudentsPage from '../pages/students';
 import PaymentsPage from '../pages/payments';
 
-
-const LEADS_CODES = ["leads", "lead_manager"];
-
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -48,28 +45,26 @@ export const AppRoutes: React.FC = () => {
         <Route element={<AppLayout />}>
           <Route path="/" element={<HomeRedirect />} />
           <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/modules" element={<ProtectedRoute code="module"><ModulesPage /></ProtectedRoute>} />
-          <Route path="/roles" element={<ProtectedRoute code="roles_permissions"><RolesPage /></ProtectedRoute>} />
-          <Route path="/users" element={<ProtectedRoute code="users"><UsersPage /></ProtectedRoute>} />
-          {/* Leads screen: "leads" module, or its "lead_manager" parent — roles granted only "leads" get it as a top-level menu item */}
-          <Route path="/leads" element={<ProtectedRoute code={LEADS_CODES}><LeadsPage /></ProtectedRoute>} />
-          {/* Follow-ups has no backend Module record yet; it reuses the leads permission */}
-          <Route path="/follow-ups" element={<ProtectedRoute code={LEADS_CODES}><FollowUpsPage /></ProtectedRoute>} />
-          <Route path="/students" element={<ProtectedRoute code="students"><StudentsPage /></ProtectedRoute>} />
-          <Route path="/interviews" element={<ProtectedRoute code="interviews"><InterviewsPage /></ProtectedRoute>} />
-          <Route path="/payments" element={<ProtectedRoute code="payments"><PaymentsPage /></ProtectedRoute>} />
-          {/* Wrap with <ProtectedRoute code="..."> once the backend Module records for these exist */}
-          <Route path="/stages" element={<StagesPage />} />
-          <Route path="/departments" element={<DepartmentsPage />} />
-          <Route path="/teams" element={<TeamsPage />} />
-          <Route path="/audit-logs" element={<AuditLogsPage />} />
-          <Route path="/configurations" element={<ConfigurationsPage />} />
+          <Route path="/modules" element={<ProtectedRoute path="/modules"><ModulesPage /></ProtectedRoute>} />
+          <Route path="/roles" element={<ProtectedRoute path="/roles"><RolesPage /></ProtectedRoute>} />
+          <Route path="/users" element={<ProtectedRoute path="/users"><UsersPage /></ProtectedRoute>} />
+          <Route path="/leads" element={<ProtectedRoute path="/leads"><LeadsPage /></ProtectedRoute>} />
+          {/* Follow-ups has no backend Module record yet; it follows the Leads access */}
+          <Route path="/follow-ups" element={<ProtectedRoute path="/leads"><FollowUpsPage /></ProtectedRoute>} />
+          <Route path="/students" element={<ProtectedRoute path="/students"><StudentsPage /></ProtectedRoute>} />
+          <Route path="/interviews" element={<ProtectedRoute path="/interviews"><InterviewsPage /></ProtectedRoute>} />
+          <Route path="/payments" element={<ProtectedRoute path="/payments"><PaymentsPage /></ProtectedRoute>} />
+          <Route path="/stages" element={<ProtectedRoute path="/stages"><StagesPage /></ProtectedRoute>} />
+          <Route path="/departments" element={<ProtectedRoute path="/departments"><DepartmentsPage /></ProtectedRoute>} />
+          <Route path="/teams" element={<ProtectedRoute path="/teams"><TeamsPage /></ProtectedRoute>} />
+          <Route path="/audit-logs" element={<ProtectedRoute path="/audit-logs"><AuditLogsPage /></ProtectedRoute>} />
+          <Route path="/configurations" element={<ProtectedRoute path="/configurations"><ConfigurationsPage /></ProtectedRoute>} />
           <Route path="/profile" element={<ProfilePage />} />
           {/* <Route path="/reporting" element={<ReportingPage />} /> */}
           <Route path="*" element={<NotFoundPage />} />
         </Route>
         <Route>
-          <Route path="/reporting" element={<ProtectedRoute code="reporting_graph"><ReportingPage /></ProtectedRoute>} />
+          <Route path="/reporting" element={<ProtectedRoute path="/reporting"><ReportingPage /></ProtectedRoute>} />
         </Route>
       </Route>
     </Routes>

@@ -49,7 +49,7 @@ const ActionMenu = ({ row, dispatch }: { row: Role; dispatch: any }) => {
     const buttonRef = React.useRef<HTMLButtonElement>(null);
     const dropdownRef = React.useRef<HTMLDivElement>(null);
     const { showModal } = useModal();
-    const rolePerms = useModulePermissions('roles_permissions');
+    const rolePerms = useModulePermissions('/roles');
 
     // Rendered in a portal so the table's overflow/scroll containers can't clip it
     const MENU_WIDTH = 176; // matches w-44
