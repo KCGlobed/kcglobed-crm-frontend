@@ -86,26 +86,7 @@ const menuSlice = createSlice({
       .addCase(fetchMenu.fulfilled, (state, action) => {
         state.loading = false;
         state.loaded = true;
-        const items = action.payload || [];
-        // Temporary: the backend has no Module record for the follow-ups screen
-        // yet, so give Lead Manager a Follow-ups child until one is added.
-        // Roles granted only the "leads" child receive it top-level instead.
-        const leadManager =
-          items.find((item) => item.code === "lead_manager") ||
-          items.find((item) => item.code === "leads");
-        if (leadManager && !(leadManager.children || []).some((c) => c.code === "follow_ups")) {
-          leadManager.children = [
-            ...(leadManager.children || []),
-            {
-              code: "follow_ups",
-              name: "Follow-ups",
-              path: "/follow-ups",
-              icon: leadManager.icon,
-              permissions: leadManager.permissions,
-            },
-          ];
-        }
-        state.data = items;
+        state.data = action.payload || [];
       })
       .addCase(fetchMenu.rejected, (state, action) => {
         state.loading = false;
