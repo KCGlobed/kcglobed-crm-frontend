@@ -89,7 +89,10 @@ const menuSlice = createSlice({
         const items = action.payload || [];
         // Temporary: the backend has no Module record for the follow-ups screen
         // yet, so give Lead Manager a Follow-ups child until one is added.
-        const leadManager = items.find((item) => item.code === "lead_manager");
+        // Roles granted only the "leads" child receive it top-level instead.
+        const leadManager =
+          items.find((item) => item.code === "lead_manager") ||
+          items.find((item) => item.code === "leads");
         if (leadManager && !(leadManager.children || []).some((c) => c.code === "follow_ups")) {
           leadManager.children = [
             ...(leadManager.children || []),

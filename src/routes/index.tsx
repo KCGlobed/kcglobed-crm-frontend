@@ -28,6 +28,8 @@ import StudentsPage from '../pages/students';
 import PaymentsPage from '../pages/payments';
 
 
+const LEADS_CODES = ["leads", "lead_manager"];
+
 export const AppRoutes: React.FC = () => {
   return (
     <Routes>
@@ -49,10 +51,10 @@ export const AppRoutes: React.FC = () => {
           <Route path="/modules" element={<ProtectedRoute code="module"><ModulesPage /></ProtectedRoute>} />
           <Route path="/roles" element={<ProtectedRoute code="roles_permissions"><RolesPage /></ProtectedRoute>} />
           <Route path="/users" element={<ProtectedRoute code="users"><UsersPage /></ProtectedRoute>} />
-          {/* Backend menu module code for the leads screen is "lead_manager" */}
-          <Route path="/leads" element={<ProtectedRoute code="lead_manager"><LeadsPage /></ProtectedRoute>} />
+          {/* Leads screen: "leads" module, or its "lead_manager" parent — roles granted only "leads" get it as a top-level menu item */}
+          <Route path="/leads" element={<ProtectedRoute code={LEADS_CODES}><LeadsPage /></ProtectedRoute>} />
           {/* Follow-ups has no backend Module record yet; it reuses the leads permission */}
-          <Route path="/follow-ups" element={<ProtectedRoute code="lead_manager"><FollowUpsPage /></ProtectedRoute>} />
+          <Route path="/follow-ups" element={<ProtectedRoute code={LEADS_CODES}><FollowUpsPage /></ProtectedRoute>} />
           <Route path="/students" element={<ProtectedRoute code="students"><StudentsPage /></ProtectedRoute>} />
           <Route path="/interviews" element={<ProtectedRoute code="interviews"><InterviewsPage /></ProtectedRoute>} />
           <Route path="/payments" element={<ProtectedRoute code="payments"><PaymentsPage /></ProtectedRoute>} />
