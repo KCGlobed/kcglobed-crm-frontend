@@ -1,0 +1,516 @@
+/**
+ * Lead stages, sub-stages and counsellor actions — generated from
+ * "GCC_School_Lead_Stages_with_Counsellor_Actions.xlsx" (sheet: Lead Stages).
+ * "Untouched" is added in front as the system stage for new leads
+ * (Deep Dive: Lead Management, §7.2). Type drives lead status:
+ * open → active, converted → converted, lost → lost.
+ */
+export interface SeedStage {
+  name: string;
+  type: 'open' | 'converted' | 'lost';
+  color: string;
+  isSystem?: boolean;
+  subStages: { name: string; counsellorAction: string }[];
+}
+
+export const LEAD_STAGES: SeedStage[] = [
+  { name: 'Untouched', type: 'open', color: '#64748b', isSystem: true, subStages: [] },
+  {
+    name: "Interested",
+    type: 'open',
+    color: '#2563eb',
+    subStages: [
+      {
+        name: "Brochure / fee structure requested",
+        counsellorAction:
+          "Share the latest brochure and fee structure by WhatsApp/email, briefly explain the program, and schedule a follow-up within 24 hours.",
+      },
+      {
+        name: "Self level evaluation stage",
+        counsellorAction:
+          "Share the eligibility and program-fit checklist, help the candidate evaluate their profile, and fix a date to discuss the outcome.",
+      },
+      {
+        name: "Family discussion stage",
+        counsellorAction:
+          "Share parent-relevant information on the program, PPO, fees and campus, then record a specific date to follow up after the discussion.",
+      },
+      {
+        name: "Campus visit plan",
+        counsellorAction:
+          "Confirm the visit date and time, send the campus location and contact person, and share a reminder one day before the visit.",
+      },
+      {
+        name: "Call Back",
+        counsellorAction:
+          "Record the exact callback date and time in the CRM and contact the candidate at the agreed time.",
+      },
+      {
+        name: "Parents Counselling Stage",
+        counsellorAction:
+          "Arrange a call or meeting with the parent, explain the career pathway, selection process, fees and support facilities, and address their questions.",
+      },
+      {
+        name: "Busy right now",
+        counsellorAction:
+          "Ask for a convenient callback slot, record it in the CRM, and avoid repeated calls before the agreed time.",
+      },
+    ],
+  },
+  {
+    name: "Prospects",
+    type: 'open',
+    color: '#7c3aed',
+    subStages: [
+      {
+        name: "Hot",
+        counsellorAction:
+          "Contact the lead the same day, answer pending questions, and move the candidate to the immediate next step with a confirmed date.",
+      },
+      {
+        name: "Warm",
+        counsellorAction:
+          "Address the main concern, share relevant information, and schedule the next follow-up within two to three working days.",
+      },
+      {
+        name: "Cold",
+        counsellorAction:
+          "Add the lead to a low-frequency nurture plan, share only relevant updates, and schedule a follow-up after seven to fourteen days.",
+      },
+    ],
+  },
+  {
+    name: "Not Interested",
+    type: 'lost',
+    color: '#9ca3af',
+    subStages: [
+      {
+        name: "Not interested in the program",
+        counsellorAction:
+          "Ask for the main reason, record it accurately, offer a suitable alternative only if relevant, and close the lead if interest remains low.",
+      },
+      {
+        name: "Not interested in finance/accounting career",
+        counsellorAction:
+          "Understand the candidate's preferred career direction, provide guidance only if relevant, and close the lead when there is no program fit.",
+      },
+      {
+        name: "Just exploring / information only",
+        counsellorAction:
+          "Share a concise program overview, offer a career counselling call, and schedule a low-pressure follow-up based on the candidate's timeline.",
+      },
+      {
+        name: "No current plan to pursue a course",
+        counsellorAction:
+          "Record the likely decision timeline, obtain consent for future updates, and move the lead to the appropriate future follow-up cycle.",
+      },
+      {
+        name: "Prefers another course or certification",
+        counsellorAction:
+          "Understand the candidate's career goal, explain the relevant differences factually, and close or redirect the lead based on the final preference.",
+      },
+      {
+        name: "Prefers regular degree / MBA",
+        counsellorAction:
+          "Clarify how the candidate's preferred degree differs from the GCC School pathway, answer questions, and close the lead if the preference remains unchanged.",
+      },
+      {
+        name: "Not ready for full-time training",
+        counsellorAction:
+          "Identify the time or commitment constraint, discuss a future cohort if suitable, and record the correct follow-up month.",
+      },
+      {
+        name: "Looking only for a job",
+        counsellorAction:
+          "Explain the interview-first, hire-first model and eligibility requirements; move eligible candidates forward or close the lead if they do not want training.",
+      },
+      {
+        name: "Asked not to contact again",
+        counsellorAction:
+          "Mark the lead as Do Not Contact immediately and stop all calls, messages, emails and automated follow-ups.",
+      },
+      {
+        name: "Reason not disclosed",
+        counsellorAction:
+          "Make one polite attempt to understand the reason; if the candidate declines, record 'reason not disclosed' and close the lead.",
+      },
+    ],
+  },
+  {
+    name: "Invalid",
+    type: 'lost',
+    color: '#6b7280',
+    subStages: [
+      {
+        name: "Wrong number",
+        counsellorAction:
+          "Verify the number once from the original source; if it remains incorrect, mark the lead invalid and stop communication.",
+      },
+      {
+        name: "Duplicate lead",
+        counsellorAction:
+          "Link or merge the record with the original lead, retain the correct owner and interaction history, and close the duplicate record.",
+      },
+      {
+        name: "Consultant / agency / vendor call",
+        counsellorAction:
+          "Remove the record from the admissions funnel and route it to the relevant partnership, procurement or administration contact if required.",
+      },
+      {
+        name: "Enquired by mistake",
+        counsellorAction:
+          "Confirm that no enquiry was intended, mark the lead invalid, and stop further admission communication.",
+      },
+      {
+        name: "Test lead",
+        counsellorAction:
+          "Tag the record as a test lead and exclude it from counsellor follow-ups, campaign automation and conversion reports.",
+      },
+    ],
+  },
+  {
+    name: "Not Eligible",
+    type: 'lost',
+    color: '#a8a29e',
+    subStages: [
+      {
+        name: "Still in Graduation",
+        counsellorAction:
+          "Record the course, year and expected graduation date, move the lead to Future Batch, and schedule follow-up near eligibility.",
+      },
+      {
+        name: "Still in School",
+        counsellorAction:
+          "Record the expected Class 12 completion year and retain the lead only for consent-based long-term career awareness communication.",
+      },
+      {
+        name: "Out of TG",
+        counsellorAction:
+          "Record the exact eligibility criterion not met, check for a suitable alternative only if available, and close the lead.",
+      },
+      {
+        name: "Other Degree",
+        counsellorAction:
+          "Verify the candidate's complete academic profile against eligibility rules, refer a suitable option if available, and close if ineligible.",
+      },
+    ],
+  },
+  {
+    name: "Not Connected",
+    type: 'open',
+    color: '#f59e0b',
+    subStages: [
+      {
+        name: "Ringing / No answer",
+        counsellorAction:
+          "Attempt contact at different time slots, send a brief WhatsApp message explaining the purpose, and log every attempt in the CRM.",
+      },
+      {
+        name: "Switched off",
+        counsellorAction:
+          "Retry later the same day and the next working day, send a WhatsApp message if available, and record the next attempt date.",
+      },
+      {
+        name: "Out of coverage area",
+        counsellorAction:
+          "Retry after a few hours and on the next working day, send a WhatsApp message, and log the contact attempts.",
+      },
+      {
+        name: "Call disconnected",
+        counsellorAction:
+          "Send a short WhatsApp message stating the purpose of the call and ask for a convenient callback time before trying again.",
+      },
+      {
+        name: "Number Not Reachable",
+        counsellorAction:
+          "Check the number format and source, try an available alternate channel, and mark invalid if no valid contact method exists.",
+      },
+    ],
+  },
+  {
+    name: "NFET",
+    type: 'open',
+    color: '#0891b2',
+    subStages: [
+      {
+        name: "NFET details shared",
+        counsellorAction:
+          "Confirm that the candidate understands the NFET process, share the registration link and deadline, and schedule the next follow-up.",
+      },
+      {
+        name: "NFET profile pending",
+        counsellorAction:
+          "Guide the candidate to complete the profile, clarify missing information, and set a completion deadline.",
+      },
+      {
+        name: "NFET Documents Pending",
+        counsellorAction:
+          "Send the exact list of missing documents, assist with submission, and verify each document when received.",
+      },
+      {
+        name: "NFET Profile Completed",
+        counsellorAction:
+          "Verify the completed profile and documents, update the CRM, and guide the candidate to the registration payment step.",
+      },
+      {
+        name: "NFET registration - payment pending",
+        counsellorAction:
+          "Share the authorised payment link and due date, explain the payment process, and follow up before the deadline.",
+      },
+      {
+        name: "NFET registration - payment done",
+        counsellorAction:
+          "Verify the transaction, update the payment status, send acknowledgement, and share the next NFET step.",
+      },
+      {
+        name: "NFET scheduled",
+        counsellorAction:
+          "Share the exam date, time and instructions, confirm attendance, and send reminders 24 hours and two hours before the exam.",
+      },
+      {
+        name: "NFET appeared - result awaited",
+        counsellorAction:
+          "Confirm attendance, thank the candidate, communicate the expected result timeline, and update the lead as soon as the result is available.",
+      },
+      {
+        name: "NFET No Show",
+        counsellorAction:
+          "Contact the candidate the same day, record the reason, and reschedule only if permitted under the current policy.",
+      },
+      {
+        name: "NFET Passed",
+        counsellorAction:
+          "Congratulate the candidate, explain the interview process, collect any pending details, and book the interview slot.",
+      },
+      {
+        name: "NFET Failed",
+        counsellorAction:
+          "Communicate the result sensitively, explain an approved retest or alternative pathway if available, and record the candidate's decision.",
+      },
+      {
+        name: "NFET Retest",
+        counsellorAction:
+          "Confirm retest eligibility, share the revised schedule and preparation guidance, and send reminders before the retest.",
+      },
+    ],
+  },
+  {
+    name: "Interview",
+    type: 'open',
+    color: '#0d9488',
+    subStages: [
+      {
+        name: "Interview Slot Booked",
+        counsellorAction:
+          "Send the interview confirmation, required documents and preparation instructions, and share reminders one day and two hours before the slot.",
+      },
+      {
+        name: "Interview No Show",
+        counsellorAction:
+          "Contact the candidate the same day, record the reason, and offer one reschedule if allowed and the candidate remains interested.",
+      },
+      {
+        name: "Interview Appeared",
+        counsellorAction:
+          "Mark attendance, collect interviewer feedback, communicate the expected result timeline, and keep the candidate updated.",
+      },
+      {
+        name: "Interview Cleared",
+        counsellorAction:
+          "Congratulate the candidate, explain the PPO and admission steps, collect pending documents, and set the next action date.",
+      },
+      {
+        name: "Interview Rejected",
+        counsellorAction:
+          "Communicate the result professionally, record the reason or feedback, and discuss a future or alternative pathway only if applicable.",
+      },
+      {
+        name: "Interview Stop Responding",
+        counsellorAction:
+          "Make structured attempts through call, WhatsApp and email over seven days; log each attempt and move to Closed - Lost if there is no response.",
+      },
+    ],
+  },
+  {
+    name: "PPO",
+    type: 'open',
+    color: '#16a34a',
+    subStages: [
+      {
+        name: "Pre-Placement Offer (PPO) letter issued",
+        counsellorAction:
+          "Share the PPO through the approved channel, explain the terms and acceptance deadline, and schedule a follow-up before expiry.",
+      },
+      {
+        name: "PPO letter accepted / signed",
+        counsellorAction:
+          "Verify and upload the signed PPO, update the CRM, and move the candidate to registration and fee processing.",
+      },
+    ],
+  },
+  {
+    name: "Registration & Fee",
+    type: 'open',
+    color: '#65a30d',
+    subStages: [
+      {
+        name: "Registration payment pending",
+        counsellorAction:
+          "Share the authorised payment link, amount and due date, resolve payment questions, and follow up before the deadline.",
+      },
+      {
+        name: "Registration payment done",
+        counsellorAction:
+          "Verify the payment, issue acknowledgement or receipt, update the CRM, and communicate the next fee or documentation step.",
+      },
+      {
+        name: "Direct Payment - pending",
+        counsellorAction:
+          "Confirm the payable amount, due date and authorised payment method, then share the link and schedule a payment follow-up.",
+      },
+      {
+        name: "Direct Payment - in parts",
+        counsellorAction:
+          "Document the approved instalment plan and due dates, send reminders before each instalment, and issue receipts after payment.",
+      },
+      {
+        name: "Opt in for Loan",
+        counsellorAction:
+          "Obtain consent to connect the candidate with the finance partner, share the document checklist, and assign a follow-up owner.",
+      },
+      {
+        name: "Loan Documentation Stage",
+        counsellorAction:
+          "Track the required documents, help resolve missing or incorrect items, and update the application status in the CRM.",
+      },
+      {
+        name: "Loan in process",
+        counsellorAction:
+          "Follow up with the finance partner and candidate, communicate status updates, and record the expected decision or disbursement date.",
+      },
+      {
+        name: "Program fee - fully paid",
+        counsellorAction:
+          "Reconcile the full payment, issue the final receipt, update the fee status, and complete the admission and onboarding handover.",
+      },
+    ],
+  },
+  {
+    name: "Risk",
+    type: 'open',
+    color: '#dc2626',
+    subStages: [
+      {
+        name: "Refund",
+        counsellorAction:
+          "Record the refund reason and request in writing, verify eligibility under policy, escalate for approval, and track the case until closure.",
+      },
+      {
+        name: "Seat Cancel",
+        counsellorAction:
+          "Obtain written cancellation confirmation, record the reason, stop the admission process, and initiate the applicable refund workflow.",
+      },
+    ],
+  },
+  {
+    name: "Future Batch",
+    type: 'open',
+    color: '#a855f7',
+    subStages: [
+      {
+        name: "12th appearing (Commerce) - nurture for future batch",
+        counsellorAction:
+          "Record the expected Class 12 completion date, obtain consent for updates, and schedule follow-up after exams or results.",
+      },
+      {
+        name: "B.Com / BBA Persuing",
+        counsellorAction:
+          "Record the year, semester and expected graduation date, share relevant career content, and schedule periodic future-batch follow-ups.",
+      },
+      {
+        name: "Final year appearing - target next batch",
+        counsellorAction:
+          "Record exam and result timelines, schedule follow-up near completion, and share eligibility and interview-preparation information.",
+      },
+      {
+        name: "Interested but wants next batch - follow up at next intake",
+        counsellorAction:
+          "Record the preferred cohort and an exact follow-up date, then share only relevant updates until the next intake opens.",
+      },
+    ],
+  },
+  {
+    name: "Closed - Lost",
+    type: 'lost',
+    color: '#b91c1c',
+    subStages: [
+      {
+        name: "Not willing to join",
+        counsellorAction:
+          "Record the primary reason, confirm closure respectfully, and stop repeated follow-ups unless the candidate consents to future updates.",
+      },
+      {
+        name: "Fee concern",
+        counsellorAction:
+          "Understand the affordability gap, explain fees, ROI and available financing accurately, offer one follow-up, and close if the concern remains unresolved.",
+      },
+      {
+        name: "Location issue",
+        counsellorAction:
+          "Explain the Gurugram campus, connectivity, safe PG, homemade food and pick-and-drop options, then confirm whether relocation is still a barrier.",
+      },
+      {
+        name: "Parents not convinced",
+        counsellorAction:
+          "Offer a parent counselling call, address concerns with clear program and career information, and make one agreed follow-up.",
+      },
+      {
+        name: "Looking only for CA / CS / CMA career",
+        counsellorAction:
+          "Clarify that GCC School is not conventional exam coaching, refer to a relevant KC GlobEd option if suitable, and close the GCC School lead.",
+      },
+      {
+        name: "Looking only for degree / MBA admission",
+        counsellorAction:
+          "Clarify the scope of GCC School, direct the candidate to an appropriate institution or option if known, and close the lead.",
+      },
+      {
+        name: "Already employed in a GCC",
+        counsellorAction:
+          "Understand the candidate's upskilling or career-growth need, suggest a relevant option only if suitable, and close if no need exists.",
+      },
+      {
+        name: "Joined another institute / program",
+        counsellorAction:
+          "Record the selected program if the candidate is comfortable sharing it, congratulate them, and close the lead respectfully.",
+      },
+      {
+        name: "Dropping this year",
+        counsellorAction:
+          "Record the expected restart timeline, move to Future Batch with consent, or close the lead if no follow-up is requested.",
+      },
+      {
+        name: "Stopped answering after counselling (5-7 attempts)",
+        counsellorAction:
+          "Send one final closure message by WhatsApp or email, mark the lead Closed - Lost, and stop current-cycle follow-ups.",
+      },
+    ],
+  },
+  {
+    name: "Enrolled",
+    type: 'converted',
+    color: '#15803d',
+    subStages: [
+      {
+        name: "Admission confirmed - seat allotted",
+        counsellorAction:
+          "Update the admission ID, cohort, payment and document status; send seat confirmation and notify the academic and operations teams.",
+      },
+      {
+        name: "Welcome message sent",
+        counsellorAction:
+          "Share the onboarding pack, orientation schedule, reporting instructions and required access details, then hand over the student to the onboarding team.",
+      },
+    ],
+  },
+];

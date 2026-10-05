@@ -1,0 +1,5 @@
+Name,Mobile,Email,City
+Postman Bulk One,9812300001,bulk.one@example.com,Pune
+Postman Bulk Two,9812300002,not-an-email,Mumbai
+No Mobile,,,Delhi
+Postman Bulk Dup,9812300001,,Pune
