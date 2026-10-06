@@ -1,12 +1,41 @@
-import React from 'react';
-import AppRoutes from './routes';
-import useTheme from './hooks/useTheme';
+import { useEffect } from 'react'
+import { BrowserRouter } from 'react-router-dom'
+import { Toaster } from 'sonner'
+import AppRoutes from './routes/AppRoutes'
+import { useAppDispatch } from './app/hooks'
+import { useRefreshSessionMutation } from './services/authApi'
+import { sessionChecked, setCredentials } from './features/auth/authSlice'
 
-const App: React.FC = () => {
-  // Keeps the `.dark` class and the persisted preference in sync app-wide.
-  useTheme();
+/**
+ * The access token lives only in memory; on load we silently exchange the
+ * httpOnly refresh cookie for a new one so a page refresh keeps the session.
+ */
+let bootstrapped = false
 
-  return <AppRoutes />;
-};
+function SessionBootstrap() {
+  const dispatch = useAppDispatch()
+  const [refresh] = useRefreshSessionMutation()
 
-export default App;
+  useEffect(() => {
+    // Refresh tokens rotate; a second concurrent call (StrictMode) would look
+    // like token reuse and revoke the session.
+    if (bootstrapped) return
+    bootstrapped = true
+    refresh()
+      .unwrap()
+      .then((res) => dispatch(setCredentials({ user: res.data.user, accessToken: res.data.access_token })))
+      .catch(() => dispatch(sessionChecked()))
+  }, [dispatch, refresh])
+
+  return null
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <SessionBootstrap />
+      <AppRoutes />
+      <Toaster position="top-right" richColors closeButton />
+    </BrowserRouter>
+  )
+}
