@@ -47,9 +47,13 @@ function TemplateDrawer({ template, copyOf, onClose }: { template?: PermissionTe
       fieldRules: perms.fieldRules.filter((r) => r.field.trim()),
     }
     try {
-      if (template) await update({ id: template._id, body }).unwrap()
-      else await create({ ...body, key: key.trim() }).unwrap()
-      toast.success(template ? 'Template updated' : 'Template created')
+      if (template) {
+        const res = await update({ id: template._id, body }).unwrap()
+        toast.success(res.message)
+      } else {
+        await create({ ...body, key: key.trim() }).unwrap()
+        toast.success('Template created')
+      }
       onClose()
     } catch (err) {
       const parsed = parseApiError(err)
@@ -64,7 +68,13 @@ function TemplateDrawer({ template, copyOf, onClose }: { template?: PermissionTe
       wide
       onClose={onClose}
       title={template ? `Edit template · ${template.name}` : 'New role template'}
-      description="A saved tick-set of modules, actions, data scope and masked fields. Applying it to a user copies the ticks; later edits here don't change existing users."
+      description={
+        template?.roleLabel
+          ? `Drives the ${template.roleLabel} role. Saving applies these ticks to all ${template.userCount ?? 0} user(s) following it.`
+          : template
+            ? `Saving applies these ticks to all ${template.userCount ?? 0} user(s) following this template.`
+            : 'A saved tick-set of modules, actions, data scope and masked fields. Users who get this template follow it — later edits update them too.'
+      }
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -127,7 +137,7 @@ export function RoleTemplates() {
       render: (t) => (
         <div className="min-w-0">
           <p className="flex items-center gap-2 font-medium text-slate-800">
-            {t.name} {t.isSystem && <Badge tone="blue">Default</Badge>}
+            {t.name} {t.roleLabel ? <Badge tone="green">Role: {t.roleLabel}</Badge> : t.isSystem && <Badge tone="blue">Default</Badge>}
           </p>
           <p className="max-w-80 truncate text-[11px] text-slate-500" title={t.description}>
             {t.description || t.key}
@@ -144,6 +154,7 @@ export function RoleTemplates() {
         </span>
       ),
     },
+    { key: 'userCount', header: 'Users', render: (t) => <span className="text-xs tabular-nums text-slate-600">{t.userCount ?? 0}</span> },
     { key: 'dataScope', header: 'Data scope', render: (t) => <Badge>{scopeLabel(t.dataScope)}</Badge> },
     {
       key: 'fieldRules',
@@ -172,7 +183,7 @@ export function RoleTemplates() {
     <>
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-slate-500">
-          Role templates are starting points for <b>Custom access</b> users. Super Admin can then switch any tick on or off per user.
+          Users set up from a template <b>follow it</b>: editing a template updates every user on it. Admin and Admission Counsellor take their access from their role templates. Changing a single user's ticks makes that user custom access.
         </p>
         <Button size="sm" onClick={() => setEditing({})}>
           <Plus className="h-3.5 w-3.5" /> New template
@@ -204,7 +215,7 @@ export function RoleTemplates() {
           }
         }}
         title="Delete template"
-        message={`Delete "${confirm?.name}"? Users who were set up from it keep their current access.`}
+        message={`Delete "${confirm?.name}"? Its ${confirm?.userCount ?? 0} user(s) keep their current access as custom access.`}
         confirmLabel="Delete"
         danger
         loading={removing}

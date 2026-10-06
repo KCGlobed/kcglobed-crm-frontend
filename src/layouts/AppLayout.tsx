@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Header } from '../components/layout/Header'
 import { Sidebar } from '../components/layout/Sidebar'
+import { useSessionSync } from '../features/auth/useSessionSync'
 
 const COLLAPSE_KEY = 'crm.sidebar.collapsed'
 
@@ -15,6 +16,7 @@ function readCollapsed() {
 }
 
 export default function AppLayout() {
+  useSessionSync()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(readCollapsed)
 

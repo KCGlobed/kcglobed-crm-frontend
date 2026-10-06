@@ -64,14 +64,14 @@ export function PermissionBuilder({ value, onChange, templates, showTemplatePick
 
   const setRule = (index: number, patch: Partial<FieldRule>) => {
     const fieldRules = value.fieldRules.map((r, i) => (i === index ? { ...r, ...patch } : r))
-    onChange({ ...value, fieldRules })
+    onChange({ ...value, fieldRules, templateKey: undefined })
   }
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
         {showTemplatePicker && (
-          <FormField label="Start from template" hint="Templates are saved tick-sets — editing after applying detaches it">
+          <FormField label="Start from template" hint="The user follows the template — later template edits update them too. Changing any tick here detaches it.">
             <Select value={value.templateKey ?? ''} onChange={(e) => applyTemplate(e.target.value)}>
               <option value="">Custom / start blank</option>
               {templates.map((t) => (
@@ -83,7 +83,7 @@ export function PermissionBuilder({ value, onChange, templates, showTemplatePick
           </FormField>
         )}
         <FormField label="Data scope" hint={DATA_SCOPES.find((s) => s.key === value.dataScope)?.hint}>
-          <Select value={value.dataScope} onChange={(e) => onChange({ ...value, dataScope: e.target.value as DataScope })}>
+          <Select value={value.dataScope} onChange={(e) => onChange({ ...value, dataScope: e.target.value as DataScope, templateKey: undefined })}>
             {DATA_SCOPES.map((s) => (
               <option key={s.key} value={s.key}>
                 {s.label}
@@ -150,7 +150,7 @@ export function PermissionBuilder({ value, onChange, templates, showTemplatePick
               </Select>
               <button
                 type="button"
-                onClick={() => onChange({ ...value, fieldRules: value.fieldRules.filter((_, idx) => idx !== i) })}
+                onClick={() => onChange({ ...value, fieldRules: value.fieldRules.filter((_, idx) => idx !== i), templateKey: undefined })}
                 className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -166,7 +166,7 @@ export function PermissionBuilder({ value, onChange, templates, showTemplatePick
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => onChange({ ...value, fieldRules: [...value.fieldRules, { field: '', mode: 'masked' }] })}
+            onClick={() => onChange({ ...value, fieldRules: [...value.fieldRules, { field: '', mode: 'masked' }], templateKey: undefined })}
           >
             Add field rule
           </Button>

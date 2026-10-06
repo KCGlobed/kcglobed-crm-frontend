@@ -56,6 +56,9 @@ const ROLE_HINTS: Record<string, string> = {
   other: 'Tick modules, actions, data scope and masked fields below — or start from a role template.',
 }
 
+/** Role dropdown value for a role template: the user follows that template's access. */
+const TPL = 'tpl:'
+
 const refId = (v: User['team'] | User['reportingManager']) => (typeof v === 'object' && v ? v._id : ((v as string) ?? ''))
 
 /**
@@ -75,7 +78,13 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
   const [updateUser, { isLoading: updating }] = useUpdateUserMutation()
   const [setPermissions, { isLoading: savingPerms }] = useSetUserPermissionsMutation()
 
-  const initialRole: string = user ? (user.role && user.role !== 'super_admin' ? user.role : 'other') : 'counsellor'
+  const initialRole: string = user
+    ? user.role === 'other' && user.templateKey
+      ? TPL + user.templateKey
+      : user.role && user.role !== 'super_admin'
+        ? user.role
+        : 'other'
+    : 'counsellor'
   // The parent mounts this drawer fresh per user (keyed), so defaults derive once.
   const [perms, setPerms] = useState<PermissionState>(() =>
     user
@@ -126,7 +135,35 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
         { value: 'other', label: 'Custom access (permission builder)' },
       ]
     : [{ value: 'counsellor', label: 'Admission Counsellor' }]
-  const custom = role === 'other' && !isSuperAdminChecked
+  // templates that drive Admin / Admission Counsellor are those roles, so they are not listed twice
+  const roleTemplates = (templates?.data ?? []).filter((t) => !t.role)
+  const selectedTemplate = role.startsWith(TPL) ? roleTemplates.find((t) => TPL + t.key === role) : undefined
+  const linkedRoleTemplate = (templates?.data ?? []).find((t) => t.role === role)
+  const custom = (role === 'other' || role.startsWith(TPL)) && !isSuperAdminChecked
+  const roleHint = selectedTemplate
+    ? `Access comes from the "${selectedTemplate.name}" template. Editing that template later updates this user too. Changing any tick below makes it custom access.`
+    : linkedRoleTemplate
+      ? `${ROLE_HINTS[role]} Follows the "${linkedRoleTemplate.name}" role template — edit the template to change every user with this role.`
+      : ROLE_HINTS[role]
+
+  const fromTemplate = (key: string): PermissionState | undefined => {
+    const t = (templates?.data ?? []).find((x) => x.key === key)
+    return t
+      ? {
+          permissions: t.permissions.map((p) => ({ ...p, actions: [...p.actions] })),
+          dataScope: t.dataScope,
+          fieldRules: t.fieldRules.map((r) => ({ ...r })),
+          templateKey: t.key,
+        }
+      : undefined
+  }
+
+  // keep the Role dropdown and the builder in step: picking / leaving a template in either updates the other
+  const onPermsChange = (next: PermissionState) => {
+    setPerms(next)
+    if (next.templateKey && roleTemplates.some((t) => t.key === next.templateKey)) setValue('role', TPL + next.templateKey)
+    else if (role.startsWith(TPL)) setValue('role', 'other')
+  }
 
   const onSubmit = async (values: FormValues) => {
     const base: Record<string, unknown> = {
@@ -147,17 +184,19 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
       fieldRules: perms.fieldRules.filter((r) => r.field.trim()),
       templateKey: perms.templateKey ?? null,
     }
+    // a template choice is stored as custom access that follows the template
+    const apiRole = values.role.startsWith(TPL) ? 'other' : values.role
     try {
       if (isEdit) {
-        const roleChanged = values.role !== initialRole
-        await updateUser({ id: user!._id, body: { ...base, ...(superAdmin && roleChanged ? { role: values.role } : {}) } }).unwrap()
+        const roleChanged = apiRole !== user!.role
+        await updateUser({ id: user!._id, body: { ...base, ...(superAdmin && roleChanged ? { role: apiRole } : {}) } }).unwrap()
         if (custom && superAdmin) await setPermissions({ id: user!._id, body: access }).unwrap()
         toast.success('User updated')
       } else {
         const res = await createUser({
           ...base,
           email: values.email,
-          role: values.role,
+          role: apiRole,
           ...(custom ? { ...access, templateKey: perms.templateKey } : {}),
         }).unwrap()
         toast.success(res.message)
@@ -249,13 +288,38 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
         </FieldGroup>
 
         <FieldGroup title="Role & access">
-          <FormField label="Role" required error={errors.role?.message} hint={isSuperAdminChecked ? undefined : ROLE_HINTS[role]}>
-            <Select {...register('role')} disabled={(isEdit && !superAdmin) || isSuperAdminChecked}>
+          <FormField label="Role" required error={errors.role?.message} hint={isSuperAdminChecked ? undefined : roleHint}>
+            <Select
+              {...register('role', {
+                onChange: (e) => {
+                  const value: string = e.target.value
+                  if (value.startsWith(TPL)) {
+                    const next = fromTemplate(value.slice(TPL.length))
+                    if (next) setPerms(next)
+                  } else if (value === 'other') {
+                    setPerms((p) => ({ ...p, templateKey: undefined }))
+                  }
+                },
+              })}
+              disabled={(isEdit && !superAdmin) || isSuperAdminChecked}
+            >
               {roleOptions.map((r) => (
                 <option key={r.value} value={r.value}>
                   {r.label}
                 </option>
               ))}
+              {superAdmin && roleTemplates.length > 0 && (
+                <optgroup label="Role templates">
+                  {roleTemplates.map((t) => (
+                    <option key={t.key} value={TPL + t.key}>
+                      {t.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {role.startsWith(TPL) && !selectedTemplate && templates && (
+                <option value={role}>Template no longer exists</option>
+              )}
             </Select>
           </FormField>
           <div className="flex flex-wrap gap-x-6 gap-y-2">
@@ -275,7 +339,7 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
           {custom && (
             <div className="grid gap-4 lg:grid-cols-[1fr_200px]">
               <div className="min-w-0 overflow-x-auto">
-                <PermissionBuilder value={perms} onChange={setPerms} templates={templates?.data ?? []} />
+                <PermissionBuilder value={perms} onChange={onPermsChange} templates={roleTemplates} />
               </div>
               <MenuPreview permissions={perms.permissions} />
             </div>

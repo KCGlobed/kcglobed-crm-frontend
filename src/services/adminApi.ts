@@ -118,11 +118,12 @@ export const adminApi = api.injectEndpoints({
     }),
     updateTemplate: build.mutation<ApiResponse<PermissionTemplate>, { id: string; body: Record<string, unknown> }>({
       query: ({ id, body }) => ({ url: `/permission-templates/${id}`, method: 'PUT', body }),
-      invalidatesTags: [{ type: 'Templates', id: 'LIST' }],
+      // the template's users change too, and the signed-in user may be one of them
+      invalidatesTags: [{ type: 'Templates', id: 'LIST' }, { type: 'Users', id: 'LIST' }, 'Me'],
     }),
     deleteTemplate: build.mutation<ApiResponse<null>, string>({
       query: (id) => ({ url: `/permission-templates/${id}`, method: 'DELETE' }),
-      invalidatesTags: [{ type: 'Templates', id: 'LIST' }],
+      invalidatesTags: [{ type: 'Templates', id: 'LIST' }, { type: 'Users', id: 'LIST' }],
     }),
 
     listAuditLogs: build.query<ApiListResponse<AuditLogEntry>, ListParams>({

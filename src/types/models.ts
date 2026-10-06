@@ -157,6 +157,11 @@ export interface PermissionTemplate {
   dataScope: DataScope
   fieldRules: FieldRule[]
   isSystem: boolean
+  /** users currently following this template */
+  userCount?: number
+  /** set when the template drives a go-live role (Admin / Admission Counsellor) */
+  role?: RoleKey
+  roleLabel?: string
 }
 
 export interface Source {
