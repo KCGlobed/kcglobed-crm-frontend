@@ -375,7 +375,7 @@ function MasterModal({
                 <Input
                   type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'color' ? 'color' : 'text'}
                   disabled={disabled}
-                  value={(value as string) ?? (f.type === 'color' ? '#6366f1' : '')}
+                  value={(value as string) ?? (f.type === 'color' ? '#3d1f73' : '')}
                   onChange={(e) => set(f.key, e.target.value)}
                   aria-invalid={!!errors[f.key]}
                 />

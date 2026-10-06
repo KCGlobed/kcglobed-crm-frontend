@@ -35,7 +35,7 @@ const NOTIFICATION_ICONS: Record<string, { icon: typeof Bell; className: string 
   re_enquiry: { icon: Repeat, className: 'bg-sky-50 text-sky-700' },
   unassigned_pool: { icon: Inbox, className: 'bg-amber-50 text-amber-700' },
   untouched: { icon: Hourglass, className: 'bg-amber-50 text-amber-700' },
-  language_barrier: { icon: Languages, className: 'bg-violet-50 text-violet-600' },
+  language_barrier: { icon: Languages, className: 'bg-pink-50 text-pink-600' },
   bulk_done: { icon: Send, className: 'bg-emerald-50 text-emerald-700' },
   export_ready: { icon: Download, className: 'bg-emerald-50 text-emerald-700' },
   integration_error: { icon: PlugZap, className: 'bg-red-50 text-red-600' },
@@ -106,7 +106,7 @@ export function NotificationsBell() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+        className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-brand-50 hover:text-brand-700"
       >
         <Bell className="h-[18px] w-[18px]" />
         {unread > 0 && (
@@ -181,7 +181,7 @@ export function NotificationsBell() {
                       {n.body && <span className="block truncate text-[11px] text-slate-500">{n.body}</span>}
                       <span className="mt-0.5 block text-[10px] text-slate-400">{timeAgo(n.createdAt)}</span>
                     </span>
-                    {!n.readAt && <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-brand-600" aria-label="Unread" />}
+                    {!n.readAt && <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-gold-500" aria-label="Unread" />}
                   </button>
                 )
               })}

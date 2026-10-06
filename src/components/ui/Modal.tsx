@@ -20,13 +20,13 @@ export function Modal({ open, onClose, title, description, children, footer, siz
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <div className="absolute inset-0 bg-slate-900/50 transition-opacity" onClick={onClose} />
+      <div className="absolute inset-0 animate-fade-in bg-slate-900/50 backdrop-blur-[2px]" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'relative flex max-h-[92vh] w-full flex-col rounded-t-xl bg-white shadow-[var(--shadow-md)] ring-1 ring-slate-200 sm:rounded-xl',
+          'relative flex max-h-[92vh] w-full animate-pop-in flex-col rounded-t-xl bg-white shadow-2xl ring-1 ring-slate-200 sm:rounded-xl',
           sizes[size]
         )}
       >

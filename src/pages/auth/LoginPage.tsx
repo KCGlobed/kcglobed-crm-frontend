@@ -1,12 +1,13 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { GraduationCap } from 'lucide-react'
+import logo from '../../assets/logo-kcglobed.svg'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useLoginMutation } from '../../services/authApi'
 import { useAppDispatch } from '../../app/hooks'
 import { setCredentials } from '../../features/auth/authSlice'
+import { AuthShell } from '../../components/layout/AuthShell'
 import { Button } from '../../components/ui/Button'
 import { FormField, Input } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
@@ -51,19 +52,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 bg-[radial-gradient(circle_at_top,var(--color-brand-50),transparent_60%)] p-4">
+    <AuthShell>
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 shadow-lg shadow-brand-600/30">
-            <GraduationCap className="h-7 w-7 text-white" />
-          </div>
-          <h1 className="text-lg font-semibold text-slate-800">GCC School CRM</h1>
-          <p className="text-xs text-slate-500">Sign in to the admissions platform</p>
+          <img src={logo} alt="KcGlobed" className="mb-2 h-12 w-auto lg:hidden" />
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Welcome back</h1>
+          <p className="text-sm text-slate-500">Sign in to KcGlobed CRM</p>
         </div>
 
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
+          className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-md"
         >
           <FormField label="Email" error={errors.email?.message} required>
             <Input
@@ -88,7 +87,7 @@ export default function LoginPage() {
               Forgot password?
             </Link>
           </div>
-          <Button type="submit" className="w-full" loading={isLoading}>
+          <Button type="submit" className="h-10 w-full" loading={isLoading}>
             Sign in
           </Button>
         </form>
@@ -101,6 +100,6 @@ export default function LoginPage() {
           <p>Admission Counsellor: sara.c@gccschool.com / Welcome@123</p>
         </div>
       </div>
-    </div>
+    </AuthShell>
   )
 }

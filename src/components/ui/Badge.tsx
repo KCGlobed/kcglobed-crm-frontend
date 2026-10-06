@@ -13,13 +13,14 @@ interface BadgeProps {
   title?: string
 }
 
+// `blue` is the brand purple, so `violet` renders pink to stay distinguishable from it
 const tones: Record<BadgeTone, string> = {
   slate: 'bg-slate-100 text-slate-600 ring-slate-200',
   green: 'bg-emerald-50 text-emerald-700 ring-emerald-100',
   red: 'bg-red-50 text-red-700 ring-red-100',
   amber: 'bg-amber-50 text-amber-800 ring-amber-100',
   blue: 'bg-brand-50 text-brand-700 ring-brand-100',
-  violet: 'bg-violet-50 text-violet-700 ring-violet-100',
+  violet: 'bg-pink-50 text-pink-700 ring-pink-100',
   cyan: 'bg-sky-50 text-sky-700 ring-sky-100',
 }
 
@@ -29,7 +30,7 @@ const dots: Record<BadgeTone, string> = {
   red: 'bg-red-500',
   amber: 'bg-amber-500',
   blue: 'bg-brand-600',
-  violet: 'bg-violet-500',
+  violet: 'bg-pink-500',
   cyan: 'bg-sky-500',
 }
 

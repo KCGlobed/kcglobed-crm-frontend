@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router-dom'
-import { ChevronsLeft, ChevronsRight, GraduationCap, X } from 'lucide-react'
+import { ChevronsLeft, ChevronsRight, X } from 'lucide-react'
+import logo from '../../assets/logo-kcglobed.svg'
+import logoMark from '../../assets/logo-kcglobed-mark.svg'
 import { useCurrentUser } from '../../app/hooks'
 import { NAV_SECTIONS } from '../../constants/navigation'
 import { can } from '../../constants/permissions'
@@ -35,14 +37,13 @@ export function Sidebar({
         )}
       >
         <div className={cn('flex h-14 shrink-0 items-center gap-2.5 border-b border-slate-200', mini ? 'justify-center px-2' : 'px-4')}>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 shadow-sm">
-            <GraduationCap className="h-5 w-5 text-white" />
-          </div>
-          {!mini && (
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-800">GCC School CRM</p>
-              <p className="truncate text-[10px] text-slate-500">Admissions Platform</p>
-            </div>
+          {mini ? (
+            <img src={logoMark} alt="KcGlobed CRM" className="h-8 w-8 shrink-0" />
+          ) : (
+            <>
+              <img src={logo} alt="KcGlobed" className="h-9 w-auto shrink-0" />
+              <span className="rounded-md bg-brand-600 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-gold-400">CRM</span>
+            </>
           )}
           <button
             type="button"
@@ -80,14 +81,14 @@ export function Sidebar({
                           'group relative flex items-center gap-2.5 rounded-lg py-2 text-[13px] font-medium transition-colors',
                           mini ? 'justify-center px-0' : 'px-2.5',
                           isActive
-                            ? 'bg-brand-50 text-brand-700 before:absolute before:inset-y-1.5 before:-left-3 before:w-[3px] before:rounded-r before:bg-brand-600'
-                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                            ? 'bg-brand-600 text-white shadow-sm before:absolute before:inset-y-1.5 before:-left-3 before:w-[3px] before:rounded-r before:bg-gold-400'
+                            : 'text-slate-600 hover:bg-brand-50 hover:text-brand-700'
                         )
                       }
                     >
                       {({ isActive }) => (
                         <>
-                          <item.icon className={cn('h-[18px] w-[18px] shrink-0', isActive ? 'text-brand-600' : 'text-slate-400 group-hover:text-slate-600')} />
+                          <item.icon className={cn('h-[18px] w-[18px] shrink-0', isActive ? 'text-gold-400' : 'text-slate-400 group-hover:text-brand-600')} />
                           {!mini && <span className="truncate">{item.label}</span>}
                         </>
                       )}
@@ -106,7 +107,7 @@ export function Sidebar({
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             className={cn(
-              'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700',
+              'flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-brand-50 hover:text-brand-700',
               collapsed && 'justify-center px-0'
             )}
           >

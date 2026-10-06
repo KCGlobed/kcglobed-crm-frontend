@@ -56,7 +56,7 @@ export function GlobalSearch() {
           if (e.key === 'Escape') setOpen(false)
         }}
         placeholder="Search leads — name, mobile, email, Lead ID  (Ctrl+K)"
-        className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-8 text-sm text-slate-700 placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
+        className="h-9 w-full rounded-lg border border-slate-200 bg-slate-50 pl-8 pr-8 text-sm text-slate-700 placeholder:text-slate-400 transition-colors hover:border-slate-300 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-3 focus:ring-brand-100"
       />
       {isFetching && <Spinner className="absolute right-2.5 top-2.5 h-4 w-4" />}
       {open && term.length >= 2 && result && (

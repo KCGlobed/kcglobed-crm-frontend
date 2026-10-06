@@ -44,7 +44,7 @@ export function PageHeader({
     <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
         {breadcrumbs && <Breadcrumbs items={breadcrumbs} />}
-        <h1 className="truncate text-xl font-semibold tracking-tight text-slate-800">{title}</h1>
+        <h1 className="truncate text-xl font-bold tracking-tight text-slate-900">{title}</h1>
         {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -70,7 +70,12 @@ export function Card({
     <section className={cn('rounded-xl border border-slate-200 bg-white shadow-sm', className)}>
       {(title || actions) && (
         <header className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-          {title && <h3 className="text-sm font-semibold text-slate-700">{title}</h3>}
+          {title && (
+            <h3 className="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-800">
+              <span aria-hidden className="h-3.5 w-1 shrink-0 rounded-full bg-gold-400" />
+              {title}
+            </h3>
+          )}
           {actions}
         </header>
       )}
@@ -169,7 +174,7 @@ export function Tabs({
           className={cn(
             '-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
             active === tab.key
-              ? 'border-brand-600 text-brand-700'
+              ? 'border-gold-400 text-brand-700'
               : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'
           )}
         >

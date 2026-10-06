@@ -1,4 +1,4 @@
-# GCC School CRM — Frontend
+# KcGlobed CRM — Frontend
 
 React 19 + TypeScript + Vite + Redux Toolkit (RTK Query) + Tailwind CSS v4.
 
