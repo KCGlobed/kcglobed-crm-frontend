@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom'
 import { MailCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { useForgotPasswordMutation } from '../../services/authApi'
+import { AuthShell } from '../../components/layout/AuthShell'
 import { Button } from '../../components/ui/Button'
 import { FormField, Input } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
@@ -32,8 +33,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 bg-[radial-gradient(circle_at_top,var(--color-brand-50),transparent_60%)] p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <AuthShell>
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-md">
         {sent ? (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
             <div className="rounded-full bg-emerald-50 p-3">
@@ -51,7 +52,7 @@ export default function ForgotPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <h1 className="text-base font-semibold text-slate-800">Forgot password</h1>
+              <h1 className="text-lg font-bold tracking-tight text-slate-900">Forgot password</h1>
               <p className="mt-1 text-xs text-slate-500">
                 Enter your email and we'll send you a reset link.
               </p>
@@ -70,6 +71,6 @@ export default function ForgotPasswordPage() {
           </form>
         )}
       </div>
-    </div>
+    </AuthShell>
   )
 }

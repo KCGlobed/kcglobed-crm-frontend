@@ -49,7 +49,7 @@ export function ProfileMenu() {
         aria-expanded={open}
         className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition-colors hover:bg-slate-100"
       >
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-600 text-[11px] font-semibold text-white">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-linear-to-br from-brand-500 to-brand-700 text-[11px] font-semibold text-white ring-2 ring-gold-300">
           {initials(user?.name)}
         </span>
         <span className="hidden text-left md:block">
@@ -61,7 +61,7 @@ export function ProfileMenu() {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div role="menu" className="absolute right-0 z-40 mt-1.5 w-60 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[var(--shadow-md)]">
+          <div role="menu" className="absolute right-0 z-40 mt-1.5 w-60 origin-top-right animate-pop-in overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[var(--shadow-md)]">
             <div className="border-b border-slate-100 px-4 py-3">
               <p className="truncate text-sm font-semibold text-slate-800">{user?.name}</p>
               <p className="truncate text-xs text-slate-500">{user?.email}</p>

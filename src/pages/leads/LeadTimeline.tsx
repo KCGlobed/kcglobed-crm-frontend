@@ -24,7 +24,7 @@ import { cn, formatDateTime, parseApiError } from '../../lib/utils'
 const TYPE_ICONS: Record<string, { icon: typeof Sparkles; className: string }> = {
   created: { icon: FilePlus2, className: 'bg-emerald-50 text-emerald-600' },
   note: { icon: MessageSquare, className: 'bg-sky-50 text-sky-600' },
-  call: { icon: Phone, className: 'bg-violet-50 text-violet-600' },
+  call: { icon: Phone, className: 'bg-pink-50 text-pink-600' },
   task: { icon: CalendarClock, className: 'bg-orange-50 text-orange-600' },
   stage_change: { icon: ArrowRightLeft, className: 'bg-amber-50 text-amber-600' },
   status_change: { icon: CircleDot, className: 'bg-rose-50 text-rose-600' },

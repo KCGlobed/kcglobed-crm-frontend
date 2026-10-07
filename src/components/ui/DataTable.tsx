@@ -110,7 +110,7 @@ export function Pagination({
                 key={p}
                 onClick={() => onPageChange?.(p)}
                 aria-current={p === page ? 'page' : undefined}
-                className={cn(navBtn, p === page ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100')}
+                className={cn(navBtn, p === page ? 'bg-brand-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100')}
               >
                 {p}
               </button>

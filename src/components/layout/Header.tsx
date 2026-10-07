@@ -6,6 +6,7 @@ import { can } from '../../constants/permissions'
 import { GlobalSearch } from '../GlobalSearch'
 import { NotificationsBell } from './NotificationsBell'
 import { ProfileMenu } from './ProfileMenu'
+import logoMark from '../../assets/logo-kcglobed-mark.svg'
 
 /** The section the current page belongs to (longest matching nav path). */
 function useCurrentSection() {
@@ -21,7 +22,7 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
   const current = useCurrentSection()
 
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/95 px-3 backdrop-blur sm:px-4">
+    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/85 px-3 backdrop-blur-md sm:px-4">
       <button
         type="button"
         className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
@@ -30,9 +31,11 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
       >
         <Menu className="h-[18px] w-[18px]" />
       </button>
+      {/* the sidebar carries the full logo on desktop; phones get the mark here */}
+      <img src={logoMark} alt="KcGlobed CRM" className="h-7 w-7 shrink-0 lg:hidden" />
       {current && (
         <div className="hidden min-w-0 items-center gap-2 xl:flex xl:w-56">
-          <current.icon className="h-4 w-4 shrink-0 text-slate-400" />
+          <current.icon className="h-4 w-4 shrink-0 text-brand-500" />
           <span className="truncate text-sm font-medium text-slate-700">
             {current.section && <span className="text-slate-400">{current.section} / </span>}
             {current.label}

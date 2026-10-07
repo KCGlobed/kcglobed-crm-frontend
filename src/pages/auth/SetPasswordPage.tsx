@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { useChangePasswordMutation, useLazyMeQuery } from '../../services/authApi'
 import { useAppDispatch, useCurrentUser } from '../../app/hooks'
 import { setUser } from '../../features/auth/authSlice'
+import { AuthShell } from '../../components/layout/AuthShell'
 import { Button } from '../../components/ui/Button'
 import { FormField, Input } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
@@ -47,7 +48,7 @@ export default function SetPasswordPage() {
       await changePassword({ currentPassword: values.currentPassword, newPassword: values.newPassword }).unwrap()
       const me = await fetchMe().unwrap()
       dispatch(setUser(me.data.user))
-      toast.success('Password set — welcome to GCC School CRM')
+      toast.success('Password set — welcome to KcGlobed CRM')
       navigate('/app', { replace: true })
     } catch (err) {
       const { message, errors: fieldErrors } = parseApiError(err)
@@ -57,18 +58,18 @@ export default function SetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 bg-[radial-gradient(circle_at_top,var(--color-brand-50),transparent_60%)] p-4">
+    <AuthShell>
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 shadow-lg shadow-brand-600/30">
-            <KeyRound className="h-6 w-6 text-white" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-brand-500 to-brand-700 shadow-lg shadow-brand-600/30">
+            <KeyRound className="h-6 w-6 text-gold-400" />
           </div>
-          <h1 className="text-lg font-semibold text-slate-800">Set your password</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Set your password</h1>
           <p className="text-xs text-slate-500">
             Hi {user?.name?.split(' ')[0]}, replace the temporary password from your email before you continue.
           </p>
         </div>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-md">
           <FormField label="Temporary password" error={errors.currentPassword?.message} required>
             <Input type="password" autoComplete="current-password" {...register('currentPassword')} />
           </FormField>
@@ -88,6 +89,6 @@ export default function SetPasswordPage() {
           </Button>
         </form>
       </div>
-    </div>
+    </AuthShell>
   )
 }

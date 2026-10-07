@@ -1,35 +1,47 @@
 @import "tailwindcss";
 
 /*
- * Design system — Bootstrap-inspired palette.
- * Tailwind's `brand`, `slate` and status scales are remapped here, so every
- * component that uses them (bg-brand-600, text-slate-500, bg-emerald-50 …)
+ * Design system — brand palette: deep purple (primary) + gold (secondary) on white.
+ * Tailwind's `brand`, `gold`, `slate` and status scales are remapped here, so
+ * every component that uses them (bg-brand-600, text-slate-500, bg-emerald-50 …)
  * follows one theme. Change colours here, not in components.
  */
 @theme {
-  /* primary — #0d6efd */
-  --color-brand-50: #eef5ff;
-  --color-brand-100: #dbe9ff;
-  --color-brand-200: #b6d4fe;
-  --color-brand-300: #86b7fe;
-  --color-brand-400: #4d94fd;
-  --color-brand-500: #2b80fd;
-  --color-brand-600: #0d6efd;
-  --color-brand-700: #0b5ed7;
-  --color-brand-800: #0a58ca;
-  --color-brand-900: #084298;
+  /* primary — rgb(61 31 115) / #3d1f73 */
+  --color-brand-50: #f5f2fa;
+  --color-brand-100: #eae3f5;
+  --color-brand-200: #d5c8eb;
+  --color-brand-300: #b6a1db;
+  --color-brand-400: #8c6cc3;
+  --color-brand-500: #5f3d9e;
+  --color-brand-600: #3d1f73;
+  --color-brand-700: #331a61;
+  --color-brand-800: #29144e;
+  --color-brand-900: #1e0f3a;
 
-  /* neutrals — Bootstrap grays */
-  --color-slate-50: #f8f9fa;
-  --color-slate-100: #f1f3f5;
-  --color-slate-200: #e9ecef;
-  --color-slate-300: #dee2e6;
-  --color-slate-400: #adb5bd;
-  --color-slate-500: #6c757d;
-  --color-slate-600: #495057;
-  --color-slate-700: #343a40;
-  --color-slate-800: #2b3035;
-  --color-slate-900: #212529;
+  /* secondary — rgb(251 176 59) / #fbb03b */
+  --color-gold-50: #fff9ec;
+  --color-gold-100: #feefcf;
+  --color-gold-200: #fddd9e;
+  --color-gold-300: #fcc86a;
+  --color-gold-400: #fbb03b;
+  --color-gold-500: #f59511;
+  --color-gold-600: #d97408;
+  --color-gold-700: #b4540b;
+  --color-gold-800: #92410f;
+  --color-gold-900: #78360f;
+
+  /* neutrals — grays with a hint of the primary, so borders and text sit with the purple */
+  --color-slate-50: #faf9fc;
+  --color-slate-100: #f4f2f8;
+  --color-slate-200: #e8e5ef;
+  --color-slate-300: #d9d5e3;
+  --color-slate-400: #9892a9;
+  --color-slate-500: #6b6580;
+  --color-slate-600: #4d4760;
+  --color-slate-700: #373148;
+  --color-slate-800: #272136;
+  --color-slate-900: #1a1526;
 
   /* success — #198754 */
   --color-emerald-50: #ecf6f0;
@@ -69,32 +81,56 @@
   --color-sky-700: #087990;
 
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --radius-lg: 0.5rem; /* 8px — inputs, buttons */
-  --radius-xl: 0.75rem; /* 12px — cards, modals */
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+
+  --radius-sm: 0.375rem; /* 6px */
+  --radius-md: 0.5rem; /* 8px */
+  --radius-lg: 0.625rem; /* 10px — inputs, buttons */
+  --radius-xl: 0.875rem; /* 14px — cards, modals */
+
+  /* soft, purple-tinted elevation */
+  --shadow-sm: 0 1px 2px rgb(30 15 58 / 0.04), 0 1px 3px rgb(30 15 58 / 0.06);
+  --shadow-md: 0 2px 4px -1px rgb(30 15 58 / 0.05), 0 10px 24px -6px rgb(30 15 58 / 0.14);
+
+  --animate-fade-in: fade-in 0.15s ease-out;
+  --animate-pop-in: pop-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-in-right: slide-in-right 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.98);
+    }
+  }
+  @keyframes slide-in-right {
+    from {
+      transform: translateX(100%);
+    }
+  }
 }
 
 /* Semantic tokens (also usable from plain CSS) */
 :root {
-  --primary: #0d6efd;
+  --primary: #3d1f73;
+  --secondary: #fbb03b;
   --success: #198754;
   --danger: #dc3545;
   --warning: #ffc107;
   --info: #0dcaf0;
 
-  --text-primary: #343a40;
-  --text-secondary: #6c757d;
+  --text-primary: #373148;
+  --text-secondary: #6b6580;
 
-  --bg-page: #f8f9fa;
+  --bg-page: #ffffff;
   --bg-card: #ffffff;
-  --border-color: #dee2e6;
+  --border-color: #d9d5e3;
 
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 1px 2px rgb(30 15 58 / 0.04), 0 1px 3px rgb(30 15 58 / 0.06);
+  --shadow-md: 0 2px 4px -1px rgb(30 15 58 / 0.05), 0 10px 24px -6px rgb(30 15 58 / 0.14);
 }
 
 html,
@@ -109,6 +145,11 @@ body {
   -webkit-font-smoothing: antialiased;
   font-family: var(--font-sans);
   font-size: 14px;
+}
+
+::selection {
+  background: var(--color-gold-200);
+  color: var(--color-brand-900);
 }
 
 /* Slim scrollbars for data-dense panels */
@@ -126,4 +167,13 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

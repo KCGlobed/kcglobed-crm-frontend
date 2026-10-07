@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useResetPasswordMutation } from '../../services/authApi'
+import { AuthShell } from '../../components/layout/AuthShell'
 import { Button } from '../../components/ui/Button'
 import { FormField, Input } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
@@ -42,11 +43,11 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 bg-[radial-gradient(circle_at_top,var(--color-brand-50),transparent_60%)] p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <AuthShell>
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-md">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <h1 className="text-base font-semibold text-slate-800">Set a new password</h1>
+            <h1 className="text-lg font-bold tracking-tight text-slate-900">Set a new password</h1>
             {!token && (
               <p className="mt-1 text-xs text-red-600">
                 Missing reset token — use the link from your email.
@@ -69,6 +70,6 @@ export default function ResetPasswordPage() {
           </p>
         </form>
       </div>
-    </div>
+    </AuthShell>
   )
 }

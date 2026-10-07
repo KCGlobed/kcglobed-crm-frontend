@@ -47,7 +47,7 @@ function DistributionCard({
               <span className="font-semibold tabular-nums text-slate-700">{item.count.toLocaleString()}</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full rounded-full bg-brand-600 transition-all" style={{ width: `${Math.max(2, (item.count / max) * 100)}%` }} />
+              <div className="h-full rounded-full bg-linear-to-r from-brand-500 to-brand-600 transition-all" style={{ width: `${Math.max(2, (item.count / max) * 100)}%` }} />
             </div>
           </button>
         ))}
@@ -61,6 +61,9 @@ const pct = (part?: number, whole?: number) => {
   const share = ((part ?? 0) / whole) * 100
   return `${share > 0 && share < 1 ? '<1' : Math.round(share)}% of all leads`
 }
+
+/** A metric's share of the total, as the 0–100 length of its card's bar. */
+const share = (part?: number, whole?: number) => (whole ? ((part ?? 0) / whole) * 100 : 0)
 
 export default function DashboardPage() {
   const user = useCurrentUser()
@@ -83,29 +86,41 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader
-        title={`Welcome back, ${user?.name.split(' ')[0] ?? ''}`}
-        description={`${today} · ${isCounsellor(user) ? 'My Day — what needs you now' : 'Lead pipeline overview'}`}
-      />
+      <section className="relative mb-5 overflow-hidden rounded-2xl bg-linear-to-br from-brand-600 via-brand-700 to-brand-900 px-5 py-5 text-white shadow-md sm:px-7 sm:py-6">
+        <div aria-hidden className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-brand-400/40 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 right-16 h-48 w-48 rounded-full border border-gold-400/40" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-12 right-44 h-28 w-28 rounded-full border border-white/10" />
+        <div className="relative">
+          <p className="flex items-center gap-2 text-xs font-medium text-gold-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" />
+            {today}
+          </p>
+          <h1 className="mt-1 truncate text-xl font-bold tracking-tight sm:text-2xl">Welcome back, {user?.name.split(' ')[0] ?? ''}</h1>
+          <p className="mt-1 text-sm text-brand-100">{isCounsellor(user) ? 'My Day — what needs you now' : 'Lead pipeline overview'}</p>
+        </div>
+      </section>
       {isAdminLike(user) && <UnassignedBanner count={totals?.unassigned} />}
       {isCounsellor(user) && <MyDay />}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
+      <h2 className="mb-3 text-lg font-semibold tracking-tight text-slate-900">Overview</h2>
+      {/* each bar is the metric's share of all leads */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4 min-[112.5rem]:grid-cols-7">
         <KpiCard label="Total leads" value={totals?.total} hint={isCounsellor(user) ? 'Assigned to you' : 'In the CRM'} icon={Users} loading={isLoading} onClick={() => navigate('/app/leads')} />
-        <KpiCard label="New today" value={totals?.newToday} hint="Created today" icon={CalendarPlus} accent="cyan" loading={isLoading} onClick={() => navigate('/app/leads?smart=new_today')} />
-        <KpiCard label="New this week" value={totals?.newThisWeek} hint="Since Sunday" icon={TrendingUp} accent="cyan" loading={isLoading} />
+        <KpiCard label="New today" value={totals?.newToday} progress={share(totals?.newToday, totals?.total)} hint="Created today" icon={CalendarPlus} accent="cyan" loading={isLoading} onClick={() => navigate('/app/leads?smart=new_today')} />
+        <KpiCard label="New this week" value={totals?.newThisWeek} progress={share(totals?.newThisWeek, totals?.total)} hint="Since Sunday" icon={TrendingUp} accent="cyan" loading={isLoading} />
         <KpiCard
           label="Unassigned"
           value={totals?.unassigned}
+          progress={share(totals?.unassigned, totals?.total)}
           hint="Waiting for an owner"
           icon={Inbox}
           accent="amber"
           loading={isLoading}
           onClick={isAdminLike(user) ? () => navigate('/app/leads?smart=unassigned') : undefined}
         />
-        <KpiCard label="Admitted" value={totals?.converted} hint={pct(totals?.converted, totals?.total)} icon={CheckCircle2} accent="green" loading={isLoading} onClick={() => navigate('/app/leads?status=converted')} />
-        <KpiCard label="Lost" value={totals?.lost} hint={pct(totals?.lost, totals?.total)} icon={XCircle} accent="red" loading={isLoading} onClick={() => navigate('/app/leads?status=lost')} />
-        <KpiCard label="Assigned to me today" value={data?.data.myLeadsToday} hint="New in your queue" icon={UserCheck} accent="slate" loading={isLoading} />
+        <KpiCard label="Admitted" value={totals?.converted} progress={share(totals?.converted, totals?.total)} hint={pct(totals?.converted, totals?.total)} icon={CheckCircle2} accent="green" loading={isLoading} onClick={() => navigate('/app/leads?status=converted')} />
+        <KpiCard label="Lost" value={totals?.lost} progress={share(totals?.lost, totals?.total)} hint={pct(totals?.lost, totals?.total)} icon={XCircle} accent="red" loading={isLoading} onClick={() => navigate('/app/leads?status=lost')} />
+        <KpiCard label="Assigned to me today" value={data?.data.myLeadsToday} progress={share(data?.data.myLeadsToday, totals?.total)} hint="New in your queue" icon={UserCheck} accent="slate" loading={isLoading} />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">

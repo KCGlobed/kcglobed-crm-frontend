@@ -19,13 +19,13 @@ export function Drawer({ open, onClose, title, description, children, footer, wi
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-slate-900/50" onClick={onClose} />
+      <div className="absolute inset-0 animate-fade-in bg-slate-900/50 backdrop-blur-[2px]" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'absolute inset-y-0 right-0 flex w-full flex-col bg-white shadow-[var(--shadow-md)]',
+          'absolute inset-y-0 right-0 flex w-full animate-slide-in-right flex-col bg-white shadow-2xl',
           wide ? 'max-w-3xl' : 'max-w-xl'
         )}
       >

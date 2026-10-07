@@ -197,7 +197,7 @@ export default function LeadsListPage() {
               'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
               smart === f.key
                 ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
-                : 'border-slate-300 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-800'
+                : 'border-slate-300 bg-white text-slate-600 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700'
             )}
             title={f.label}
           >
