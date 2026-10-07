@@ -16,6 +16,7 @@ import {
   Send,
   Sparkles,
   UserPlus,
+  X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -89,6 +90,7 @@ function useBrowserPush(items: CrmNotification[] | undefined, open: (n: CrmNotif
 
 export function NotificationsBell() {
   const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
   const openNotification = useOpenNotification()
   const { data } = useListNotificationsQuery({ page: 1 }, { pollingInterval: 30000 })
   const [permission, setPermission] = useState(() =>
@@ -100,12 +102,27 @@ export function NotificationsBell() {
   const unread = data?.data.unreadCount ?? 0
   const items = data?.data.items ?? []
 
+  // Close on a click anywhere outside the bell and its panel, or on Escape.
+  useEffect(() => {
+    if (!open) return
+    const onClick = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
   return (
-    <div className="relative">
+    <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`}
+        aria-expanded={open}
+        aria-haspopup="true"
         className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-brand-50 hover:text-brand-700"
       >
         <Bell className="h-[18px] w-[18px]" />
@@ -117,7 +134,6 @@ export function NotificationsBell() {
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
           <div className="fixed inset-x-2 top-14 z-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[var(--shadow-md)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-1.5 sm:w-96">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
               <p className="text-sm font-semibold text-slate-800">
@@ -139,6 +155,15 @@ export function NotificationsBell() {
                     <CheckCheck className="h-3 w-3" /> Mark all read
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close notifications"
+                  title="Close"
+                  className="-mr-1.5 rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
             </div>
             <div className="max-h-[26rem] overflow-y-auto">
