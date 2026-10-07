@@ -168,6 +168,7 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
   const onSubmit = async (values: FormValues) => {
     const base: Record<string, unknown> = {
       name: values.name,
+      email: values.email,
       designation: values.designation,
       mobile: values.mobile || null,
       team: values.team || null,
@@ -195,7 +196,6 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
       } else {
         const res = await createUser({
           ...base,
-          email: values.email,
           role: apiRole,
           ...(custom ? { ...access, templateKey: perms.templateKey } : {}),
         }).unwrap()
@@ -219,7 +219,7 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
       title={isEdit ? `Edit ${user?.name}` : 'Create user'}
       description={
         isEdit
-          ? 'Email cannot be changed after creation. Every change is recorded in the activity log.'
+          ? 'Every change is recorded in the activity log.'
           : 'Without a password, the user gets an email with a login link and a temporary password (valid 48 hours).'
       }
       footer={
@@ -239,8 +239,13 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
             <FormField label="Full name" required error={errors.name?.message}>
               <Input maxLength={60} placeholder="e.g. Neha Joshi" {...register('name')} aria-invalid={!!errors.name} />
             </FormField>
-            <FormField label="Email ID" required error={errors.email?.message} hint={isEdit ? undefined : 'Also the username'}>
-              <Input type="email" disabled={isEdit} placeholder="name@gccschool.com" {...register('email')} aria-invalid={!!errors.email} />
+            <FormField
+              label="Email ID"
+              required
+              error={errors.email?.message}
+              hint={isEdit ? 'Also the username — the user signs in with the new email' : 'Also the username'}
+            >
+              <Input type="email" placeholder="name@gccschool.com" {...register('email')} aria-invalid={!!errors.email} />
             </FormField>
             <FormField label="Designation" required error={errors.designation?.message}>
               <Input maxLength={60} placeholder="e.g. Admission Counsellor" {...register('designation')} aria-invalid={!!errors.designation} />
