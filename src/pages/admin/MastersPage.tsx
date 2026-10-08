@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Ban, Pencil, Plus } from 'lucide-react'
+import { Ban, Pencil, Plus, RotateCcw } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useCreateMasterMutation,
@@ -404,6 +404,7 @@ function MasterTable({ config }: { config: MasterConfig }) {
   const [modal, setModal] = useState<{ open: boolean; row?: Row }>({ open: false })
   const [confirm, setConfirm] = useState<Row | null>(null)
   const [remove, { isLoading: removing }] = useDeleteMasterMutation()
+  const [update] = useUpdateMasterMutation()
 
   const { data, isLoading, isFetching, isError, error, refetch } = useListMasterQuery({
     type: config.type,
@@ -420,6 +421,16 @@ function MasterTable({ config }: { config: MasterConfig }) {
       await remove({ type: config.type, id: confirm._id }).unwrap()
       toast.success('Updated')
       setConfirm(null)
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    }
+  }
+
+  // the reverse of deactivate — the same PUT the edit form sends, with just the flag
+  const onReactivate = async (row: Row) => {
+    try {
+      await update({ type: config.type, id: row._id, body: { isActive: true } }).unwrap()
+      toast.success('Reactivated')
     } catch (err) {
       toast.error(parseApiError(err).message)
     }
@@ -442,6 +453,13 @@ function MasterTable({ config }: { config: MasterConfig }) {
               danger: true,
               hidden: !can(me, 'masters', 'delete') || r.isActive === false || r.status === 'closed',
               onClick: () => setConfirm(r),
+            },
+            {
+              label: 'Reactivate',
+              icon: RotateCcw,
+              // cohorts close instead of deactivating, so they have no isActive flag
+              hidden: !can(me, 'masters', 'edit') || r.isActive !== false,
+              onClick: () => onReactivate(r),
             },
           ]}
         />
