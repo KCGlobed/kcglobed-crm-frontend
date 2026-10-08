@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { Controller, useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
@@ -15,7 +15,7 @@ import { Button } from '../../../components/ui/Button'
 import { Checkbox, FormField, Input, Select, Textarea } from '../../../components/ui/fields'
 import { cn, parseApiError } from '../../../lib/utils'
 import type { Team, TeamTreeNode } from '../../../types/models'
-import { TEAM_TYPES, TEAM_TYPE_LABEL } from './teamMeta'
+import { allowedChildTypes, TEAM_TYPES, TEAM_TYPE_LABEL } from './teamMeta'
 
 const schema = z.object({
   name: z.string().trim().min(2, 'Team name is required').max(100),
@@ -76,8 +76,10 @@ export function TeamFormDrawer({ open, onClose, team, defaultParent, onSaved }: 
     handleSubmit,
     reset,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: EMPTY })
+  const [parentId, type] = useWatch({ control, name: ['parent', 'type'] })
 
   useEffect(() => {
     if (!open) return
@@ -95,11 +97,23 @@ export function TeamFormDrawer({ open, onClose, team, defaultParent, onSaved }: 
             isActive: team.isActive,
             description: team.description ?? '',
           }
-        : { ...EMPTY, parent: defaultParent ?? '', type: defaultParent ? 'counsellor_group' : 'team' }
+        : { ...EMPTY, parent: defaultParent ?? '', type: defaultParent ? 'team' : 'department' }
     )
   }, [open, team, defaultParent, reset])
 
   const parents = useMemo(() => parentOptions(tree?.data ?? [], team?._id), [tree, team?._id])
+
+  // Department → Team → Counsellor group: the type choices follow the chosen parent.
+  // Editing keeps the saved type on offer even if it no longer fits, so nothing changes silently.
+  const parentNode = parents.find((p) => p.node._id === parentId)?.node
+  const types = useMemo(() => {
+    const allowed = allowedChildTypes(parentId ? parentNode?.type ?? 'team' : null)
+    return TEAM_TYPES.filter((t) => allowed.includes(t.key) || (team && t.key === team.type))
+  }, [parentId, parentNode?.type, team])
+  useEffect(() => {
+    if (types.length && !types.some((t) => t.key === type)) setValue('type', types[0].key)
+  }, [types, type, setValue])
+  const topLevelCreate = !team && !defaultParent
 
   const onSubmit = async (v: FormValues) => {
     const body = {
@@ -155,13 +169,22 @@ export function TeamFormDrawer({ open, onClose, team, defaultParent, onSaved }: 
           </FormField>
         </section>
 
-        <FormField label="Type">
+        <FormField
+          label="Type"
+          hint={
+            topLevelCreate
+              ? 'Top-level units are departments. Open a department to add its teams and counsellor groups.'
+              : parentNode
+                ? `Units that can sit under ${parentNode.name} (${TEAM_TYPE_LABEL[parentNode.type ?? 'team'].toLowerCase()})`
+                : undefined
+          }
+        >
           <Controller
             control={control}
             name="type"
             render={({ field }) => (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {TEAM_TYPES.map((t) => (
+                {types.map((t) => (
                   <button
                     key={t.key}
                     type="button"
@@ -183,18 +206,25 @@ export function TeamFormDrawer({ open, onClose, team, defaultParent, onSaved }: 
         </FormField>
 
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <FormField label="Reports into" error={errors.parent?.message} hint="Leave empty for a top-level unit">
-            <Select aria-invalid={!!errors.parent} {...register('parent')}>
-              <option value="">None (top level)</option>
-              {parents.map(({ node, depth }) => (
-                <option key={node._id} value={node._id}>
-                  {'  '.repeat(depth * 2)}
-                  {depth > 0 ? '└ ' : ''}
-                  {node.name} · {TEAM_TYPE_LABEL[node.type ?? 'team']}
-                </option>
-              ))}
-            </Select>
-          </FormField>
+          {/* a new top-level unit has no parent; a sub-team's parent is the unit it was opened from */}
+          {!topLevelCreate && (
+            <FormField label="Reports into" error={errors.parent?.message} hint={team ? 'Moving a unit changes which types it can be' : undefined}>
+              {defaultParent && !team ? (
+                <Input value={parentNode ? `${parentNode.name} · ${TEAM_TYPE_LABEL[parentNode.type ?? 'team']}` : '…'} disabled />
+              ) : (
+                <Select aria-invalid={!!errors.parent} {...register('parent')}>
+                  <option value="">None (top level)</option>
+                  {parents.map(({ node, depth }) => (
+                    <option key={node._id} value={node._id}>
+                      {'  '.repeat(depth * 2)}
+                      {depth > 0 ? '└ ' : ''}
+                      {node.name} · {TEAM_TYPE_LABEL[node.type ?? 'team']}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </FormField>
+          )}
           <FormField label="Manager / team leader" error={errors.manager?.message}>
             <Select aria-invalid={!!errors.manager} {...register('manager')}>
               <option value="">No manager</option>

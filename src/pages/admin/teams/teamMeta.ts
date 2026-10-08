@@ -17,3 +17,14 @@ export const TEAM_TYPE_TONE: Record<TeamType, 'violet' | 'blue' | 'amber'> = {
   team: 'blue',
   counsellor_group: 'amber',
 }
+
+/**
+ * The org hierarchy: Department → Team → Counsellor group. What may sit
+ * directly under a unit of the given type (`null` = top level).
+ */
+export function allowedChildTypes(parentType: TeamType | null | undefined): TeamType[] {
+  if (!parentType) return ['department']
+  if (parentType === 'department') return ['team', 'counsellor_group']
+  if (parentType === 'team') return ['counsellor_group']
+  return []
+}

@@ -34,6 +34,7 @@ import type { Team, TeamMember, TeamStats } from '../../../types/models'
 import { TeamFormDrawer } from './TeamFormDrawer'
 import { AddMembersModal } from './AddMembersModal'
 import { TeamTypeBadge } from './TeamTypeBadge'
+import { allowedChildTypes } from './teamMeta'
 
 type MemberStat = TeamStats['byMember'][number]
 type SubTeam = NonNullable<Team['children']>[number]
@@ -321,7 +322,7 @@ export default function TeamDetailPage() {
                   <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
                     <UserPlus className="h-3.5 w-3.5" /> Add members
                   </Button>
-                  {can(me, 'teams', 'create') && (
+                  {can(me, 'teams', 'create') && allowedChildTypes(team.type).length > 0 && (
                     <Button variant="outline" size="sm" onClick={() => setForm({ open: true, mode: 'sub' })}>
                       <Plus className="h-3.5 w-3.5" /> Sub-team
                     </Button>

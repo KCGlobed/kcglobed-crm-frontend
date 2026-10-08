@@ -13,6 +13,7 @@ const ResetPasswordPage = lazy(() => import('../pages/auth/ResetPasswordPage'))
 const SetPasswordPage = lazy(() => import('../pages/auth/SetPasswordPage'))
 const MessagingPage = lazy(() => import('../pages/admin/messaging/MessagingPage'))
 const IntegrationsPage = lazy(() => import('../pages/admin/IntegrationsPage'))
+const RoundRobinPage = lazy(() => import('../pages/admin/RoundRobinPage'))
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage'))
 const LeadsListPage = lazy(() => import('../pages/leads/LeadsListPage'))
 const LeadDetailPage = lazy(() => import('../pages/leads/LeadDetailPage'))
@@ -89,6 +90,7 @@ export default function AppRoutes() {
         <Route path="admin/masters" element={<RequirePermission module="masters"><Lazy><MastersPage /></Lazy></RequirePermission>} />
         <Route path="admin/messaging" element={<RequirePermission module="communications" action="edit"><Lazy><MessagingPage /></Lazy></RequirePermission>} />
         <Route path="admin/integrations" element={<RequireSuperAdmin><Lazy><IntegrationsPage /></Lazy></RequireSuperAdmin>} />
+        <Route path="admin/round-robin" element={<RequirePermission module="leads" action="reassign"><Lazy><RoundRobinPage /></Lazy></RequirePermission>} />
         <Route path="admin/audit" element={<RequirePermission module="audit"><Lazy><AuditLogPage /></Lazy></RequirePermission>} />
         <Route path="profile" element={<Lazy><ProfilePage /></Lazy>} />
         <Route path="forbidden" element={<Forbidden />} />

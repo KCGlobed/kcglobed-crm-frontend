@@ -118,8 +118,8 @@ export default function DashboardPage() {
           loading={isLoading}
           onClick={isAdminLike(user) ? () => navigate('/app/leads?smart=unassigned') : undefined}
         />
-        <KpiCard label="Admitted" value={totals?.converted} progress={share(totals?.converted, totals?.total)} hint={pct(totals?.converted, totals?.total)} icon={CheckCircle2} accent="green" loading={isLoading} onClick={() => navigate('/app/leads?status=converted')} />
-        <KpiCard label="Lost" value={totals?.lost} progress={share(totals?.lost, totals?.total)} hint={pct(totals?.lost, totals?.total)} icon={XCircle} accent="red" loading={isLoading} onClick={() => navigate('/app/leads?status=lost')} />
+        <KpiCard label="Enrolled" value={totals?.converted} progress={share(totals?.converted, totals?.total)} hint={pct(totals?.converted, totals?.total)} icon={CheckCircle2} accent="green" loading={isLoading} onClick={() => navigate('/app/leads?status=converted')} />
+        <KpiCard label="Not Interested" value={totals?.lost} progress={share(totals?.lost, totals?.total)} hint={pct(totals?.lost, totals?.total)} icon={XCircle} accent="red" loading={isLoading} onClick={() => navigate('/app/leads?status=lost')} />
         <KpiCard label="Assigned to me today" value={data?.data.myLeadsToday} progress={share(data?.data.myLeadsToday, totals?.total)} hint="New in your queue" icon={UserCheck} accent="slate" loading={isLoading} />
       </div>
 

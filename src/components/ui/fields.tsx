@@ -52,6 +52,51 @@ export const Checkbox = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInp
 )
 Checkbox.displayName = 'Checkbox'
 
+/** On/off toggle for a setting that takes effect on save or at once (pass `loading` while it saves). */
+export function Switch({
+  checked,
+  onChange,
+  disabled,
+  loading,
+  label,
+  className,
+}: {
+  checked: boolean
+  onChange: (checked: boolean) => void
+  disabled?: boolean
+  loading?: boolean
+  /** accessible name; shown as text when `label` is given */
+  label: string
+  className?: string
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      aria-busy={loading || undefined}
+      disabled={disabled || loading}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-150',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-1',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+        checked ? 'bg-brand-600' : 'bg-slate-300',
+        className
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-150',
+          checked ? 'translate-x-[18px]' : 'translate-x-0.5'
+        )}
+      />
+    </button>
+  )
+}
+
 interface FormFieldProps {
   label: string
   error?: string

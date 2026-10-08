@@ -20,7 +20,7 @@ const when = (value?: string | null) => (
     {value ? formatDate(value) : '—'}
   </span>
 )
-const percent = (value?: number) => (
+const percent = (value?: number) => value === undefined ? text(null) : (
   <div className="flex items-center gap-1.5">
     <div className="h-1.5 w-14 overflow-hidden rounded-full bg-slate-100">
       <div className="h-full rounded-full bg-brand-500" style={{ width: `${value ?? 0}%` }} />
@@ -39,7 +39,7 @@ const show = (value: unknown) => {
  * Every column the leads table can show (GL-32). Keys of sortable columns are
  * the API's sort_by values. Order here is the default order.
  */
-export const LEAD_COLUMNS: LeadColumn[] = [
+const ALL_LEAD_COLUMNS: LeadColumn[] = [
   { key: 'leadNo', header: 'Lead ID', sortable: true, exportKeys: ['leadNo'], render: (l) => <span className="whitespace-nowrap text-xs font-medium text-slate-500">{l.leadNo}</span> },
   {
     key: 'firstName',
@@ -133,7 +133,16 @@ export const LEAD_COLUMNS: LeadColumn[] = [
   { key: 'metaForm', header: 'Meta Form', exportKeys: ['metaForm'], render: (l) => text(l.meta?.formName) },
   { key: 'uploadFileName', header: 'Upload File', exportKeys: ['uploadFileName'], render: (l) => text(l.uploadFileName) },
   { key: 'profileCompletion', header: 'Profile Completion %', exportKeys: ['profileCompletion'], render: (l) => percent(l.profileCompletion) },
-  { key: 'customFieldsCompletion', header: 'Custom Fields %', exportKeys: ['customFieldsCompletion'], render: (l) => percent(l.customFieldsCompletion) },
+  // The old backend sent the discussion % under customFieldsCompletion. `discussionCompletion` only
+  // arrives from the new backend, so its presence tells us customFieldsCompletion now means Masters →
+  // Custom fields. Until then both show "—". Drop the guard once the backend is deployed everywhere.
+  {
+    key: 'customFieldsCompletion',
+    header: 'Custom Fields %',
+    exportKeys: ['customFieldsCompletion'],
+    render: (l) => percent(l.discussionCompletion === undefined ? undefined : l.customFieldsCompletion),
+  },
+  { key: 'discussionCompletion', header: 'Discussion Completion %', exportKeys: ['discussionCompletion'], render: (l) => percent(l.discussionCompletion) },
   {
     key: 'optedOut',
     header: 'Opted out',
@@ -177,6 +186,13 @@ export const LEAD_COLUMNS: LeadColumn[] = [
     render: (l) => show(l.discussionValues?.[key]),
   })),
 ]
+
+// HIDDEN for now: removed from the table, the column chooser and exports. Saved layouts
+// simply drop them. Delete a key here to bring its column back.
+// - tags: no screen assigns tags to leads yet
+// - lastDisposition: the Stage column already shows the sub-stage
+const HIDDEN_COLUMNS = ['tags', 'lastDisposition']
+export const LEAD_COLUMNS = ALL_LEAD_COLUMNS.filter((c) => !HIDDEN_COLUMNS.includes(c.key))
 
 export const LEAD_COLUMN_KEYS = LEAD_COLUMNS.map((c) => c.key)
 /** Go-live §11.1 default columns */

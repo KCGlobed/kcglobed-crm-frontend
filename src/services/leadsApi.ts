@@ -20,6 +20,8 @@ import type {
   MyDay,
   ProfileStepKey,
   Note,
+  RoundRobinSettings,
+  RoundRobinStatus,
   SavedFilter,
 } from '../types/models'
 
@@ -243,6 +245,41 @@ export const leadsApi = api.injectEndpoints({
       query: (id) => ({ url: `/leads/${id}/profile/declaration`, method: 'POST', body: { accepted: true } }),
       invalidatesTags: (_r, error, id) => (error ? [] : [{ type: 'LeadProfile', id }]),
     }),
+    // Round-robin screen. Both mutations answer with the fresh status, which is
+    // written straight into the status cache (no refetch flicker).
+    roundRobinStatus: build.query<ApiResponse<RoundRobinStatus>, void>({
+      query: () => '/leads/round-robin',
+      providesTags: ['RoundRobin'],
+    }),
+    updateRoundRobinSettings: build.mutation<ApiResponse<RoundRobinStatus>, Partial<RoundRobinSettings>>({
+      query: (body) => ({ url: '/leads/round-robin', method: 'PUT', body }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+          dispatch(leadsApi.util.updateQueryData('roundRobinStatus', undefined, (draft) => {
+            draft.data = data.data
+          }))
+        } catch {
+          // the form shows the error
+        }
+      },
+      // turning RR on / opening the window hands out pooled leads at once
+      invalidatesTags: (_r, error) => (error ? [] : [{ type: 'Leads', id: 'LIST' }, 'Dashboard']),
+    }),
+    setRoundRobinUser: build.mutation<ApiResponse<RoundRobinStatus>, { userId: string; receivesLeads: boolean }>({
+      query: ({ userId, receivesLeads }) => ({ url: `/leads/round-robin/users/${userId}`, method: 'PATCH', body: { receivesLeads } }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+          dispatch(leadsApi.util.updateQueryData('roundRobinStatus', undefined, (draft) => {
+            draft.data = data.data
+          }))
+        } catch {
+          // the row shows the error
+        }
+      },
+      invalidatesTags: (_r, error) => (error ? [] : [{ type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }]),
+    }),
   }),
 })
 
@@ -281,4 +318,7 @@ export const {
   useSaveLeadProfileStepMutation,
   useAcceptLeadProfileDeclarationMutation,
   useUnlockLeadProfileMutation,
+  useRoundRobinStatusQuery,
+  useUpdateRoundRobinSettingsMutation,
+  useSetRoundRobinUserMutation,
 } = leadsApi

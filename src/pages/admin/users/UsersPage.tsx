@@ -36,7 +36,7 @@ export default function UsersPage() {
   const me = useCurrentUser()
   const [params, setSearchParams] = useSearchParams()
   const tab = me?.isSuperAdmin && params.get('tab') === 'templates' ? 'templates' : 'users'
-  const { query, setParam, onSort } = useListParams({ sort_by: 'name', sort_order: 'asc' }, ['role', 'team', 'is_active', 'receives_leads'])
+  const { query, setParam, onSort } = useListParams({ sort_by: 'name', sort_order: 'asc' }, ['role', 'team', 'is_active'])
   const { data, isLoading, isFetching, isError, error, refetch } = useListUsersQuery(query, { skip: tab !== 'users' })
   const { data: teams } = useTeamOptionsQuery()
   const [deactivate, { isLoading: deactivating }] = useDeactivateUserMutation()
@@ -45,7 +45,7 @@ export default function UsersPage() {
   const [editing, setEditing] = useState<User | undefined>()
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [confirmUser, setConfirmUser] = useState<User | null>(null)
-  const hasFilters = !!(query.search || query.role || query.team || query.is_active || query.receives_leads)
+  const hasFilters = !!(query.search || query.role || query.team || query.is_active)
   const resetFilters = () => setSearchParams(new URLSearchParams(), { replace: true })
 
   const run = async (fn: () => Promise<{ message: string }>) => {
@@ -231,15 +231,6 @@ export default function UsersPage() {
               <option value="">All statuses</option>
               <option value="true">Active</option>
               <option value="false">Inactive</option>
-            </Select>
-            <Select
-              className="!w-auto"
-              value={(query.receives_leads as string) ?? ''}
-              onChange={(e) => setParam('receives_leads', e.target.value)}
-              aria-label="Round-robin"
-            >
-              <option value="">Any round-robin</option>
-              <option value="true">In round-robin</option>
             </Select>
           </FilterBar>
 

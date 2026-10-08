@@ -103,6 +103,7 @@ export const api = createApi({
     'Automations',
     'Campaigns',
     'MetaIntegration',
+    'RoundRobin',
   ],
   endpoints: () => ({}),
 })

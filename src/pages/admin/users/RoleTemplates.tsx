@@ -23,10 +23,20 @@ import { MenuPreview } from './MenuPreview'
 const scopeLabel = (key: string) => DATA_SCOPES.find((s) => s.key === key)?.label ?? key
 const moduleLabel = (key: string) => MODULES.find((m) => m.key === key)?.label ?? key
 
-/** Create / edit a role template: key, name, description and its tick-set. */
+/**
+ * The template key is not typed in: it is derived from the name on create and
+ * sent to the backend as before. "Senior Counsellor (copy)" → "senior-counsellor-copy".
+ */
+const keyFromName = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 50)
+
+/** Create / edit a role template: name, description and its tick-set. */
 function TemplateDrawer({ template, copyOf, onClose }: { template?: PermissionTemplate; copyOf?: PermissionTemplate; onClose: () => void }) {
   const source = template ?? copyOf
-  const [key, setKey] = useState(template?.key ?? (copyOf ? `${copyOf.key}-copy` : ''))
   const [name, setName] = useState(template?.name ?? (copyOf ? `${copyOf.name} (copy)` : ''))
   const [description, setDescription] = useState(source?.description ?? '')
   const [perms, setPerms] = useState<PermissionState>(() => ({
@@ -51,7 +61,7 @@ function TemplateDrawer({ template, copyOf, onClose }: { template?: PermissionTe
         const res = await update({ id: template._id, body }).unwrap()
         toast.success(res.message)
       } else {
-        await create({ ...body, key: key.trim() }).unwrap()
+        await create({ ...body, key: keyFromName(name) }).unwrap()
         toast.success('Template created')
       }
       onClose()
@@ -80,7 +90,7 @@ function TemplateDrawer({ template, copyOf, onClose }: { template?: PermissionTe
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={onSave} loading={creating || updating} disabled={!name.trim() || (!template && !key.trim())}>
+          <Button onClick={onSave} loading={creating || updating} disabled={!name.trim() || (!template && !keyFromName(name))}>
             {template ? 'Save template' : 'Create template'}
           </Button>
         </>
@@ -89,17 +99,9 @@ function TemplateDrawer({ template, copyOf, onClose }: { template?: PermissionTe
       <div className="space-y-6">
         <FieldGroup title="Template">
           <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Name" required error={errors.name}>
+            {/* a duplicate-key error from the backend means a template with this name already exists */}
+            <FormField label="Name" required error={errors.name ?? errors.key} className="sm:col-span-2">
               <Input value={name} maxLength={100} placeholder="e.g. Senior Counsellor" onChange={(e) => setName(e.target.value)} />
-            </FormField>
-            <FormField label="Key" required error={errors.key} hint={template ? 'The key cannot change' : 'Lowercase letters, numbers and dashes'}>
-              <Input
-                value={key}
-                disabled={!!template}
-                maxLength={50}
-                placeholder="e.g. senior-counsellor"
-                onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, '-'))}
-              />
             </FormField>
             <FormField label="Description" error={errors.description} className="sm:col-span-2">
               <Textarea rows={2} maxLength={500} value={description} onChange={(e) => setDescription(e.target.value)} />
@@ -186,7 +188,7 @@ export function RoleTemplates() {
           Users set up from a template <b>follow it</b>: editing a template updates every user on it. Admin and Admission Counsellor take their access from their role templates. Changing a single user's ticks makes that user custom access.
         </p>
         <Button size="sm" onClick={() => setEditing({})}>
-          <Plus className="h-3.5 w-3.5" /> New template
+          <Plus className="h-3.5 w-3.5" /> New Role
         </Button>
       </div>
       <DataTable
