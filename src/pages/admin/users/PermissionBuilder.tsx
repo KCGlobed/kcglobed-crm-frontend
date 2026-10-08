@@ -89,6 +89,8 @@ export function PermissionBuilder({ value, onChange, templates, showTemplatePick
                 {s.label}
               </option>
             ))}
+            {/* a scope this user/template already has but which is no longer offered (e.g. 'all') — shown so it is not lost on save */}
+            {!DATA_SCOPES.some((s) => s.key === value.dataScope) && <option value={value.dataScope}>{value.dataScope} (current)</option>}
           </Select>
         </FormField>
       </div>
