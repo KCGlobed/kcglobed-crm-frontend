@@ -38,11 +38,11 @@ export const adminApi = api.injectEndpoints({
     }),
     createUser: build.mutation<ApiResponse<User>, Record<string, unknown>>({
       query: (body) => ({ url: '/users', method: 'POST', body }),
-      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }],
+      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }, 'RoundRobin'],
     }),
     updateUser: build.mutation<ApiResponse<User>, { id: string; body: Record<string, unknown> }>({
       query: ({ id, body }) => ({ url: `/users/${id}`, method: 'PUT', body }),
-      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }, 'Me'],
+      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }, 'Me', 'RoundRobin'],
     }),
     setUserPermissions: build.mutation<ApiResponse<User>, { id: string; body: Record<string, unknown> }>({
       query: ({ id, body }) => ({ url: `/users/${id}/permissions`, method: 'POST', body }),
@@ -50,12 +50,12 @@ export const adminApi = api.injectEndpoints({
     }),
     deactivateUser: build.mutation<ApiResponse<User>, string>({
       query: (id) => ({ url: `/users/${id}`, method: 'DELETE' }),
-      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }],
+      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }, 'RoundRobin'],
     }),
 
     reactivateUser: build.mutation<ApiResponse<User>, string>({
       query: (id) => ({ url: `/users/${id}/reactivate`, method: 'POST' }),
-      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }],
+      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }, 'RoundRobin'],
     }),
     resendCredentials: build.mutation<ApiResponse<User>, string>({
       query: (id) => ({ url: `/users/${id}/resend-credentials`, method: 'POST' }),
@@ -90,22 +90,22 @@ export const adminApi = api.injectEndpoints({
     // so team mutations refresh every cached team query.
     updateTeam: build.mutation<ApiResponse<Team>, { id: string; body: Record<string, unknown> }>({
       query: ({ id, body }) => ({ url: `/teams/${id}`, method: 'PUT', body }),
-      invalidatesTags: ['Teams'],
+      invalidatesTags: ['Teams', 'RoundRobin'],
     }),
     deleteTeam: build.mutation<ApiResponse<Team>, string>({
       query: (id) => ({ url: `/teams/${id}`, method: 'DELETE' }),
-      invalidatesTags: ['Teams'],
+      invalidatesTags: ['Teams', 'RoundRobin'],
     }),
     addTeamMembers: build.mutation<
       ApiResponse<{ added: number; alreadyMembers: number }>,
       { id: string; userIds: string[]; setReportingManager?: boolean }
     >({
       query: ({ id, ...body }) => ({ url: `/teams/${id}/members`, method: 'POST', body }),
-      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }],
+      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }, 'RoundRobin'],
     }),
     removeTeamMember: build.mutation<ApiResponse<null>, { id: string; userId: string }>({
       query: ({ id, userId }) => ({ url: `/teams/${id}/members/${userId}`, method: 'DELETE' }),
-      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }],
+      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }, 'RoundRobin'],
     }),
 
     listTemplates: build.query<ApiResponse<PermissionTemplate[]>, void>({

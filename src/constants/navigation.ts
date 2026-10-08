@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Settings2,
   ShieldCheck,
+  Shuffle,
   UserCog,
   Users,
 } from 'lucide-react'
@@ -36,6 +37,8 @@ export const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
       { label: 'Teams', path: '/app/admin/teams', module: 'teams', icon: Users },
       { label: 'SMS & Email', path: '/app/admin/messaging', module: 'communications', action: 'edit', icon: MessageSquareText },
       { label: 'Meta Lead Ads', path: '/app/admin/integrations', module: 'leads', superAdminOnly: true, icon: PlugZap },
+      // Super Admin, or an admin with Leads → Reassign ticked
+      { label: 'Round Robin', path: '/app/admin/round-robin', module: 'leads', action: 'reassign', icon: Shuffle },
       { label: 'Masters', path: '/app/admin/masters', module: 'masters', icon: Settings2 },
       { label: 'Activity Log', path: '/app/admin/audit', module: 'audit', icon: ShieldCheck },
     ],

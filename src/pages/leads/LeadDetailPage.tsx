@@ -68,10 +68,10 @@ function OverviewTab({ lead }: { lead: Lead }) {
         <DetailRow label="City" value={lead.city} />
         <DetailRow label="State" value={lead.state} />
         <DetailRow label="Program interest" value={lead.programInterest?.name} />
-        <DetailRow
+        {/* <DetailRow
           label="Opted out"
           value={[lead.optedOut?.sms ? 'SMS' : null, lead.optedOut?.email ? 'Email' : null].filter(Boolean).join(', ') || 'No'}
-        />
+        /> */}
       </Card>
       <Card title="System fields">
         <DetailRow label="Lead ID" value={lead.leadNo} />
@@ -89,7 +89,13 @@ function OverviewTab({ lead }: { lead: Lead }) {
         <DetailRow label="Assigned on" value={formatDateTime(lead.assignedAt)} />
         <DetailRow label="Re-enquiry count" value={lead.reEnquiryCount ?? 0} />
         <DetailRow label="Profile completion" value={`${lead.profileCompletion ?? 0}%`} />
-        <DetailRow label="Custom fields completion" value={`${lead.customFieldsCompletion ?? 0}%`} />
+        {/* Only from the new backend: before it, customFieldsCompletion held the discussion %, so both wait for discussionCompletion */}
+        {lead.discussionCompletion !== undefined && (
+          <>
+            <DetailRow label="Custom fields completion" value={`${lead.customFieldsCompletion ?? 0}%`} />
+            <DetailRow label="Discussion completion" value={`${lead.discussionCompletion}%`} />
+          </>
+        )}
       </Card>
       <div className="space-y-4">
         <Card title="Recent calls">

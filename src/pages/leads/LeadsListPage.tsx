@@ -34,6 +34,9 @@ import { BulkSendModal } from './BulkSendModal'
 import { DEFAULT_VISIBLE_COLUMNS, LEAD_COLUMNS, LEAD_COLUMN_KEYS, LOCKED_COLUMNS } from './leadColumns'
 
 const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order']
+// HIDDEN for now: filter fields the backend offers but the panel leaves out.
+// - tag: no screen assigns tags to leads yet
+const HIDDEN_FILTER_FIELDS = ['tag']
 
 export default function LeadsListPage() {
   const [params, setParams] = useSearchParams()
@@ -78,7 +81,10 @@ export default function LeadsListPage() {
   const [saveFilter, { isLoading: savingFilter }] = useSaveFilterMutation()
   const [deleteSaved] = useDeleteSavedFilterMutation()
 
-  const filters = Object.fromEntries([...params.entries()].filter(([k, v]) => v && !LIST_KEYS.includes(k)))
+  const filters: Record<string, string> = {}
+  params.forEach((v, k) => {
+    if (v && !LIST_KEYS.includes(k)) filters[k] = v
+  })
   const conditions = parseConditions(params.get('filters'))
   const total = data?.pagination.total_results ?? 0
   const pageIds = data?.data.map((l) => l._id) ?? []
@@ -395,7 +401,7 @@ export default function LeadsListPage() {
         <LeadFilterPanel
           open
           onClose={() => setFilterOpen(false)}
-          fields={meta.data.fields}
+          fields={meta.data.fields.filter((f) => !HIDDEN_FILTER_FIELDS.includes(f.key))}
           value={conditions}
           onApply={(c) => setParam('filters', c.length ? JSON.stringify(c) : undefined)}
         />

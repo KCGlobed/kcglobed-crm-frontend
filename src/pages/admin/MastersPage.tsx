@@ -44,6 +44,8 @@ interface MasterConfig {
   sortBy: string
   /** cohorts close rather than deactivate */
   deactivateLabel?: string
+  /** HIDDEN: no tab is shown, but the config stays so it can be switched back on */
+  hidden?: boolean
 }
 
 const CHANNEL_OPTIONS = ['paid', 'organic', 'referral', 'partner', 'direct', 'event', 'other'].map((c) => ({
@@ -177,6 +179,8 @@ const CONFIGS: MasterConfig[] = [
   {
     type: 'dispositions',
     label: 'Dispositions',
+    // HIDDEN for now: call logging uses stage sub-stages, nothing reads this list. Remove to show the tab again.
+    hidden: true,
     description: 'Call outcomes counsellors record after each call.',
     sortBy: 'sortOrder',
     fields: [
@@ -195,6 +199,8 @@ const CONFIGS: MasterConfig[] = [
   {
     type: 'tags',
     label: 'Tags',
+    // HIDDEN for now: no screen assigns tags to leads yet. Remove to show the tab again.
+    hidden: true,
     description: 'Configurable tags for segmentation and priority.',
     sortBy: 'sortOrder',
     fields: [
@@ -238,6 +244,7 @@ const CONFIGS: MasterConfig[] = [
     ],
   },
 ]
+const VISIBLE_CONFIGS = CONFIGS.filter((c) => !c.hidden)
 
 function MasterModal({
   config,
@@ -512,13 +519,13 @@ function MasterTable({ config }: { config: MasterConfig }) {
 export default function MastersPage() {
   const [params, setParams] = useSearchParams()
   const active = (params.get('tab') as MasterType) ?? 'stages'
-  const config = CONFIGS.find((c) => c.type === active) ?? CONFIGS[0]
+  const config = VISIBLE_CONFIGS.find((c) => c.type === active) ?? VISIBLE_CONFIGS[0]
 
   return (
     <>
       <PageHeader title="Masters" description="Configurable lists reused by every module — no hard-coded values" />
       <Tabs
-        tabs={CONFIGS.map((c) => ({ key: c.type, label: c.label }))}
+        tabs={VISIBLE_CONFIGS.map((c) => ({ key: c.type, label: c.label }))}
         active={config.type}
         onChange={(key) => setParams({ tab: key }, { replace: true })}
       />

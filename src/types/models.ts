@@ -306,7 +306,10 @@ export interface Lead {
   } | null
   uploadFileName?: string | null
   profileCompletion?: number
+  /** Masters → Custom fields filled % (new backend); the old backend sent the discussion % here */
   customFieldsCompletion?: number
+  /** the 27 Counsellor Discussion fields filled % — only sent by the new backend */
+  discussionCompletion?: number
   optedOut?: { sms: boolean; email: boolean }
   isOverdue?: boolean
   ownerActive?: boolean | null
@@ -786,4 +789,45 @@ export interface DashboardSummary {
   byOwner: { _id: string; name: string; count: number }[]
   recentLeads: Lead[]
   myLeadsToday: number
+}
+
+/** Round-robin auto-assignment: Meta / Google / Website leads rotate over online counsellors. */
+export type RoundRobinChannel = 'meta' | 'google' | 'capture'
+
+export interface RoundRobinSettings {
+  enabled: boolean
+  channels: RoundRobinChannel[]
+  /** "HH:MM" IST; both null = 24×7 */
+  windowStart: string | null
+  windowEnd: string | null
+  /** 0=Mon … 6=Sun; [] = every day */
+  days: number[]
+}
+
+export interface RoundRobinMember {
+  _id: string
+  name: string
+  email: string
+  team?: string | null
+  /** admin toggle */
+  receivesLeads: boolean
+  /** has a live session now */
+  online: boolean
+  /** team opted out / inactive */
+  teamPaused: boolean
+  /** all conditions met → in rotation */
+  eligible: boolean
+  /** order in rotation; null when not eligible */
+  position: number | null
+}
+
+export interface RoundRobinStatus {
+  settings: RoundRobinSettings
+  /** rotation allowed to hand out leads right now */
+  activeNow: boolean
+  rotation: RoundRobinMember[]
+  nextUp: Ref | null
+  lastAssigned: Ref | null
+  /** leads waiting (nobody online / outside window) */
+  unassignedPoolCount: number
 }

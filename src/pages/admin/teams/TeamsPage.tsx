@@ -119,7 +119,7 @@ export default function TeamsPage() {
         actions={
           can(me, 'teams', 'create') && (
             <Button size="sm" onClick={() => setFormOpen(true)}>
-              <Plus className="h-3.5 w-3.5" /> Create team
+              <Plus className="h-3.5 w-3.5" /> Create Department
             </Button>
           )
         }
