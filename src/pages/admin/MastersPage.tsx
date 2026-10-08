@@ -20,7 +20,7 @@ import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
 import { ConfirmDialog } from '../../components/ui/feedback'
 import { Checkbox, FormField, Input, Select } from '../../components/ui/fields'
-import { formatDate, parseApiError } from '../../lib/utils'
+import { cn, formatDate, parseApiError } from '../../lib/utils'
 import { SubStagesEditor, type SubStageDraft } from './SubStagesEditor'
 
 type Row = Record<string, unknown> & { _id: string }
@@ -33,6 +33,15 @@ interface FieldDef {
   options?: { value: string; label: string }[]
   /** create-only fields cannot change once saved (e.g. custom field key) */
   createOnly?: boolean
+  /** not typed in: computed from another field's value on create and shown as a hint under that field */
+  derived?: { from: string; compute: (source: string) => string }
+}
+
+/** "Sister Name" → "sisterName": the camelCase key the backend requires (`^[a-z][a-zA-Z0-9_]*$`). */
+const camelKey = (label: string) => {
+  const words = label.toLowerCase().replace(/['’]/g, '').match(/[a-z0-9]+/g) ?? []
+  const key = words.map((w, i) => (i ? w[0].toUpperCase() + w.slice(1) : w)).join('')
+  return (/^[a-z]/.test(key) ? key : key && `field${key[0].toUpperCase()}${key.slice(1)}`).slice(0, 50)
 }
 
 interface MasterConfig {
@@ -46,12 +55,26 @@ interface MasterConfig {
   deactivateLabel?: string
   /** HIDDEN: no tab is shown, but the config stays so it can be switched back on */
   hidden?: boolean
+  /** sources: one row per channel with its sources inside, instead of a row per source */
+  view?: 'channels'
 }
 
-const CHANNEL_OPTIONS = ['paid', 'organic', 'referral', 'partner', 'direct', 'event', 'other'].map((c) => ({
-  value: c,
-  label: c[0].toUpperCase() + c.slice(1),
-}))
+/**
+ * Source channels — "Lead Stage Mapping / Source Logic" §6. Keys are what the
+ * backend stores (`apps/masters/models.py` CHANNELS); `telephony` and `chatbot`
+ * need adding there. A source still on a dropped key (e.g. `partner`) keeps it.
+ */
+const CHANNEL_OPTIONS = [
+  { value: 'direct', label: 'Direct' },
+  { value: 'organic', label: 'Organic' },
+  { value: 'paid', label: 'Paid Ads' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'event', label: 'Events' },
+  { value: 'telephony', label: 'Telephony' },
+  { value: 'chatbot', label: 'Chatbot' },
+  { value: 'other', label: 'Others' },
+]
+const channelLabel = (key: unknown) => CHANNEL_OPTIONS.find((c) => c.value === key)?.label ?? String(key ?? '—')
 
 const activeBadge: Column<Row> = {
   key: 'isActive',
@@ -66,21 +89,12 @@ const CONFIGS: MasterConfig[] = [
   {
     type: 'stages',
     label: 'Lead stages',
-    description:
-      'Lead stages and sub-stages with the counsellor action for each. Converted/lost types drive lead status; system stages are set by the CRM only.',
+    description: 'Lead stages and sub-stages with the counsellor action for each. System stages are set by the CRM only.',
     sortBy: 'order',
+    // `type` (open/converted/lost) is no longer edited here: the backend ignores it on
+    // create/edit and makes every new stage "open". It still arrives in GET responses.
     fields: [
       { key: 'name', label: 'Name', type: 'text', required: true },
-      {
-        key: 'type',
-        label: 'Type',
-        type: 'select',
-        options: [
-          { value: 'open', label: 'Open' },
-          { value: 'converted', label: 'Converted' },
-          { value: 'lost', label: 'Lost' },
-        ],
-      },
       { key: 'order', label: 'Order', type: 'number' },
       { key: 'color', label: 'Color', type: 'color' },
       { key: 'isActive', label: 'Active', type: 'boolean' },
@@ -99,7 +113,6 @@ const CONFIGS: MasterConfig[] = [
           </span>
         ),
       },
-      { key: 'type', header: 'Type' },
       {
         key: 'subStages',
         header: 'Sub-stages',
@@ -114,8 +127,9 @@ const CONFIGS: MasterConfig[] = [
   {
     type: 'sources',
     label: 'Sources',
-    description: 'Central source master, grouped into standard channels for reporting.',
+    description: 'Lead sources grouped by channel (Source Logic §6). Click a source to edit it; add new ones under their channel.',
     sortBy: 'sortOrder',
+    view: 'channels',
     fields: [
       { key: 'name', label: 'Name', type: 'text', required: true },
       { key: 'channel', label: 'Channel', type: 'select', options: CHANNEL_OPTIONS },
@@ -125,7 +139,7 @@ const CONFIGS: MasterConfig[] = [
     ],
     columns: [
       { key: 'name', header: 'Name', sortable: true },
-      { key: 'channel', header: 'Channel', render: (r) => <Badge tone="blue">{String(r.channel)}</Badge> },
+      { key: 'channel', header: 'Channel', render: (r) => <Badge tone="blue">{channelLabel(r.channel)}</Badge> },
       activeBadge,
     ],
   },
@@ -222,7 +236,7 @@ const CONFIGS: MasterConfig[] = [
     sortBy: 'sortOrder',
     fields: [
       { key: 'label', label: 'Label', type: 'text', required: true },
-      { key: 'key', label: 'Key (camelCase)', type: 'text', required: true, createOnly: true },
+      { key: 'key', label: 'Key', type: 'text', required: true, createOnly: true, derived: { from: 'label', compute: camelKey } },
       {
         key: 'type',
         label: 'Type',
@@ -251,15 +265,18 @@ function MasterModal({
   open,
   onClose,
   row,
+  initial,
 }: {
   config: MasterConfig
   open: boolean
   onClose: () => void
   row?: Row
+  /** preset values for a new item (e.g. the channel a source is added under) */
+  initial?: Record<string, unknown>
 }) {
   // Mounted fresh per open (keyed by the parent), so initial values derive once here.
   const [values, setValues] = useState<Record<string, unknown>>(() => {
-    if (!row) return { isActive: true }
+    if (!row) return { isActive: true, ...initial }
     const v: Record<string, unknown> = {}
     for (const f of config.fields) {
       let value = row[f.key]
@@ -281,7 +298,7 @@ function MasterModal({
     const localErrors: Record<string, string> = {}
     for (const f of config.fields) {
       if (row && f.createOnly) continue
-      const raw = values[f.key]
+      const raw = f.derived ? f.derived.compute(String(values[f.derived.from] ?? '')) : values[f.key]
       if (f.type === 'subStages') {
         body[f.key] = ((raw as SubStageDraft[] | undefined) ?? []).map((s) => ({
           ...(s._id ? { _id: s._id } : {}),
@@ -338,8 +355,18 @@ function MasterModal({
     >
       <div className="grid grid-cols-2 gap-3">
         {config.fields.map((f) => {
+          if (f.derived) return null
           const disabled = !!row && f.createOnly
           const value = values[f.key]
+          // a derived field (e.g. the custom field key) shows its result under the field it comes from
+          const derivedChild = config.fields.find((d) => d.derived?.from === f.key)
+          const hint = derivedChild
+            ? row
+              ? `${derivedChild.label}: ${row[derivedChild.key]} (cannot change)`
+              : value
+                ? `${derivedChild.label}: ${derivedChild.derived!.compute(String(value))}`
+                : `The ${derivedChild.label.toLowerCase()} is generated from the ${f.label.toLowerCase()}`
+            : undefined
           if (f.type === 'subStages') {
             return (
               <FormField key={f.key} label={f.label} className="col-span-2" error={errors[f.key]}>
@@ -359,7 +386,7 @@ function MasterModal({
             )
           }
           return (
-            <FormField key={f.key} label={f.label} required={f.required} error={errors[f.key]}>
+            <FormField key={f.key} label={f.label} required={f.required} error={errors[f.key] ?? (derivedChild && errors[derivedChild.key])} hint={hint}>
               {f.type === 'select' ? (
                 <Select value={(value as string) ?? ''} onChange={(e) => set(f.key, e.target.value)}>
                   <option value="">Select…</option>
@@ -368,6 +395,8 @@ function MasterModal({
                       {o.label}
                     </option>
                   ))}
+                  {/* a saved value no longer in the list (e.g. a channel that was dropped) stays selectable so it is kept on save */}
+                  {!!value && !f.options?.some((o) => o.value === value) && <option value={String(value)}>{String(value)} (current)</option>}
                 </Select>
               ) : f.type === 'program' ? (
                 <Select value={(value as string) ?? ''} onChange={(e) => set(f.key, e.target.value)}>
@@ -534,6 +563,114 @@ function MasterTable({ config }: { config: MasterConfig }) {
   )
 }
 
+type ChannelRow = Row & { label: string; sources: Row[] }
+
+/**
+ * Sources shown per channel: the eight channels of the Source Logic table, each
+ * with the sources mapped to it. A source on a channel that is no longer in the
+ * list (e.g. an old `partner`) gets its own row so nothing disappears.
+ */
+function ChannelTable({ config }: { config: MasterConfig }) {
+  const me = useCurrentUser()
+  const [modal, setModal] = useState<{ open: boolean; row?: Row; channel?: string }>({ open: false })
+  // the backend caps a page at 100 rows — more sources than that is a sign the list needs cleaning, not paging
+  const { data, isLoading, isFetching, isError, error, refetch } = useListMasterQuery({ type: config.type, page: 1, page_size: 100, sort_by: 'name', sort_order: 'asc' })
+
+  const sources = (data?.data ?? []) as Row[]
+  const channels = [...CHANNEL_OPTIONS.map((c) => c.value), ...new Set(sources.map((s) => String(s.channel ?? 'other')))]
+  const rows: ChannelRow[] = [...new Set(channels)].map((key) => ({
+    _id: key,
+    label: channelLabel(key),
+    sources: sources.filter((s) => String(s.channel ?? 'other') === key),
+  }))
+
+  const columns: Column<ChannelRow>[] = [
+    {
+      key: 'label',
+      header: 'Channel',
+      className: 'w-40',
+      render: (r) => (
+        <span className="inline-flex items-center gap-1.5">
+          <Badge tone="blue">{r.label}</Badge>
+          {!CHANNEL_OPTIONS.some((c) => c.value === r._id) && <Badge>Legacy</Badge>}
+        </span>
+      ),
+    },
+    {
+      key: 'sources',
+      header: 'Sources',
+      render: (r) =>
+        r.sources.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {r.sources.map((s) => (
+              <button
+                key={s._id}
+                type="button"
+                disabled={!can(me, 'masters', 'edit')}
+                title={s.isActive === false ? 'Inactive — click to edit' : 'Click to edit'}
+                onClick={() => setModal({ open: true, row: s })}
+                className={cn(
+                  'rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset transition-colors disabled:pointer-events-none',
+                  s.isActive === false
+                    ? 'bg-slate-50 text-slate-400 line-through ring-slate-200 hover:bg-slate-100'
+                    : 'bg-white text-slate-700 ring-slate-200 hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700'
+                )}
+              >
+                {String(s.name)}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="text-xs text-slate-400">No sources yet</span>
+        ),
+    },
+    {
+      key: 'active',
+      header: 'Active',
+      className: 'w-20',
+      align: 'right',
+      render: (r) => <span className="text-xs tabular-nums text-slate-600">{r.sources.filter((s) => s.isActive !== false).length}</span>,
+    },
+    {
+      key: 'actions',
+      header: '',
+      className: 'w-24',
+      align: 'right',
+      render: (r) =>
+        can(me, 'masters', 'create') && (
+          <Button variant="ghost" size="sm" onClick={() => setModal({ open: true, channel: r._id })}>
+            <Plus className="h-3.5 w-3.5" /> Add
+          </Button>
+        ),
+    },
+  ]
+
+  return (
+    <>
+      <p className="mb-3 text-xs text-slate-500">{config.description}</p>
+      <DataTable
+        columns={columns}
+        rows={isLoading ? undefined : rows}
+        rowKey={(r) => r._id}
+        loading={isLoading || isFetching}
+        error={isError}
+        errorMessage={isError ? parseApiError(error).message : undefined}
+        onRetry={refetch}
+      />
+      {modal.open && (
+        <MasterModal
+          key={modal.row?._id ?? `new-${modal.channel}`}
+          config={config}
+          open
+          row={modal.row}
+          initial={modal.channel ? { channel: modal.channel } : undefined}
+          onClose={() => setModal({ open: false })}
+        />
+      )}
+    </>
+  )
+}
+
 export default function MastersPage() {
   const [params, setParams] = useSearchParams()
   const active = (params.get('tab') as MasterType) ?? 'stages'
@@ -548,7 +685,7 @@ export default function MastersPage() {
         onChange={(key) => setParams({ tab: key }, { replace: true })}
       />
       <div className="mt-4">
-        <MasterTable key={config.type} config={config} />
+        {config.view === 'channels' ? <ChannelTable key={config.type} config={config} /> : <MasterTable key={config.type} config={config} />}
       </div>
     </>
   )

@@ -40,7 +40,7 @@ const show = (value: unknown) => {
  * the API's sort_by values. Order here is the default order.
  */
 const ALL_LEAD_COLUMNS: LeadColumn[] = [
-  { key: 'leadNo', header: 'Lead ID', sortable: true, exportKeys: ['leadNo'], render: (l) => <span className="whitespace-nowrap text-xs font-medium text-slate-500">{l.leadNo}</span> },
+  { key: 'leadNo', header: 'Application ID', sortable: true, exportKeys: ['leadNo'], render: (l) => <span className="whitespace-nowrap text-xs font-medium text-slate-500">{l.leadNo}</span> },
   {
     key: 'firstName',
     header: 'Name',

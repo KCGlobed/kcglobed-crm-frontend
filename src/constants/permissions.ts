@@ -31,13 +31,14 @@ export const ACTIONS: { key: ActionKey; label: string }[] = [
   { key: 'approve', label: 'Approve' },
 ]
 
+/**
+ * The scopes an admin can pick. The backend also knows 'all' (seeded Admin
+ * templates and the Super Admin use it); the dropdown keeps such a value on an
+ * existing user or template but never offers it.
+ */
 export const DATA_SCOPES: { key: string; label: string; hint: string }[] = [
   { key: 'own', label: 'Own records', hint: 'Only records this user owns' },
   { key: 'team', label: 'Team', hint: 'Their team, managed teams and direct reports' },
-  { key: 'location', label: 'Location', hint: 'Resolved as Team until location data lands' },
-  { key: 'program', label: 'Program', hint: 'Resolved as Team until program scoping lands' },
-  { key: 'cohort', label: 'Cohort', hint: 'Resolved as Team until cohort scoping lands' },
-  { key: 'all', label: 'All records', hint: 'No data restriction' },
 ]
 
 export function can(

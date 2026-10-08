@@ -100,7 +100,13 @@ function TemplateDrawer({ template, copyOf, onClose }: { template?: PermissionTe
         <FieldGroup title="Template">
           <div className="grid gap-3 sm:grid-cols-2">
             {/* a duplicate-key error from the backend means a template with this name already exists */}
-            <FormField label="Name" required error={errors.name ?? errors.key} className="sm:col-span-2">
+            <FormField
+              label="Name"
+              required
+              error={errors.name ?? errors.key}
+              className="sm:col-span-2"
+              hint={template ? `Key: ${template.key} (cannot change)` : name.trim() ? `Key: ${keyFromName(name)}` : 'The key is generated from the name'}
+            >
               <Input value={name} maxLength={100} placeholder="e.g. Senior Counsellor" onChange={(e) => setName(e.target.value)} />
             </FormField>
             <FormField label="Description" error={errors.description} className="sm:col-span-2">
