@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { CalendarClock, ClipboardList, Users } from 'lucide-react'
-import logoLight from '../../assets/logo-kcglobed-light.svg'
+import logoLight from '../../assets/logo-gcc-light.png'
 
 const HIGHLIGHTS = [
   { icon: ClipboardList, label: 'Every lead in one pipeline' },
@@ -18,7 +18,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
         <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-4 h-64 w-64 rounded-full border border-white/10" />
 
         <div className="relative flex items-center gap-3">
-          <img src={logoLight} alt="KcGlobed" className="h-12 w-auto" />
+          <img src={logoLight} alt="GCC School" className="h-12 w-auto" />
           <span className="rounded-md bg-white/10 px-2 py-1 text-[11px] font-bold tracking-wider text-gold-400 ring-1 ring-white/20">CRM</span>
         </div>
 

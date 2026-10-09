@@ -6,7 +6,7 @@ import { can } from '../../constants/permissions'
 import { GlobalSearch } from '../GlobalSearch'
 import { NotificationsBell } from './NotificationsBell'
 import { ProfileMenu } from './ProfileMenu'
-import logoMark from '../../assets/logo-kcglobed-mark.svg'
+import logoMark from '../../assets/logo-gcc-mark.png'
 
 /** The section the current page belongs to (longest matching nav path). */
 function useCurrentSection() {
@@ -32,7 +32,7 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
         <Menu className="h-[18px] w-[18px]" />
       </button>
       {/* the sidebar carries the full logo on desktop; phones get the mark here */}
-      <img src={logoMark} alt="KcGlobed CRM" className="h-7 w-7 shrink-0 lg:hidden" />
+      <img src={logoMark} alt="GCC School CRM" className="h-7 w-7 shrink-0 lg:hidden" />
       {current && (
         <div className="hidden min-w-0 items-center gap-2 xl:flex xl:w-56">
           <current.icon className="h-4 w-4 shrink-0 text-brand-500" />

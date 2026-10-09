@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import logo from '../../assets/logo-kcglobed.svg'
+import logo from '../../assets/logo-gcc.png'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useLoginMutation } from '../../services/authApi'
@@ -55,7 +55,7 @@ export default function LoginPage() {
     <AuthShell>
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <img src={logo} alt="KcGlobed" className="mb-2 h-12 w-auto lg:hidden" />
+          <img src={logo} alt="GCC School" className="mb-2 h-12 w-auto lg:hidden" />
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Welcome back</h1>
           <p className="text-sm text-slate-500">Sign in to KcGlobed CRM</p>
         </div>

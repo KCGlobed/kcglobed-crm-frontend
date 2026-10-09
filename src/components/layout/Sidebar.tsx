@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import { ChevronsLeft, ChevronsRight, X } from 'lucide-react'
-import logo from '../../assets/logo-kcglobed.svg'
-import logoMark from '../../assets/logo-kcglobed-mark.svg'
+import logo from '../../assets/logo-gcc.png'
+import logoMark from '../../assets/logo-gcc-mark.png'
 import { useCurrentUser } from '../../app/hooks'
 import { NAV_SECTIONS } from '../../constants/navigation'
 import { can } from '../../constants/permissions'
@@ -38,10 +38,10 @@ export function Sidebar({
       >
         <div className={cn('flex h-14 shrink-0 items-center gap-2.5 border-b border-slate-200', mini ? 'justify-center px-2' : 'px-4')}>
           {mini ? (
-            <img src={logoMark} alt="KcGlobed CRM" className="h-8 w-8 shrink-0" />
+            <img src={logoMark} alt="GCC School CRM" className="h-8 w-8 shrink-0" />
           ) : (
             <>
-              <img src={logo} alt="KcGlobed" className="h-9 w-auto shrink-0" />
+              <img src={logo} alt="GCC School" className="h-8 w-auto shrink-0" />
               <span className="rounded-md bg-brand-600 px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-gold-400">CRM</span>
             </>
           )}
