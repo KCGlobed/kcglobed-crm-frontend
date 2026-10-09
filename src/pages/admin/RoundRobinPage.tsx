@@ -24,6 +24,8 @@ const CHANNELS: { value: RoundRobinChannel; label: string }[] = [
   { value: 'meta', label: 'Meta Ads' },
   { value: 'google', label: 'Google' },
   { value: 'capture', label: 'Website' },
+  { value: 'telephony', label: 'Telephony' },
+  { value: 'chatbot', label: 'Chatbot' },
 ]
 /** index = API value (0=Mon … 6=Sun) */
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -367,7 +369,7 @@ export default function RoundRobinPage() {
     <>
       <PageHeader
         title="Round Robin"
-        description="New Meta, Google and Website leads go to online counsellors in turn. Manual leads are unaffected."
+        description="New Meta, Google, Website, Telephony and Chatbot leads go to online counsellors in turn. Manual leads are unaffected."
         actions={
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} /> Refresh

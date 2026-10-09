@@ -793,7 +793,7 @@ export interface DashboardSummary {
 }
 
 /** Round-robin auto-assignment: Meta / Google / Website leads rotate over online counsellors. */
-export type RoundRobinChannel = 'meta' | 'google' | 'capture'
+export type RoundRobinChannel = 'meta' | 'google' | 'capture' | 'telephony' | 'chatbot'
 
 export interface RoundRobinSettings {
   enabled: boolean
