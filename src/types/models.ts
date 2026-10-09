@@ -2,6 +2,7 @@ export type ModuleKey =
   | 'dashboard'
   | 'leads'
   | 'tasks'
+  | 'round_robin'
   | 'applications'
   | 'documents'
   | 'exams'

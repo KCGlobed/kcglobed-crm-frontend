@@ -250,7 +250,7 @@ export default function RoundRobinPage() {
   const { data, isLoading, isFetching, isError, error, refetch } = useRoundRobinStatusQuery(undefined, { pollingInterval: POLL_MS })
   const [setUser] = useSetRoundRobinUserMutation()
   const [pendingId, setPendingId] = useState<string | null>(null)
-  const canToggle = can(me, 'users', 'edit')
+  const canToggle = can(me, 'round_robin', 'edit')
 
   const onToggle = async (m: RoundRobinMember, receivesLeads: boolean) => {
     setPendingId(m._id)

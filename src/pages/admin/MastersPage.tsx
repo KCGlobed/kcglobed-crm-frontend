@@ -22,6 +22,7 @@ import { ConfirmDialog } from '../../components/ui/feedback'
 import { Checkbox, FormField, Input, Select } from '../../components/ui/fields'
 import { cn, formatDate, parseApiError } from '../../lib/utils'
 import { SubStagesEditor, type SubStageDraft } from './SubStagesEditor'
+import { StageReassignModal } from './StageReassignModal'
 
 type Row = Record<string, unknown> & { _id: string }
 
@@ -61,8 +62,8 @@ interface MasterConfig {
 
 /**
  * Source channels — "Lead Stage Mapping / Source Logic" §6. Keys are what the
- * backend stores (`apps/masters/models.py` CHANNELS); `telephony` and `chatbot`
- * need adding there. A source still on a dropped key (e.g. `partner`) keeps it.
+ * backend stores (`apps/masters/models.py` CHANNELS). A source still on a
+ * dropped key (e.g. `partner`) keeps it.
  */
 const CHANNEL_OPTIONS = [
   { value: 'direct', label: 'Direct' },
@@ -432,6 +433,8 @@ function MasterTable({ config }: { config: MasterConfig }) {
   const [sort, setSort] = useState<{ by: string; order: 'asc' | 'desc' }>({ by: config.sortBy, order: 'asc' })
   const [modal, setModal] = useState<{ open: boolean; row?: Row }>({ open: false })
   const [confirm, setConfirm] = useState<Row | null>(null)
+  // stages get the richer popup: list + bulk-move the leads still on the stage, then deactivate
+  const [stageReassign, setStageReassign] = useState<Row | null>(null)
   const [remove, { isLoading: removing }] = useDeleteMasterMutation()
   const [update] = useUpdateMasterMutation()
 
@@ -481,7 +484,7 @@ function MasterTable({ config }: { config: MasterConfig }) {
               icon: Ban,
               danger: true,
               hidden: !can(me, 'masters', 'delete') || r.isActive === false || r.status === 'closed',
-              onClick: () => setConfirm(r),
+              onClick: () => (config.type === 'stages' ? setStageReassign(r) : setConfirm(r)),
             },
             {
               label: 'Reactivate',
@@ -559,6 +562,12 @@ function MasterTable({ config }: { config: MasterConfig }) {
         danger
         loading={removing}
       />
+      {stageReassign && (
+        <StageReassignModal
+          stage={{ _id: stageReassign._id, name: String(stageReassign.name) }}
+          onClose={() => setStageReassign(null)}
+        />
+      )}
     </>
   )
 }

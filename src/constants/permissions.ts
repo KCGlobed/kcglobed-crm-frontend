@@ -4,6 +4,7 @@ export const MODULES: { key: ModuleKey; label: string; slice1: boolean }[] = [
   { key: 'dashboard', label: 'Dashboard', slice1: true },
   { key: 'leads', label: 'Leads', slice1: true },
   { key: 'tasks', label: 'Tasks & Follow-ups', slice1: false },
+  { key: 'round_robin', label: 'Round Robin', slice1: true },
   { key: 'applications', label: 'Applications', slice1: false },
   { key: 'documents', label: 'Documents', slice1: false },
   { key: 'exams', label: 'Exams (NFET)', slice1: false },
