@@ -239,7 +239,7 @@ export default function TeamDetailPage() {
       className: 'text-right',
       render: (m) => <span className="tabular-nums text-emerald-700">{m.converted}</span>,
     },
-    { key: 'lost', header: 'Lost', className: 'text-right', render: (m) => <span className="tabular-nums text-red-600">{m.lost}</span> },
+    { key: 'lost', header: 'Not Interested', className: 'text-right', render: (m) => <span className="tabular-nums text-red-600">{m.lost}</span> },
     {
       key: 'assignedThisWeek',
       header: 'Assigned (7d)',
@@ -368,7 +368,7 @@ export default function TeamDetailPage() {
             <StatTile label="Members" value={s.totals.members} hint={`${s.totals.receivingLeads} receiving leads`} />
             <StatTile label="Leads owned" value={s.totals.total} />
             <StatTile label="Open" value={s.totals.active} />
-            <StatTile label="Converted" value={s.totals.converted} hint={`${s.totals.lost} lost`} />
+            <StatTile label="Converted" value={s.totals.converted} hint={`${s.totals.lost} not interested`} />
             <StatTile
               label="Conversion"
               value={s.totals.conversionRate === null ? '—' : `${s.totals.conversionRate}%`}

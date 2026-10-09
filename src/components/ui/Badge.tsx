@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { cn } from '../../lib/utils'
-import { statusTone, type BadgeTone } from '../../lib/status'
+import { statusLabel, statusTone, type BadgeTone } from '../../lib/status'
 
 interface BadgeProps {
   children: ReactNode
@@ -53,7 +53,7 @@ export function Badge({ children, color, tone = 'slate', dot, className, title }
 }
 
 export function StatusBadge({ status, label, className }: { status?: string | null; label?: ReactNode; className?: string }) {
-  const text = label ?? (status ? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ') : '—')
+  const text = label ?? statusLabel(status)
   return (
     <Badge tone={statusTone(status)} dot className={className}>
       {text}

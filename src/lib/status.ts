@@ -18,3 +18,17 @@ export function statusTone(status?: string | null): BadgeTone {
   return STATUS_TONES[(status ?? '').toLowerCase()] ?? 'slate'
 }
 
+/**
+ * Display words that differ from the backend key. The key itself (`lost` on a
+ * lead's status, a stage's type, the stats) never changes — only what people read.
+ */
+export const STATUS_LABELS: Record<string, string> = {
+  lost: 'Not Interested',
+}
+
+/** "not_answered" → "Not answered"; keys in STATUS_LABELS use their own wording. */
+export function statusLabel(status?: string | null): string {
+  if (!status) return '—'
+  return STATUS_LABELS[status.toLowerCase()] ?? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ')
+}
+
