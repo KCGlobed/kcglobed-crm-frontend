@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Bookmark, Download, Filter, Info, Mail, MessageSquareText, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
+import { Bookmark, CalendarRange, Download, Filter, Info, Mail, MessageSquareText, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useDeleteSavedFilterMutation,
@@ -34,6 +34,11 @@ import { BulkSendModal } from './BulkSendModal'
 import { DEFAULT_VISIBLE_COLUMNS, LEAD_COLUMNS, LEAD_COLUMN_KEYS, LOCKED_COLUMNS } from './leadColumns'
 
 const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order']
+/** local YYYY-MM-DD, `daysAgo` days back */
+const isoDay = (daysAgo = 0) => {
+  const d = new Date(Date.now() - daysAgo * 86_400_000)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 // HIDDEN for now: filter fields the backend offers but the panel leaves out.
 // - tag: no screen assigns tags to leads yet
 const HIDDEN_FILTER_FIELDS = ['tag']
@@ -49,6 +54,7 @@ export default function LeadsListPage() {
   const [filterOpen, setFilterOpen] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
   const [savedOpen, setSavedOpen] = useState(false)
+  const [dateOpen, setDateOpen] = useState(false)
   const [filterName, setFilterName] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   const [allMatching, setAllMatching] = useState(false)
@@ -106,6 +112,18 @@ export default function LeadsListPage() {
     else next.set(key, String(value))
     if (key === 'page' || key === 'page_size') setParams(next, { replace: true })
     else replaceParams(next)
+  }
+
+  const createdFrom = params.get('created_from') ?? ''
+  const createdTo = params.get('created_to') ?? ''
+  // both dates in one URL update, so a preset never loses half the range
+  const setDateRange = (from: string, to: string) => {
+    const next = new URLSearchParams(params)
+    if (from) next.set('created_from', from)
+    else next.delete('created_from')
+    if (to) next.set('created_to', to)
+    else next.delete('created_to')
+    replaceParams(next)
   }
 
   const onSort = (key: string) => {
@@ -327,6 +345,77 @@ export default function LeadsListPage() {
                     + Save current filters
                   </button>
                 )}
+              </div>
+            </>
+          )}
+        </div>
+        {/* created-date range dropdown — filters on the lead's Created On date (backend created_from/created_to) */}
+        <div className="relative">
+          <Button variant={createdFrom || createdTo ? 'secondary' : 'outline'} size="sm" onClick={() => setDateOpen((o) => !o)}>
+            <CalendarRange className="h-3.5 w-3.5" />
+            {createdFrom || createdTo ? `${createdFrom || '…'} → ${createdTo || '…'}` : 'Created date'}
+          </Button>
+          {dateOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setDateOpen(false)} />
+              <div className="absolute left-0 top-full z-50 mt-1.5 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Created between</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="mb-1 block text-[11px] font-medium text-slate-500">Start date</span>
+                    <Input
+                      type="date"
+                      aria-label="Created from"
+                      value={createdFrom}
+                      max={createdTo || undefined}
+                      onChange={(e) => setDateRange(e.target.value, createdTo)}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-[11px] font-medium text-slate-500">End date</span>
+                    <Input
+                      type="date"
+                      aria-label="Created to"
+                      value={createdTo}
+                      min={createdFrom || undefined}
+                      onChange={(e) => setDateRange(createdFrom, e.target.value)}
+                    />
+                  </label>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3">
+                  {(
+                    [
+                      ['Today', isoDay(), isoDay()],
+                      ['Last 7 days', isoDay(6), isoDay()],
+                      ['Last 30 days', isoDay(29), isoDay()],
+                      ['This month', `${isoDay().slice(0, 8)}01`, isoDay()],
+                    ] as const
+                  ).map(([label, from, to]) => (
+                    <button
+                      key={label}
+                      type="button"
+                      className={cn(
+                        'rounded-full border px-2.5 py-1 text-[11px] transition-colors',
+                        createdFrom === from && createdTo === to
+                          ? 'border-brand-600 bg-brand-600 font-medium text-white'
+                          : 'border-slate-200 text-slate-600 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700'
+                      )}
+                      onClick={() => setDateRange(from, to)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-3 flex justify-end gap-2">
+                  {(createdFrom || createdTo) && (
+                    <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setDateRange('', '')}>
+                      Clear
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={() => setDateOpen(false)}>
+                    Done
+                  </Button>
+                </div>
               </div>
             </>
           )}

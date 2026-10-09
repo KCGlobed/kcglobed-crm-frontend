@@ -1,6 +1,6 @@
 import { ACTIONS, DATA_SCOPES, MODULES } from '../../../constants/permissions'
 import type { ActionKey, DataScope, FieldRule, ModuleKey, ModulePermission, PermissionTemplate } from '../../../types/models'
-import { Checkbox, FormField, Input, Select } from '../../../components/ui/fields'
+import { Checkbox, FormField, Select } from '../../../components/ui/fields'
 import { Button } from '../../../components/ui/Button'
 import { Trash2 } from 'lucide-react'
 
@@ -19,7 +19,33 @@ interface Props {
   showTemplatePicker?: boolean
 }
 
-const SUGGESTED_FIELDS = ['mobile', 'email', 'altMobile']
+/**
+ * Lead fields a rule can mask/hide — the backend applies rules to these API
+ * keys on every lead it returns (common/masking.py). Mobile/email get a
+ * partial mask (98•••••210, r•••@gmail.com), everything else becomes "****";
+ * hidden removes the field entirely, read-only blocks edits.
+ */
+const MASKABLE_FIELDS: { value: string; label: string; group: string }[] = [
+  { value: 'mobile', label: 'Mobile', group: 'Contact' },
+  { value: 'altMobile', label: 'Alternate mobile', group: 'Contact' },
+  { value: 'email', label: 'Email', group: 'Contact' },
+  { value: 'firstName', label: 'First name', group: 'Identity' },
+  { value: 'lastName', label: 'Last name', group: 'Identity' },
+  { value: 'city', label: 'City', group: 'Location' },
+  { value: 'state', label: 'State', group: 'Location' },
+  { value: 'country', label: 'Country', group: 'Location' },
+  { value: 'source', label: 'Latest source', group: 'Attribution' },
+  { value: 'firstSource', label: 'First source', group: 'Attribution' },
+  { value: 'utm', label: 'UTM parameters', group: 'Attribution' },
+  { value: 'referral', label: 'Referral details', group: 'Attribution' },
+  { value: 'createdVia', label: 'Created via', group: 'Attribution' },
+  { value: 'programInterest', label: 'Program interest', group: 'Lead data' },
+  { value: 'cohort', label: 'Cohort', group: 'Lead data' },
+  { value: 'score', label: 'Lead score', group: 'Lead data' },
+  { value: 'lastDisposition', label: 'Last disposition', group: 'Lead data' },
+  { value: 'customFields', label: 'Custom fields', group: 'Lead data' },
+]
+const FIELD_GROUPS = [...new Set(MASKABLE_FIELDS.map((f) => f.group))]
 
 /**
  * The SOW's plug-and-play access builder: pick a template (a saved tick-set),
@@ -132,38 +158,49 @@ export function PermissionBuilder({ value, onChange, templates, showTemplatePick
       <div>
         <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Field visibility (data masking)</p>
         <div className="space-y-2">
-          {value.fieldRules.map((rule, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Input
-                className="!h-8 flex-1"
-                value={rule.field}
-                placeholder="Field, e.g. mobile"
-                onChange={(e) => setRule(i, { field: e.target.value })}
-                list="field-suggestions"
-              />
-              <Select
-                className="!h-8 !w-32"
-                value={rule.mode}
-                onChange={(e) => setRule(i, { mode: e.target.value as FieldRule['mode'] })}
-              >
-                <option value="masked">Masked</option>
-                <option value="hidden">Hidden</option>
-                <option value="readonly">Read-only</option>
-              </Select>
-              <button
-                type="button"
-                onClick={() => onChange({ ...value, fieldRules: value.fieldRules.filter((_, idx) => idx !== i), templateKey: undefined })}
-                className="rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
-          <datalist id="field-suggestions">
-            {SUGGESTED_FIELDS.map((f) => (
-              <option key={f} value={f} />
-            ))}
-          </datalist>
+          {value.fieldRules.map((rule, i) => {
+            const usedElsewhere = new Set(value.fieldRules.filter((_, idx) => idx !== i).map((r) => r.field))
+            return (
+              <div key={i} className="grid grid-cols-[minmax(0,1fr)_7.5rem_2rem] items-center gap-2">
+                <Select
+                  className="min-w-0"
+                  value={rule.field}
+                  onChange={(e) => setRule(i, { field: e.target.value })}
+                >
+                  <option value="">Choose field…</option>
+                  {FIELD_GROUPS.map((g) => (
+                    <optgroup key={g} label={g}>
+                      {MASKABLE_FIELDS.filter((f) => f.group === g).map((f) => (
+                        <option key={f.value} value={f.value} disabled={usedElsewhere.has(f.value)}>
+                          {f.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                  {/* a saved rule on a field not in the list (e.g. hand-set earlier) stays selectable so it is kept on save */}
+                  {!!rule.field && !MASKABLE_FIELDS.some((f) => f.value === rule.field) && (
+                    <option value={rule.field}>{rule.field} (current)</option>
+                  )}
+                </Select>
+                <Select
+                  value={rule.mode}
+                  onChange={(e) => setRule(i, { mode: e.target.value as FieldRule['mode'] })}
+                >
+                  <option value="masked">Masked</option>
+                  <option value="hidden">Hidden</option>
+                  <option value="readonly">Read-only</option>
+                </Select>
+                <button
+                  type="button"
+                  aria-label="Remove field rule"
+                  onClick={() => onChange({ ...value, fieldRules: value.fieldRules.filter((_, idx) => idx !== i), templateKey: undefined })}
+                  className="flex h-9 w-8 items-center justify-center rounded text-slate-400 hover:bg-red-50 hover:text-red-600"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )
+          })}
           <Button
             type="button"
             variant="outline"
