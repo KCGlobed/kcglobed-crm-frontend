@@ -5,6 +5,7 @@ import {
   CalendarPlus,
   Lightbulb,
   Mail,
+  MessageCircle,
   MessageSquareText,
   Milestone,
   NotebookPen,
@@ -103,7 +104,9 @@ function OverviewTab({ lead }: { lead: Lead }) {
           {calls?.data.slice(0, 5).map((c) => (
             <div key={c._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0">
               <p className="font-medium text-slate-700">
-                {c.subStage ?? c.stage} {c.durationSeconds ? `· ${Math.floor(c.durationSeconds / 60)}m ${c.durationSeconds % 60}s` : ''}
+                {c.subStage ?? c.stage} {c.durationSeconds
+                  ? `· ${c.durationSeconds >= 3600 ? `${Math.floor(c.durationSeconds / 3600)}h ` : ''}${Math.floor((c.durationSeconds % 3600) / 60)}m ${c.durationSeconds % 60}s`
+                  : ''}
               </p>
               <p className="text-slate-400">
                 {c.user?.name} · {formatDateTime(c.createdAt)}
@@ -220,12 +223,10 @@ export default function LeadDetailPage() {
 
               <div className="flex flex-wrap items-center gap-2">
                 {canEdit && lead.mobile && (
-                  // GL-40: until a dialer is connected, Call opens the phone's dialler, then the disposition popup
-                  <a href={`tel:${lead.mobile}`} onClick={() => setTimeout(() => setModal('call'), 300)}>
-                    <Button variant="outline" size="sm">
-                      <Phone className="h-3.5 w-3.5" /> Call
-                    </Button>
-                  </a>
+                  // Disabled until a dialer is connected
+                  <Button variant="outline" size="sm" disabled title="Calling is not available yet">
+                    <Phone className="h-3.5 w-3.5" /> Call
+                  </Button>
                 )}
                 {canEdit && (
                   <Button size="sm" onClick={() => setModal('call')}>
@@ -252,6 +253,10 @@ export default function LeadDetailPage() {
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setModal('email')}>
                       <Mail className="h-3.5 w-3.5" /> Send Email
+                    </Button>
+                    {/* Disabled until WhatsApp messaging is integrated */}
+                    <Button variant="outline" size="sm" disabled title="WhatsApp messaging is coming soon">
+                      <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
                     </Button>
                   </>
                 )}

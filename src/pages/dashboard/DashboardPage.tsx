@@ -96,7 +96,7 @@ export default function DashboardPage() {
             {today}
           </p>
           <h1 className="mt-1 truncate text-xl font-bold tracking-tight sm:text-2xl">Welcome back, {user?.name.split(' ')[0] ?? ''}</h1>
-          <p className="mt-1 text-sm text-brand-100">{isCounsellor(user) ? 'My Day — what needs you now' : 'Lead pipeline overview'}</p>
+          {isCounsellor(user) && <p className="mt-1 text-sm text-brand-100">My Day — what needs you now</p>}
         </div>
       </section>
       {isAdminLike(user) && <UnassignedBanner count={totals?.unassigned} />}

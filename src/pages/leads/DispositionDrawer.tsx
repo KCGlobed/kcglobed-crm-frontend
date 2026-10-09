@@ -10,13 +10,6 @@ import type { Lead } from '../../types/models'
 import { toLocalInput } from '../tasks/taskMeta'
 import { CounsellorDiscussion } from './CounsellorDiscussion'
 
-const CALL_STATUSES = [
-  { value: 'answered', label: 'Connected' },
-  { value: 'not_answered', label: 'Not answered' },
-  { value: 'busy', label: 'Busy' },
-  { value: 'failed', label: 'Failed / unreachable' },
-]
-
 /**
  * "Log Call / Update" (GL-16..20, GL-40): stage + disposition, a mandatory
  * future follow-up for every open stage, a reason for closing stages, an
@@ -34,7 +27,9 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
   const [followUpType, setFollowUpType] = useState('follow_up_call')
   const [followUpNote, setFollowUpNote] = useState('')
   const [note, setNote] = useState('')
-  const [callStatus, setCallStatus] = useState('answered')
+  // Call result is hidden in the form for now; every logged call is saved as connected
+  const callStatus = 'answered'
+  const [hours, setHours] = useState('')
   const [minutes, setMinutes] = useState('')
   const [seconds, setSeconds] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -43,7 +38,8 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
   const subStagePick = stage?.subStages.find((s) => s._id === subStage)
 
   const onSave = async () => {
-    const duration = minutes || seconds ? Number(minutes || 0) * 60 + Number(seconds || 0) : undefined
+    const duration =
+      hours || minutes || seconds ? Number(hours || 0) * 3600 + Number(minutes || 0) * 60 + Number(seconds || 0) : undefined
     const body: Record<string, unknown> = {
       stage: stageId,
       subStage: subStage || null,
@@ -87,19 +83,12 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
       <div className="grid gap-5 lg:grid-cols-2">
         <div className="space-y-3">
           {mode === 'call' && (
-            <div className="grid grid-cols-[1fr_auto] gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <FormField label="Call result">
-                <Select value={callStatus} onChange={(e) => setCallStatus(e.target.value)}>
-                  {CALL_STATUSES.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </Select>
-              </FormField>
-              <FormField label="Duration (optional)">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <FormField label="Call duration (optional)">
                 <div className="flex items-center gap-1">
-                  <Input className="!w-16" type="number" min={0} placeholder="mm" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+                  <Input className="!w-16" type="number" min={0} placeholder="hh" value={hours} onChange={(e) => setHours(e.target.value)} />
+                  <span className="text-slate-400">:</span>
+                  <Input className="!w-16" type="number" min={0} max={59} placeholder="mm" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
                   <span className="text-slate-400">:</span>
                   <Input className="!w-16" type="number" min={0} max={59} placeholder="ss" value={seconds} onChange={(e) => setSeconds(e.target.value)} />
                 </div>
