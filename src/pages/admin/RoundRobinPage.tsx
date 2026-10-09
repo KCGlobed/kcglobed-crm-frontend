@@ -375,6 +375,11 @@ export default function RoundRobinPage() {
         }
       />
 
+      {/* Reports do not depend on the live status, so they sit above it and stay available while it loads */}
+      <div className="mb-4">
+        <ReportsCard />
+      </div>
+
       {isLoading ? (
         <LoadingState />
       ) : isError || !data ? (
@@ -414,8 +419,6 @@ export default function RoundRobinPage() {
               />
             </div>
           </div>
-
-          <ReportsCard />
         </div>
       )}
     </>
