@@ -54,6 +54,16 @@ function parentOptions(nodes: TeamTreeNode[], excludeId?: string, depth = 0): { 
   )
 }
 
+/** Root → … → node ancestry for `id`, or null when it is not in the tree. */
+function findPath(nodes: TeamTreeNode[], id: string, trail: TeamTreeNode[] = []): TeamTreeNode[] | null {
+  for (const n of nodes) {
+    if (n._id === id) return [...trail, n]
+    const found = findPath(n.children, id, [...trail, n])
+    if (found) return found
+  }
+  return null
+}
+
 interface Props {
   open: boolean
   onClose: () => void
@@ -115,13 +125,24 @@ export function TeamFormDrawer({ open, onClose, team, defaultParent, onSaved }: 
   }, [types, type, setValue])
   const topLevelCreate = !team && !defaultParent
 
+  // Sub-teams follow their department's manager: no dropdown, display only.
+  // The nearest ancestor (the parent itself first) with a manager is the department head.
+  const isSubTeam = !!parentId
+  const inheritedManagerName = useMemo(() => {
+    if (team?.parent && team.manager?.name) return team.manager.name
+    const path = parentId ? findPath(tree?.data ?? [], parentId) : null
+    return path ? ([...path].reverse().find((n) => n.manager)?.manager?.name ?? null) : null
+  }, [team, parentId, tree])
+
   const onSubmit = async (v: FormValues) => {
     const body = {
       name: v.name,
       code: v.code || null,
       type: v.type,
       parent: v.parent || null,
-      manager: v.manager || null,
+      // a sub-team never sends a manager: on create the backend inherits the
+      // department's manager, on edit the saved one is kept
+      ...(isSubTeam ? {} : { manager: v.manager || null }),
       location: v.location || null,
       programs: v.programs,
       receivesLeads: v.receivesLeads,
@@ -225,17 +246,23 @@ export function TeamFormDrawer({ open, onClose, team, defaultParent, onSaved }: 
               )}
             </FormField>
           )}
-          <FormField label="Manager / team leader" error={errors.manager?.message}>
-            <Select aria-invalid={!!errors.manager} {...register('manager')}>
-              <option value="">No manager</option>
-              {users?.data.map((u) => (
-                <option key={u._id} value={u._id}>
-                  {u.name}
-                  {u.designation ? ` — ${u.designation}` : ''}
-                </option>
-              ))}
-            </Select>
-          </FormField>
+          {isSubTeam ? (
+            <FormField label="Manager / team leader" hint="Sub-teams follow their department's manager">
+              <Input value={inheritedManagerName ?? 'No manager set on the department'} disabled />
+            </FormField>
+          ) : (
+            <FormField label="Manager / team leader" error={errors.manager?.message}>
+              <Select aria-invalid={!!errors.manager} {...register('manager')}>
+                <option value="">No manager</option>
+                {users?.data.map((u) => (
+                  <option key={u._id} value={u._id}>
+                    {u.name}
+                    {u.designation ? ` — ${u.designation}` : ''}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+          )}
           <FormField label="Location" error={errors.location?.message}>
             <Input placeholder="e.g. Mumbai" {...register('location')} />
           </FormField>

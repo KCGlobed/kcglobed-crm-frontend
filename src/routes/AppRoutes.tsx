@@ -1,6 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import { RequireAuth, RequirePermission, RequireSuperAdmin } from './guards'
+import { RequireAuth, RequirePermission } from './guards'
 import AppLayout from '../layouts/AppLayout'
 import { Spinner } from '../components/ui/feedback'
 import { useCurrentUser } from '../app/hooks'
@@ -12,7 +12,6 @@ const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage')
 const ResetPasswordPage = lazy(() => import('../pages/auth/ResetPasswordPage'))
 const SetPasswordPage = lazy(() => import('../pages/auth/SetPasswordPage'))
 const MessagingPage = lazy(() => import('../pages/admin/messaging/MessagingPage'))
-const IntegrationsPage = lazy(() => import('../pages/admin/IntegrationsPage'))
 const RoundRobinPage = lazy(() => import('../pages/admin/RoundRobinPage'))
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage'))
 const LeadsListPage = lazy(() => import('../pages/leads/LeadsListPage'))
@@ -89,7 +88,6 @@ export default function AppRoutes() {
         <Route path="admin/teams/:id" element={<RequirePermission module="teams"><Lazy><TeamDetailPage /></Lazy></RequirePermission>} />
         <Route path="admin/masters" element={<RequirePermission module="masters"><Lazy><MastersPage /></Lazy></RequirePermission>} />
         <Route path="admin/messaging" element={<RequirePermission module="communications" action="edit"><Lazy><MessagingPage /></Lazy></RequirePermission>} />
-        <Route path="admin/integrations" element={<RequireSuperAdmin><Lazy><IntegrationsPage /></Lazy></RequireSuperAdmin>} />
         <Route path="admin/round-robin" element={<RequirePermission module="round_robin"><Lazy><RoundRobinPage /></Lazy></RequirePermission>} />
         <Route path="admin/audit" element={<RequirePermission module="audit"><Lazy><AuditLogPage /></Lazy></RequirePermission>} />
         <Route path="profile" element={<Lazy><ProfilePage /></Lazy>} />

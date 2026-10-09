@@ -16,8 +16,14 @@ export function LeadFollowUps({ leadId }: { leadId: string }) {
   if (!tasks.length) {
     return <EmptyState title="No follow-ups yet" description="Use “Add follow-up” to schedule the next action on this lead." />
   }
+  const open = tasks.filter((t) => t.status === 'open').length
 
   return (
+    <>
+    <p className="mb-2 text-xs text-slate-500">
+      <b className="text-slate-700">{tasks.length}</b> follow-up{tasks.length === 1 ? '' : 's'} created on this lead
+      {open > 0 && <> · <b className="text-slate-700">{open}</b> open</>}
+    </p>
     <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-sm">
       {tasks.map((t) => (
         <li key={t._id} className={cn('flex flex-wrap items-start gap-3 px-4 py-3', t.status !== 'open' && 'opacity-70')}>
@@ -39,5 +45,6 @@ export function LeadFollowUps({ leadId }: { leadId: string }) {
         </li>
       ))}
     </ul>
+    </>
   )
 }

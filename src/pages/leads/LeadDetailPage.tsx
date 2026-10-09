@@ -18,6 +18,7 @@ import {
 import { toast } from 'sonner'
 import { useDeleteLeadMutation, useGetLeadQuery, useLeadCallsQuery } from '../../services/leadsApi'
 import { useLeadMessagesQuery } from '../../services/messagingApi'
+import { useLeadTasksQuery } from '../../services/tasksApi'
 import { useCurrentUser } from '../../app/hooks'
 import { can } from '../../constants/permissions'
 import { isAdminLike } from '../../lib/roles'
@@ -135,6 +136,13 @@ function OverviewTab({ lead }: { lead: Lead }) {
   )
 }
 
+/** wa.me link for the lead's mobile (10-digit Indian numbers get the 91 prefix). */
+function whatsappLink(mobile?: string | null): string | null {
+  const digits = (mobile ?? '').replace(/\D/g, '')
+  if (digits.length < 10) return null // missing or masked number
+  return `https://wa.me/${digits.length === 10 ? `91${digits}` : digits}`
+}
+
 function HeaderFact({ label, children, danger }: { label: string; children: React.ReactNode; danger?: boolean }) {
   return (
     <div className="min-w-0">
@@ -154,6 +162,9 @@ export default function LeadDetailPage() {
 
   const { data, isLoading, isError, error, refetch } = useGetLeadQuery(id, { skip: !id })
   const [deleteLead, { isLoading: deleting }] = useDeleteLeadMutation()
+  // also feeds the Follow-ups tab — one fetch, shown as the count in the tab label
+  const { data: followUps } = useLeadTasksQuery(id, { skip: !id || !can(user, 'tasks', 'view') })
+  const followUpCount = followUps?.data.length
   const lead = data?.data
   const close = () => setModal(null)
 
@@ -254,9 +265,17 @@ export default function LeadDetailPage() {
                     <Button variant="outline" size="sm" onClick={() => setModal('email')}>
                       <Mail className="h-3.5 w-3.5" /> Send Email
                     </Button>
-                    {/* Disabled until WhatsApp messaging is integrated */}
-                    <Button variant="outline" size="sm" disabled title="WhatsApp messaging is coming soon">
-                      <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!whatsappLink(lead.mobile)}
+                      title={whatsappLink(lead.mobile) ? 'Open a WhatsApp chat with this lead' : 'No valid mobile number'}
+                      onClick={() => {
+                        const url = whatsappLink(lead.mobile)
+                        if (url) window.open(url, '_blank', 'noopener')
+                      }}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" /> Send WhatsApp
                     </Button>
                   </>
                 )}
@@ -306,7 +325,9 @@ export default function LeadDetailPage() {
           { key: 'profile', label: 'Student Profile' },
           { key: 'discussion', label: 'Counsellor Discussion' },
           { key: 'timeline', label: 'Timeline' },
-          ...(can(user, 'tasks', 'view') ? [{ key: 'followups', label: 'Follow-ups' }] : []),
+          ...(can(user, 'tasks', 'view')
+            ? [{ key: 'followups', label: `Follow-ups${followUpCount !== undefined ? ` (${followUpCount})` : ''}` }]
+            : []),
           { key: 'notes', label: 'Notes' },
           ...(admin ? [{ key: 'history', label: 'History' }] : []),
         ]}

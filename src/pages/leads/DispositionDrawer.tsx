@@ -8,13 +8,12 @@ import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import type { Lead } from '../../types/models'
 import { toLocalInput } from '../tasks/taskMeta'
-import { CounsellorDiscussion } from './CounsellorDiscussion'
 
 /**
  * "Log Call / Update" (GL-16..20, GL-40): stage + disposition, a mandatory
  * future follow-up for every open stage, a reason for closing stages, an
- * optional note and call duration. The Counsellor Discussion stays open on
- * the right while the call is logged.
+ * optional note and call duration. Counsellor Discussion and Call Result are
+ * intentionally not part of this form — the discussion lives in its own tab.
  */
 export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: 'call' | 'update'; onClose: () => void }) {
   const { data } = useDispositionOptionsQuery()
@@ -65,7 +64,6 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
   return (
     <Drawer
       open
-      wide
       onClose={onClose}
       title={mode === 'call' ? 'Log call' : 'Update lead'}
       description={`${lead.firstName} ${lead.lastName ?? ''} · ${lead.leadNo} · now ${lead.stage?.name ?? '—'}`}
@@ -80,7 +78,7 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
         </>
       }
     >
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div>
         <div className="space-y-3">
           {mode === 'call' && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -172,10 +170,6 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
           <FormField label={mode === 'call' ? 'Call note' : 'Note'}>
             <Textarea rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
           </FormField>
-        </div>
-        <div className="border-t border-slate-100 pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Counsellor discussion</p>
-          <CounsellorDiscussion leadId={lead._id} compact />
         </div>
       </div>
     </Drawer>

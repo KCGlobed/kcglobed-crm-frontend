@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
-import { Activity, Inbox, RefreshCw, UserCheck, UserRoundCheck, type LucideIcon } from 'lucide-react'
+import { Activity, FileSpreadsheet, FileText, Inbox, RefreshCw, UserCheck, UserRoundCheck, type LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { authorizedDownload } from '../../lib/download'
 import {
   useRoundRobinStatusQuery,
   useSetRoundRobinUserMutation,
@@ -39,6 +40,52 @@ function Stat({ label, value, hint, icon: Icon, accent }: { label: string; value
         {hint && <p className="truncate text-[11px] text-slate-400">{hint}</p>}
       </div>
     </div>
+  )
+}
+
+const isoDay = (daysAgo = 0) => new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10)
+
+/** Date-ranged export of every assignment the rotation made, as Excel or PDF. */
+function ReportsCard() {
+  const [from, setFrom] = useState(() => isoDay(29))
+  const [to, setTo] = useState(() => isoDay())
+  const [busy, setBusy] = useState<'xlsx' | 'pdf' | null>(null)
+
+  const download = async (fmt: 'xlsx' | 'pdf') => {
+    setBusy(fmt)
+    try {
+      await authorizedDownload(
+        `/leads/round-robin/report?date_from=${from}&date_to=${to}&format=${fmt}`,
+        `round-robin-${from}-to-${to}.${fmt}`
+      )
+      toast.success('Report downloaded')
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <Card title="Assignment reports">
+      <p className="mb-3 text-xs text-slate-500">
+        Every lead the rotation handed out in the period, with a per-counsellor summary.
+      </p>
+      <div className="flex flex-wrap items-end gap-3">
+        <FormField label="From">
+          <Input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} />
+        </FormField>
+        <FormField label="To">
+          <Input type="date" value={to} min={from} max={isoDay()} onChange={(e) => setTo(e.target.value)} />
+        </FormField>
+        <Button variant="outline" size="sm" className="mb-1" loading={busy === 'xlsx'} disabled={!!busy} onClick={() => download('xlsx')}>
+          <FileSpreadsheet className="h-3.5 w-3.5" /> Export Excel
+        </Button>
+        <Button variant="outline" size="sm" className="mb-1" loading={busy === 'pdf'} disabled={!!busy} onClick={() => download('pdf')}>
+          <FileText className="h-3.5 w-3.5" /> Export PDF
+        </Button>
+      </div>
+    </Card>
   )
 }
 
@@ -367,6 +414,8 @@ export default function RoundRobinPage() {
               />
             </div>
           </div>
+
+          <ReportsCard />
         </div>
       )}
     </>

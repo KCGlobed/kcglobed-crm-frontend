@@ -195,6 +195,18 @@ export default function LeadsListPage() {
       {/* GL-34 smart filters */}
       <div className="-mx-4 mb-3 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&>*]:shrink-0">
         <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Quick filters</span>
+        <button
+          onClick={() => setParam('smart', undefined)}
+          className={cn(
+            'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+            !smart
+              ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
+              : 'border-slate-300 bg-white text-slate-600 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700'
+          )}
+          title="All leads, no quick filter"
+        >
+          Show all
+        </button>
         {meta?.data.smartFilters.map((f) => (
           <button
             key={f.key}
@@ -207,7 +219,8 @@ export default function LeadsListPage() {
             )}
             title={f.label}
           >
-            {f.key.replace(/_/g, ' ').replace('3d', '3+ days').replace(/^\w/, (c) => c.toUpperCase())}
+            {({ followups_all: 'All follow-ups', followups_today: 'Follow-ups today' } as Record<string, string>)[f.key] ??
+              f.key.replace(/_/g, ' ').replace('3d', '3+ days').replace(/^\w/, (c) => c.toUpperCase())}
           </button>
         ))}
       </div>
