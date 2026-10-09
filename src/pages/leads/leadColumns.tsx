@@ -127,6 +127,9 @@ const ALL_LEAD_COLUMNS: LeadColumn[] = [
   },
   { key: 'createdViaLabel', header: 'Created Via', exportKeys: ['createdViaLabel'], render: (l) => text(l.createdViaLabel ?? l.createdVia) },
   { key: 'reEnquiryCount', header: 'Re-enquiry Count', sortable: true, exportKeys: ['reEnquiryCount'], render: (l) => text(l.reEnquiryCount ?? 0) },
+  { key: 'utmSource', header: 'UTM Source', exportKeys: ['utmSource'], render: (l) => text(l.utm?.source) },
+  { key: 'utmMedium', header: 'UTM Medium', exportKeys: ['utmMedium'], render: (l) => text(l.utm?.medium) },
+  { key: 'utmCampaign', header: 'UTM Campaign', exportKeys: ['utmCampaign'], render: (l) => text(l.utm?.campaign) },
   { key: 'metaCampaign', header: 'Meta Campaign', exportKeys: ['metaCampaign'], render: (l) => text(l.meta?.campaignName) },
   { key: 'metaAdset', header: 'Meta Ad Set', exportKeys: ['metaAdset'], render: (l) => text(l.meta?.adsetName) },
   { key: 'metaAd', header: 'Meta Ad', exportKeys: ['metaAd'], render: (l) => text(l.meta?.adName) },
@@ -198,6 +201,6 @@ export const LEAD_COLUMN_KEYS = LEAD_COLUMNS.map((c) => c.key)
 /** Go-live §11.1 default columns */
 export const DEFAULT_VISIBLE_COLUMNS = [
   'leadNo', 'firstName', 'mobile', 'email', 'stage', 'owner', 'firstSource', 'source', 'city', 'program',
-  'createdAt', 'lastActivityAt', 'nextFollowUpAt',
+  'utmSource', 'utmMedium', 'utmCampaign', 'createdAt', 'lastActivityAt', 'nextFollowUpAt',
 ]
 export const LOCKED_COLUMNS = ['firstName']

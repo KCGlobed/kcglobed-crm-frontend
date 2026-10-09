@@ -90,7 +90,7 @@ export default function AppRoutes() {
         <Route path="admin/masters" element={<RequirePermission module="masters"><Lazy><MastersPage /></Lazy></RequirePermission>} />
         <Route path="admin/messaging" element={<RequirePermission module="communications" action="edit"><Lazy><MessagingPage /></Lazy></RequirePermission>} />
         <Route path="admin/integrations" element={<RequireSuperAdmin><Lazy><IntegrationsPage /></Lazy></RequireSuperAdmin>} />
-        <Route path="admin/round-robin" element={<RequirePermission module="leads" action="reassign"><Lazy><RoundRobinPage /></Lazy></RequirePermission>} />
+        <Route path="admin/round-robin" element={<RequirePermission module="round_robin"><Lazy><RoundRobinPage /></Lazy></RequirePermission>} />
         <Route path="admin/audit" element={<RequirePermission module="audit"><Lazy><AuditLogPage /></Lazy></RequirePermission>} />
         <Route path="profile" element={<Lazy><ProfilePage /></Lazy>} />
         <Route path="forbidden" element={<Forbidden />} />

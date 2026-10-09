@@ -109,6 +109,22 @@ export const leadsApi = api.injectEndpoints({
       query: (body) => ({ url: '/leads/bulk-assign', method: 'POST', body }),
       invalidatesTags: (_r, error, { preview }) => (error || preview ? [] : ['Lead', { type: 'Leads', id: 'LIST' }, 'Dashboard', 'Tasks']),
     }),
+    bulkChangeStage: build.mutation<
+      ApiResponse<{ total: number; moved: number }>,
+      {
+        leadIds?: string[]
+        selectAll?: boolean
+        filters?: Record<string, unknown>
+        stage: string
+        subStage?: string | null
+        followUpAt?: string
+        followUpType?: string
+        reason?: string
+      }
+    >({
+      query: (body) => ({ url: '/leads/bulk-stage', method: 'POST', body }),
+      invalidatesTags: (_r, error) => (error ? [] : ['Lead', { type: 'Leads', id: 'LIST' }, 'Dashboard', 'Tasks']),
+    }),
     deleteLead: build.mutation<ApiResponse<null>, string>({
       query: (id) => ({ url: `/leads/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'Leads', id: 'LIST' }, 'Dashboard'],
@@ -290,6 +306,7 @@ export const {
   useUpdateLeadMutation,
   useAssignLeadMutation,
   useBulkAssignMutation,
+  useBulkChangeStageMutation,
   useDeleteLeadMutation,
   useLazyCheckDuplicateQuery,
   useFilterFieldsQuery,
