@@ -311,6 +311,8 @@ export interface Lead {
   customFieldsCompletion?: number
   /** the 27 Counsellor Discussion fields filled % — only sent by the new backend */
   discussionCompletion?: number
+  /** Lead Score weights (percent, total 100): profile completion vs counsellor discussion */
+  scoreWeights?: { profile: number; discussion: number }
   optedOut?: { sms: boolean; email: boolean }
   isOverdue?: boolean
   ownerActive?: boolean | null
@@ -324,6 +326,8 @@ export type TaskType =
   | 'counselling_session'
   | 'expert_one_on_one'
   | 'document_collection'
+  | 'parents_discussion'
+  | 'in_person_meeting'
   | 'other'
 
 /** Follow-up on a lead (Deep Dive §10.2). */
@@ -378,6 +382,23 @@ export interface Note {
   edited?: boolean
   /** the author may edit within 15 minutes (GL-35) */
   editable?: boolean
+}
+
+/** A browser/device registered for push notifications. */
+export interface PushDevice {
+  _id: string
+  platform: 'web' | 'android' | 'ios'
+  isActive: boolean
+  lastSeenAt?: string
+  createdAt: string
+}
+
+export interface PushStatus {
+  /** console (recorded only) or fcm */
+  provider: string
+  /** notification types that are pushed to devices */
+  types: string[]
+  devices: PushDevice[]
 }
 
 export interface Notification {
@@ -776,6 +797,40 @@ export interface BulkAssignResult {
   assigned?: number
 }
 
+/**
+ * Total / assigned / unassigned leads for one period. `from`/`to` are the local
+ * YYYY-MM-DD bounds (inclusive) the backend used; absent for the all-time figures.
+ */
+export interface DashboardPeriod {
+  from?: string
+  to?: string
+  total: number
+  assigned: number
+  unassigned: number
+}
+
+/** One "Lead Status" tile: the count of leads on the named stage. */
+export interface DashboardStatusTile {
+  key: 'interested' | 'notInterested' | 'enrolled'
+  name: string
+  /** missing when the stage no longer exists in Masters */
+  stageId?: string
+  count: number
+}
+
+/** A row of the dashboard's Recent leads card; opens the lead's page. */
+export interface DashboardRecentLead {
+  _id: string
+  leadNo: string
+  firstName: string
+  lastName?: string
+  mobile?: string
+  stage?: { _id: string; name: string; color?: string } | null
+  owner?: Ref | null
+  source?: Ref | null
+  createdAt: string
+}
+
 export interface DashboardSummary {
   totals: {
     total: number
@@ -785,11 +840,17 @@ export interface DashboardSummary {
     converted: number
     lost: number
   }
-  byStage: { _id: string; name: string; color?: string; count: number }[]
-  bySource: { _id: string; name: string; channel?: string; count: number }[]
+  overall: DashboardPeriod
+  thisWeek: DashboardPeriod
+  today: DashboardPeriod
+  leadStatus: DashboardStatusTile[]
+  /** in stage order; `_id` is missing on the "No stage" row */
+  byStage: { _id?: string; name: string; color?: string; count: number }[]
+  /** every active source, highest first; `_id` is missing on the "No source" row */
+  bySource: { _id?: string; name: string; channel?: string; count: number }[]
   byOwner: { _id: string; name: string; count: number }[]
-  recentLeads: Lead[]
-  myLeadsToday: number
+  /** the eight newest leads in scope */
+  recentLeads: DashboardRecentLead[]
 }
 
 /** Round-robin auto-assignment: Meta / Google / Website leads rotate over online counsellors. */

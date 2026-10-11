@@ -177,3 +177,44 @@ textarea:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Notification toasts (sonner), coloured by event so a glance tells them apart:
+ * assignment → brand purple, untouched lead → gold, follow-up → teal, overdue → red.
+ * Sonner paints the toast, its border, text, close and action buttons from
+ * these variables, so the "View" button inverts to stay readable on each colour.
+ */
+[data-sonner-toast].crm-toast {
+  --normal-bg: #ffffff;
+  --normal-border: var(--color-slate-200);
+  --normal-text: var(--color-slate-800);
+}
+[data-sonner-toast].crm-toast-assigned {
+  --normal-bg: var(--color-brand-600);
+  --normal-border: var(--color-brand-700);
+  --normal-text: #ffffff;
+}
+[data-sonner-toast].crm-toast-untouched {
+  --normal-bg: var(--color-gold-400);
+  --normal-border: var(--color-gold-500);
+  --normal-text: var(--color-brand-900);
+}
+[data-sonner-toast].crm-toast-followup {
+  --normal-bg: var(--color-sky-600);
+  --normal-border: #0b8ba6;
+  --normal-text: #ffffff;
+}
+[data-sonner-toast].crm-toast-overdue {
+  --normal-bg: var(--color-red-600);
+  --normal-border: var(--color-red-700);
+  --normal-text: #ffffff;
+}
+[data-sonner-toast].crm-toast [data-description] {
+  color: var(--normal-text);
+  opacity: 0.88;
+}
+[data-sonner-toast].crm-toast [data-button] {
+  background: var(--normal-text);
+  color: var(--normal-bg);
+  font-weight: 600;
+}

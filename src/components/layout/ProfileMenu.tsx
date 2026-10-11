@@ -5,6 +5,8 @@ import { toast } from 'sonner'
 import { useAppDispatch, useCurrentUser } from '../../app/hooks'
 import { signedOut } from '../../features/auth/authSlice'
 import { useLogoutMutation } from '../../services/authApi'
+import { useUnsubscribePushMutation } from '../../services/miscApi'
+import { forgetPushToken } from '../../lib/push'
 import { api } from '../../services/api'
 import { useIdleLogout } from '../../hooks/useIdleLogout'
 import { initials } from '../../lib/utils'
@@ -13,8 +15,16 @@ function useSignOut() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const [logout] = useLogoutMutation()
+  const [unsubscribePush] = useUnsubscribePushMutation()
   return useCallback(
     async (message: string, kind: 'success' | 'info' = 'success') => {
+      try {
+        // this browser stops receiving the signed-out user's pushes
+        const token = await forgetPushToken()
+        if (token) await unsubscribePush({ token }).unwrap()
+      } catch {
+        // best effort — the backend drops unregistered tokens on the next failed send
+      }
       try {
         await logout().unwrap()
       } catch {
@@ -25,7 +35,7 @@ function useSignOut() {
       toast[kind](message)
       navigate('/login')
     },
-    [dispatch, logout, navigate]
+    [dispatch, logout, navigate, unsubscribePush]
   )
 }
 
@@ -77,7 +87,7 @@ export function ProfileMenu() {
                 }}
                 className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
               >
-                <KeyRound className="h-3.5 w-3.5 text-slate-400" /> Change password
+                <KeyRound className="h-3.5 w-3.5 text-slate-400" /> Change Password
               </button>
               <button
                 type="button"
@@ -85,7 +95,7 @@ export function ProfileMenu() {
                 onClick={() => signOut('Signed out')}
                 className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50"
               >
-                <LogOut className="h-3.5 w-3.5" /> Sign out
+                <LogOut className="h-3.5 w-3.5" /> Sign Out
               </button>
             </div>
           </div>

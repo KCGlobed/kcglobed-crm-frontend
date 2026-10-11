@@ -23,7 +23,7 @@ import { Checkbox, Input, Select } from '../../components/ui/fields'
 import { Modal } from '../../components/ui/Modal'
 import { cn, parseApiError } from '../../lib/utils'
 import { useColumnPrefs } from '../../hooks/useColumnPrefs'
-import type { Lead } from '../../types/models'
+import type { FilterField, Lead } from '../../types/models'
 import { QuickAddDrawer } from './QuickAddDrawer'
 import { BulkUploadModal } from './BulkUploadModal'
 import { ExportLeadsModal } from './ExportLeadsModal'
@@ -42,6 +42,40 @@ const isoDay = (daysAgo = 0) => {
 // HIDDEN for now: filter fields the backend offers but the panel leaves out.
 // - tag: no screen assigns tags to leads yet
 const HIDDEN_FILTER_FIELDS = ['tag']
+/** Quick-filter pill names (the backend's smart filter keys), in Title Case. */
+const SMART_LABELS: Record<string, string> = {
+  new_today: 'New Today',
+  untouched: 'Untouched',
+  followups_all: 'All Follow-ups',
+  followups_today: 'Follow-ups Today',
+  overdue: 'Overdue',
+  interested: 'Interested',
+  not_interested: 'Not Interested',
+  no_activity_3d: 'No Activity 3+ Days',
+  re_enquired: 'Re-enquired',
+  unassigned: 'Unassigned',
+  owner_inactive: 'Inactive Counsellors',
+}
+const smartLabel = (key: string) => SMART_LABELS[key] ?? key.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+
+/**
+ * Filters that arrive by link (e.g. a dashboard drill-down) and have no control
+ * of their own in the bar: shown as removable chips so it is clear why the list
+ * is narrowed. Names come from the filter-field options already loaded.
+ */
+function linkedFilterChips(params: URLSearchParams, fields: FilterField[] | undefined): { key: string; text: string }[] {
+  const label = (key: string, value: string) => fields?.find((f) => f.key === key)?.options?.find((o) => o.value === value)?.label
+  const chips: { key: string; text: string }[] = []
+  const source = params.get('source')
+  if (source) chips.push({ key: 'source', text: `Source: ${label('source', source) ?? 'selected source'}` })
+  const owner = params.get('owner')
+  if (owner) chips.push({ key: 'owner', text: `Counsellor: ${label('owner', owner) ?? 'selected counsellor'}` })
+  const status = params.get('status')
+  if (status) chips.push({ key: 'status', text: `Status: ${label('status', status) ?? status}` })
+  if (params.get('assigned') === 'true') chips.push({ key: 'assigned', text: 'Assigned to a Counsellor' })
+  if (params.get('unassigned') === 'true') chips.push({ key: 'unassigned', text: 'Unassigned' })
+  return chips
+}
 
 export default function LeadsListPage() {
   const [params, setParams] = useSearchParams()
@@ -183,6 +217,7 @@ export default function LeadsListPage() {
     ...columnPrefs.visibleKeys.map((key) => LEAD_COLUMNS.find((c) => c.key === key)!).filter(Boolean),
   ]
   const smart = params.get('smart')
+  const chips = linkedFilterChips(params, meta?.data.fields)
 
   return (
     <>
@@ -198,7 +233,7 @@ export default function LeadsListPage() {
             )}
             {can(user, 'leads', 'import') && (
               <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
-                <Upload className="h-3.5 w-3.5" /> Bulk upload
+                <Upload className="h-3.5 w-3.5" /> Bulk Upload
               </Button>
             )}
             {can(user, 'leads', 'create') && (
@@ -212,7 +247,7 @@ export default function LeadsListPage() {
 
       {/* GL-34 smart filters */}
       <div className="-mx-4 mb-3 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&>*]:shrink-0">
-        <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Quick filters</span>
+        <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Quick Filters</span>
         <button
           onClick={() => setParam('smart', undefined)}
           className={cn(
@@ -223,7 +258,7 @@ export default function LeadsListPage() {
           )}
           title="All leads, no quick filter"
         >
-          Show all
+          Show All
         </button>
         {meta?.data.smartFilters.map((f) => (
           <button
@@ -237,8 +272,7 @@ export default function LeadsListPage() {
             )}
             title={f.label}
           >
-            {({ followups_all: 'All follow-ups', followups_today: 'Follow-ups today' } as Record<string, string>)[f.key] ??
-              f.key.replace(/_/g, ' ').replace('3d', '3+ days').replace(/^\w/, (c) => c.toUpperCase())}
+            {smartLabel(f.key)}
           </button>
         ))}
       </div>
@@ -248,7 +282,7 @@ export default function LeadsListPage() {
           <>
             {hasFilters && (
               <Button variant="ghost" size="sm" onClick={clearAll}>
-                <X className="h-3.5 w-3.5" /> Clear all
+                <X className="h-3.5 w-3.5" /> Clear All
               </Button>
             )}
             <ColumnChooser
@@ -282,7 +316,7 @@ export default function LeadsListPage() {
             replaceParams(next)
           }}
         >
-          <option value="">All stages</option>
+          <option value="">All Stages</option>
           {masters?.data.stages.map((s) => (
             <option key={s._id} value={s._id}>
               {s.name}
@@ -296,7 +330,7 @@ export default function LeadsListPage() {
             value={params.get('sub_stage') ?? ''}
             onChange={(e) => setParam('sub_stage', e.target.value)}
           >
-            <option value="">All sub-stages</option>
+            <option value="">All Sub-stages</option>
             {activeSubStages(currentStage).map((s) => (
               <option key={s._id} value={s._id}>
                 {s.name}
@@ -309,7 +343,7 @@ export default function LeadsListPage() {
         </Button>
         <div className="relative">
           <Button variant="outline" size="sm" onClick={() => setSavedOpen((o) => !o)}>
-            <Bookmark className="h-3.5 w-3.5" /> My saved filters
+            <Bookmark className="h-3.5 w-3.5" /> My Saved Filters
           </Button>
           {savedOpen && (
             <>
@@ -342,7 +376,7 @@ export default function LeadsListPage() {
                       setSaveOpen(true)
                     }}
                   >
-                    + Save current filters
+                    + Save Current Filters
                   </button>
                 )}
               </div>
@@ -353,16 +387,16 @@ export default function LeadsListPage() {
         <div className="relative">
           <Button variant={createdFrom || createdTo ? 'secondary' : 'outline'} size="sm" onClick={() => setDateOpen((o) => !o)}>
             <CalendarRange className="h-3.5 w-3.5" />
-            {createdFrom || createdTo ? `${createdFrom || '…'} → ${createdTo || '…'}` : 'Created date'}
+            {createdFrom || createdTo ? `${createdFrom || '…'} → ${createdTo || '…'}` : 'Created Date'}
           </Button>
           {dateOpen && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setDateOpen(false)} />
               <div className="absolute left-0 top-full z-50 mt-1.5 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
-                <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Created between</p>
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Created Between</p>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block">
-                    <span className="mb-1 block text-[11px] font-medium text-slate-500">Start date</span>
+                    <span className="mb-1 block text-[11px] font-medium text-slate-500">Start Date</span>
                     <Input
                       type="date"
                       aria-label="Created from"
@@ -372,7 +406,7 @@ export default function LeadsListPage() {
                     />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-[11px] font-medium text-slate-500">End date</span>
+                    <span className="mb-1 block text-[11px] font-medium text-slate-500">End Date</span>
                     <Input
                       type="date"
                       aria-label="Created to"
@@ -386,9 +420,9 @@ export default function LeadsListPage() {
                   {(
                     [
                       ['Today', isoDay(), isoDay()],
-                      ['Last 7 days', isoDay(6), isoDay()],
-                      ['Last 30 days', isoDay(29), isoDay()],
-                      ['This month', `${isoDay().slice(0, 8)}01`, isoDay()],
+                      ['Last 7 Days', isoDay(6), isoDay()],
+                      ['Last 30 Days', isoDay(29), isoDay()],
+                      ['This Month', `${isoDay().slice(0, 8)}01`, isoDay()],
                     ] as const
                   ).map(([label, from, to]) => (
                     <button
@@ -421,6 +455,26 @@ export default function LeadsListPage() {
           )}
         </div>
       </FilterBar>
+
+      {chips.length > 0 && (
+        <div className="-mt-2 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Filtered By</span>
+          {chips.map((c) => (
+            <span key={c.key} className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 py-0.5 pl-2.5 pr-1 font-medium text-brand-700">
+              {c.text}
+              <button
+                type="button"
+                aria-label={`Remove filter ${c.text}`}
+                title="Remove"
+                onClick={() => setParam(c.key, undefined)}
+                className="rounded-full p-0.5 text-brand-500 hover:bg-brand-100 hover:text-brand-800"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {data?.notice && (
         <div role="status" className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -467,12 +521,12 @@ export default function LeadsListPage() {
         error={isError}
         errorMessage={isError ? parseApiError(error).message : undefined}
         onRetry={refetch}
-        emptyTitle={hasFilters ? 'No leads found' : 'No leads yet'}
+        emptyTitle={hasFilters ? 'No Leads Found' : 'No Leads Yet'}
         emptyDescription={hasFilters ? 'There are no leads matching your current search or filters.' : 'Leads from Meta, Quick Add and bulk upload will appear here.'}
         emptyAction={
           hasFilters ? (
             <Button variant="outline" size="sm" onClick={clearAll}>
-              Clear filters
+              Clear Filters
             </Button>
           ) : undefined
         }
@@ -515,7 +569,7 @@ export default function LeadsListPage() {
       <Modal
         open={saveOpen}
         onClose={() => setSaveOpen(false)}
-        title="Save filter"
+        title="Save Filter"
         size="sm"
         footer={
           <Button

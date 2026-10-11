@@ -1,4 +1,4 @@
-import { Badge, StatusBadge } from '../../components/ui/Badge'
+import { Badge, StageBadge, StatusBadge } from '../../components/ui/Badge'
 import type { Column } from '../../components/ui/DataTable'
 import { formatDate, formatDateTime, fullName, timeAgo } from '../../lib/utils'
 import { subStageOf } from '../../lib/stages'
@@ -10,7 +10,7 @@ export interface LeadColumn extends Column<Lead> {
   exportKeys: string[]
 }
 
-const TRACK_LABEL: Record<Lead['track'], string> = { ads: 'Paid ads', partner: 'Channel partner', other: 'Other' }
+const TRACK_LABEL: Record<Lead['track'], string> = { ads: 'Paid Ads', partner: 'Channel Partner', other: 'Other' }
 
 const text = (value?: string | number | null) => (
   <span className="text-xs text-slate-600">{value === undefined || value === null || value === '' ? '—' : value}</span>
@@ -63,7 +63,7 @@ const ALL_LEAD_COLUMNS: LeadColumn[] = [
     render: (l) =>
       l.stage ? (
         <div>
-          <Badge color={l.stage.color}>{l.stage.name}</Badge>
+          <StageBadge stage={l.stage} />
           {subStageOf(l) && <p className="mt-0.5 max-w-48 truncate text-[11px] text-slate-500">{subStageOf(l)!.name}</p>}
         </div>
       ) : (
@@ -79,7 +79,7 @@ const ALL_LEAD_COLUMNS: LeadColumn[] = [
       l.owner ? (
         <span className="inline-flex max-w-44 items-center gap-1 whitespace-nowrap text-xs text-slate-700" title={l.owner.name}>
           <span className="truncate">{l.owner.name}</span>
-          {l.ownerActive === false && <Badge tone="red" className="ml-1">inactive</Badge>}
+          {l.ownerActive === false && <Badge tone="red" className="ml-1">Inactive</Badge>}
         </span>
       ) : (
         <Badge tone="amber">Unassigned</Badge>
@@ -148,11 +148,11 @@ const ALL_LEAD_COLUMNS: LeadColumn[] = [
   { key: 'discussionCompletion', header: 'Discussion Completion %', exportKeys: ['discussionCompletion'], render: (l) => percent(l.discussionCompletion) },
   {
     key: 'optedOut',
-    header: 'Opted out',
+    header: 'Opted Out',
     exportKeys: ['optedOutSms', 'optedOutEmail'],
     render: (l) => text([l.optedOut?.sms ? 'SMS' : null, l.optedOut?.email ? 'Email' : null].filter(Boolean).join(', ') || null),
   },
-  { key: 'lastDisposition', header: 'Last disposition', exportKeys: ['lastDisposition'], render: (l) => text(l.lastDisposition) },
+  { key: 'lastDisposition', header: 'Last Disposition', exportKeys: ['lastDisposition'], render: (l) => text(l.lastDisposition) },
   { key: 'track', header: 'Track', exportKeys: ['track'], render: (l) => text(TRACK_LABEL[l.track]) },
   { key: 'cohort', header: 'Cohort', exportKeys: ['cohort'], render: (l) => text(l.cohort?.name) },
   {
@@ -173,7 +173,7 @@ const ALL_LEAD_COLUMNS: LeadColumn[] = [
       ),
   },
   { key: 'assignedAt', header: 'Assigned On', sortable: true, exportKeys: ['assignedAt'], render: (l) => when(l.assignedAt) },
-  { key: 'stageChangedAt', header: 'In stage since', sortable: true, exportKeys: ['stageChangedAt'], render: (l) => when(l.stageChangedAt) },
+  { key: 'stageChangedAt', header: 'In Stage Since', sortable: true, exportKeys: ['stageChangedAt'], render: (l) => when(l.stageChangedAt) },
   { key: 'updatedAt', header: 'Updated', sortable: true, exportKeys: ['updatedAt'], render: (l) => when(l.updatedAt) },
   // every dropdown / number field of the profile and the counsellor discussion (GL-32/38)
   ...PROFILE_COLUMNS.map<LeadColumn>(({ key, label }) => ({

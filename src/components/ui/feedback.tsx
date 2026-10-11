@@ -23,7 +23,7 @@ export function LoadingState({ label = 'Loading…', className }: { label?: stri
 }
 
 export function EmptyState({
-  title = 'Nothing here yet',
+  title = 'Nothing Here Yet',
   description,
   action,
   icon: Icon = Inbox,
@@ -53,7 +53,7 @@ export function EmptyState({
  * error always goes to the console for developers.
  */
 export function ErrorState({
-  title = 'Something went wrong',
+  title = 'Something Went Wrong',
   message = "We couldn't load the data. Please try again.",
   onRetry,
   error,
@@ -75,7 +75,7 @@ export function ErrorState({
       <p className="max-w-md text-xs leading-5 text-slate-500">{message}</p>
       {onRetry && (
         <Button variant="outline" size="sm" onClick={onRetry} className="mt-2">
-          <RefreshCw className="h-3.5 w-3.5" /> Try again
+          <RefreshCw className="h-3.5 w-3.5" /> Try Again
         </Button>
       )}
     </div>

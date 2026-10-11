@@ -48,10 +48,10 @@ const FILTERS: { key: string; label: string; types?: string }[] = [
   { key: 'reenquiry', label: 'Re-enquiry', types: 're_enquiry' },
   { key: 'documents', label: 'Documents', types: 'document' },
   { key: 'followups', label: 'Follow-ups', types: 'task' },
-  { key: 'stages', label: 'Stage & status', types: 'stage_change,status_change' },
+  { key: 'stages', label: 'Stage & Status', types: 'stage_change,status_change' },
   { key: 'assignment', label: 'Assignment', types: 'assignment' },
-  { key: 'edits', label: 'Edits & profile', types: 'edit,profile' },
-  { key: 'system', label: 'Created & system', types: 'created,import,system,export' },
+  { key: 'edits', label: 'Edits & Profile', types: 'edit,profile' },
+  { key: 'system', label: 'Created & System', types: 'created,import,system,export' },
 ]
 
 
@@ -75,7 +75,7 @@ function TimelinePage({ leadId, page, types, isLast, onMore }: {
   }
   if (isError) return <ErrorState message={parseApiError(error).message} onRetry={refetch} />
   if (page === 1 && !data?.data.length) {
-    return <EmptyState title="No activity yet" description="Notes, follow-ups, stage changes and edits will appear here." />
+    return <EmptyState title="No Activity Yet" description="Notes, follow-ups, stage changes and edits will appear here." />
   }
 
   return (
@@ -103,7 +103,7 @@ function TimelinePage({ leadId, page, types, isLast, onMore }: {
       {isLast && data?.pagination.next_page && (
         <div className="mt-4 text-center">
           <Button variant="outline" size="sm" loading={isFetching} onClick={onMore}>
-            Load older activity
+            Load Older Activity
           </Button>
         </div>
       )}
@@ -119,7 +119,7 @@ export function LeadTimeline({ leadId }: { leadId: string }) {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-4 flex flex-wrap gap-1.5" role="group" aria-label="Filter activity">
+      <div className="mb-4 flex flex-wrap gap-1.5" role="group" aria-label="Filter Activity">
         {FILTERS.map((f) => (
           <button
             key={f.key}

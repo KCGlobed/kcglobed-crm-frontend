@@ -45,7 +45,7 @@ export function ColumnChooser({ columns, order, isVisible, locked = [], onToggle
       {open && (
         <div className="absolute right-0 z-30 mt-1 w-72 rounded-xl border border-slate-200 bg-white shadow-xl">
           <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
-            <p className="text-xs font-semibold text-slate-700">Show columns</p>
+            <p className="text-xs font-semibold text-slate-700">Show Columns</p>
             <button onClick={onReset} className="inline-flex items-center gap-1 text-[11px] text-brand-700 hover:underline">
               <RotateCcw className="h-3 w-3" /> Reset
             </button>

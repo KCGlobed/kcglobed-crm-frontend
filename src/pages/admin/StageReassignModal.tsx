@@ -16,7 +16,7 @@ import { DataTable, type Column } from '../../components/ui/DataTable'
 import { Checkbox, FormField, Input, Select } from '../../components/ui/fields'
 import { formatDate, parseApiError } from '../../lib/utils'
 import type { Lead } from '../../types/models'
-import { toLocalInput } from '../tasks/taskMeta'
+import { taskTypeLabel, toLocalInput } from '../tasks/taskMeta'
 
 /**
  * Deactivating a lead stage that still has leads on it: instead of a bare
@@ -219,11 +219,11 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
                       aria-invalid={!!errors.followUpAt}
                     />
                   </FormField>
-                  <FormField label="Follow-up type">
+                  <FormField label="Follow-up Type">
                     <Select value={followUpType} onChange={(e) => setFollowUpType(e.target.value)}>
                       {options?.data.followUpTypes.map((t) => (
                         <option key={t.value} value={t.value}>
-                          {t.label}
+                          {taskTypeLabel(t.value, t.label)}
                         </option>
                       ))}
                     </Select>

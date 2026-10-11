@@ -14,7 +14,7 @@ export function LeadFollowUps({ leadId }: { leadId: string }) {
   if (isError) return <ErrorState message={parseApiError(error).message} onRetry={refetch} />
   const tasks = data?.data ?? []
   if (!tasks.length) {
-    return <EmptyState title="No follow-ups yet" description="Use “Add follow-up” to schedule the next action on this lead." />
+    return <EmptyState title="No Follow-ups Yet" description="Use “Add follow-up” to schedule the next action on this lead." />
   }
   const open = tasks.filter((t) => t.status === 'open').length
 
@@ -29,7 +29,7 @@ export function LeadFollowUps({ leadId }: { leadId: string }) {
         <li key={t._id} className={cn('flex flex-wrap items-start gap-3 px-4 py-3', t.status !== 'open' && 'opacity-70')}>
           <div className="min-w-0 flex-1">
             <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-800">
-              {t.priority === 'high' && <Flag className="h-3.5 w-3.5 text-red-500" aria-label="High priority" />}
+              {t.priority === 'high' && <Flag className="h-3.5 w-3.5 text-red-500" aria-label="High Priority" />}
               {t.typeLabel}
               <Badge tone={statusTone(t)}>{statusLabel(t)}</Badge>
             </p>

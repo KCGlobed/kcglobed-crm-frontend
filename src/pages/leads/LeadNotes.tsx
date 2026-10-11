@@ -82,14 +82,14 @@ export function LeadNotes({ leadId }: { leadId: string }) {
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-1">
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Add note</h3>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Add Note</h3>
         <div className="space-y-2">
           <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="What happened on this lead?" rows={5} maxLength={MAX} />
           <p className="text-right text-[11px] text-slate-400">
             {body.length} / {MAX.toLocaleString()}
           </p>
           <Button onClick={onSubmit} loading={saving} disabled={!body.trim()} className="w-full">
-            Save note
+            Save Note
           </Button>
           <p className="text-[11px] text-slate-400">Notes can be edited for 15 minutes, then they lock. Notes are never deleted.</p>
         </div>
@@ -105,7 +105,7 @@ export function LeadNotes({ leadId }: { leadId: string }) {
         )}
         {isError && <ErrorState message={parseApiError(error).message} onRetry={refetch} />}
         {!isLoading && !isError && !data?.data.length && (
-          <EmptyState title="No notes yet" description="Counselling notes keep the next person in the loop." />
+          <EmptyState title="No Notes Yet" description="Counselling notes keep the next person in the loop." />
         )}
         <div className="space-y-3">
           {data?.data.map((note) => (

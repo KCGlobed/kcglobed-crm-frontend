@@ -240,7 +240,7 @@ export function AcademicStep({
               />
             </FormField>
             {String(hasHigher) === 'true' && (
-              <FormField label="Qualification details" required error={ae?.higherQualification?.details?.message}>
+              <FormField label="Qualification Details" required error={ae?.higherQualification?.details?.message}>
                 <Input maxLength={150} aria-invalid={!!ae?.higherQualification?.details} {...register('academic.higherQualification.details')} />
               </FormField>
             )}

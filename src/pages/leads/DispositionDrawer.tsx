@@ -7,7 +7,7 @@ import { Button } from '../../components/ui/Button'
 import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import type { Lead } from '../../types/models'
-import { toLocalInput } from '../tasks/taskMeta'
+import { taskTypeLabel, toLocalInput } from '../tasks/taskMeta'
 
 /**
  * "Log Call / Update" (GL-16..20, GL-40): stage + disposition, a mandatory
@@ -73,7 +73,7 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
             Cancel
           </Button>
           <Button onClick={onSave} loading={isLoading} disabled={!stageId}>
-            Save disposition
+            Save Disposition
           </Button>
         </>
       }
@@ -82,7 +82,7 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
         <div className="space-y-3">
           {mode === 'call' && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <FormField label="Call duration (optional)">
+              <FormField label="Call Duration (Optional)">
                 <div className="flex items-center gap-1">
                   <Input className="!w-16" type="number" min={0} placeholder="hh" value={hours} onChange={(e) => setHours(e.target.value)} />
                   <span className="text-slate-400">:</span>
@@ -145,7 +145,7 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
             <div className="space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-3">
               <p className="text-xs font-semibold text-brand-800">Next follow-up (required for open stages)</p>
               <div className="grid gap-2 sm:grid-cols-[1.3fr_1fr]">
-                <FormField label="Date & time" required error={errors.followUpAt}>
+                <FormField label="Date & Time" required error={errors.followUpAt}>
                   <Input
                     type="datetime-local"
                     min={toLocalInput(new Date())}
@@ -158,7 +158,7 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
                   <Select value={followUpType} onChange={(e) => setFollowUpType(e.target.value)}>
                     {data?.data.followUpTypes.map((t) => (
                       <option key={t.value} value={t.value}>
-                        {t.label}
+                        {taskTypeLabel(t.value, t.label)}
                       </option>
                     ))}
                   </Select>
@@ -167,7 +167,7 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
               <Input placeholder="Follow-up note (optional)" value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)} maxLength={500} />
             </div>
           )}
-          <FormField label={mode === 'call' ? 'Call note' : 'Note'}>
+          <FormField label={mode === 'call' ? 'Call Note' : 'Note'}>
             <Textarea rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
           </FormField>
         </div>

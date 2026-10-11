@@ -15,7 +15,7 @@ export function LeadHistory({ leadId }: { leadId: string }) {
 
   if (isLoading) return <Skeleton className="h-48 w-full" />
   if (isError) return <ErrorState message={parseApiError(error).message} onRetry={refetch} />
-  if (!data?.data.length) return <EmptyState title="No field changes yet" />
+  if (!data?.data.length) return <EmptyState title="No Field Changes Yet" />
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -25,9 +25,9 @@ export function LeadHistory({ leadId }: { leadId: string }) {
             <th className="px-4 py-2">When (IST)</th>
             <th className="px-4 py-2">Section</th>
             <th className="px-4 py-2">Field</th>
-            <th className="px-4 py-2">Old value</th>
-            <th className="px-4 py-2">New value</th>
-            <th className="px-4 py-2">Changed by</th>
+            <th className="px-4 py-2">Old Value</th>
+            <th className="px-4 py-2">New Value</th>
+            <th className="px-4 py-2">Changed By</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">

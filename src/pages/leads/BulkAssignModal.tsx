@@ -106,7 +106,7 @@ export function BulkAssignModal({ selection, onClose, onDone }: { selection: Lea
               </Select>
             </FormField>
           ) : (
-            <FormField label="Split equally among" required hint="Pick two or more Admission Counsellors">
+            <FormField label="Split Equally Among" required hint="Pick two or more Admission Counsellors">
               <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
                 {counsellors.map((u) => (
                   <label key={u._id} className="flex items-center gap-2 text-sm text-slate-700">

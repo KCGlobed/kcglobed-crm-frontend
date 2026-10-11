@@ -25,6 +25,7 @@ export function KpiCard({
   hint,
   icon: Icon,
   accent = 'blue',
+  color,
   progress,
   loading,
   onClick,
@@ -34,6 +35,8 @@ export function KpiCard({
   hint?: string
   icon: LucideIcon
   accent?: keyof typeof ACCENTS
+  /** an exact colour (hex) for the disc, bar and wave — e.g. a lead status colour — instead of `accent` */
+  color?: string
   progress?: number
   loading?: boolean
   onClick?: () => void
@@ -55,14 +58,18 @@ export function KpiCard({
         viewBox="0 0 200 80"
         preserveAspectRatio="none"
         fill="currentColor"
-        className={cn('pointer-events-none absolute bottom-0 right-0 h-16 w-2/3 opacity-15', tone.wave)}
+        className={cn('pointer-events-none absolute bottom-0 right-0 h-16 w-2/3 opacity-15', !color && tone.wave)}
+        style={color ? { color } : undefined}
       >
         <path opacity=".5" d="M0 80C30 80 40 42 70 46s38-26 68-24 40-22 62-18v76z" />
         <path d="M40 80c30 0 40-24 70-22s42-24 90-28v50z" />
       </svg>
 
       <div className="relative flex items-center gap-3">
-        <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br text-white shadow-lg', tone.disc)}>
+        <span
+          className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-white shadow-lg', !color && ['bg-linear-to-br', tone.disc])}
+          style={color ? { backgroundColor: color } : undefined}
+        >
           <Icon className="h-[18px] w-[18px]" />
         </span>
         <p className="line-clamp-2 min-w-0 flex-1 text-sm font-medium leading-tight text-slate-800">{label}</p>
@@ -77,8 +84,8 @@ export function KpiCard({
           <span className="text-xl font-bold tabular-nums leading-6 tracking-tight text-slate-900">{(value ?? 0).toLocaleString()}</span>
         )}
       </div>
-      <div className={cn('relative mt-2 h-1 w-full overflow-hidden rounded-full', tone.track)}>
-        <div className={cn('h-full rounded-full transition-all duration-500', tone.bar)} style={{ width: `${loading ? 0 : fill}%` }} />
+      <div className={cn('relative mt-2 h-1 w-full overflow-hidden rounded-full', !color && tone.track)} style={color ? { backgroundColor: `${color}33` } : undefined}>
+        <div className={cn('h-full rounded-full transition-all duration-500', !color && tone.bar)} style={{ width: `${loading ? 0 : fill}%`, ...(color ? { backgroundColor: color } : {}) }} />
       </div>
     </Tag>
   )

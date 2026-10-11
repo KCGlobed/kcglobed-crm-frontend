@@ -124,7 +124,7 @@ function UnlockModal({ leadId, onClose }: { leadId: string; onClose: () => void 
     <Modal
       open
       onClose={onClose}
-      title="Unlock profile"
+      title="Unlock Profile"
       description="The declaration is withdrawn and the profile becomes editable again."
       size="sm"
       footer={
@@ -167,7 +167,7 @@ export function LeadProfileTab({ leadId }: { leadId: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-48 flex-1 items-center gap-3">
-          <span className="text-xs font-medium text-slate-600">Profile completion</span>
+          <span className="text-xs font-medium text-slate-600">Profile Completion</span>
           <div className="h-2 max-w-64 flex-1 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuenow={profile.completionPercent} aria-valuemin={0} aria-valuemax={100}>
             <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${profile.completionPercent}%` }} />
           </div>
@@ -176,7 +176,7 @@ export function LeadProfileTab({ leadId }: { leadId: string }) {
         {profile.locked && (
           <div className="flex items-center gap-2">
             <Badge tone="violet">
-              <Lock className="h-3 w-3" /> Locked after declaration
+              <Lock className="h-3 w-3" /> Locked After Declaration
             </Badge>
             {(user?.isSuperAdmin || user?.role === 'admin') && (
               <Button variant="outline" size="sm" onClick={() => setUnlockOpen(true)}>

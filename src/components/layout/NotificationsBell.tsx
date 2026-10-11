@@ -23,8 +23,24 @@ import {
   useListNotificationsQuery,
   useMarkAllNotificationsReadMutation,
   useMarkNotificationReadMutation,
+  usePushStatusQuery,
+  useSubscribePushMutation,
+  useUnsubscribePushMutation,
 } from '../../services/miscApi'
 import { authorizedDownload } from '../../lib/download'
+import {
+  currentPushToken,
+  forgetPushToken,
+  pushEnabledPreference,
+  pushPermission,
+  requestPushPermission,
+  setPushEnabledPreference,
+  showPushToast,
+  storedPushToken,
+  type PushState,
+} from '../../lib/push'
+import { Switch } from '../ui/fields'
+import { parseApiError } from '../../lib/utils'
 import { cn, timeAgo } from '../../lib/utils'
 import type { Notification as CrmNotification } from '../../types/models'
 
@@ -63,10 +79,19 @@ function useOpenNotification() {
 }
 
 /**
- * Browser pop-ups (GL-30) for new notifications while the CRM tab is open or
- * in the background. Only notifications that arrive after the page loaded pop up.
+ * New notifications since the page loaded (GL-30), picked up by the poll. Each
+ * one becomes a toast with a "View" action — the same toast a push message
+ * produces (the notification id keeps the two from doubling up). A tab in the
+ * background keeps its toast until the user is back, and also gets a browser
+ * pop-up unless this browser is on real push, where the service worker shows it.
  */
-function useBrowserPush(items: CrmNotification[] | undefined, open: (n: CrmNotification) => void) {
+function useFreshNotifications(
+  items: CrmNotification[] | undefined,
+  open: (n: CrmNotification) => void,
+  markRead: (id: string) => void,
+  fcmHandlesBackground: boolean,
+  enabled: boolean
+) {
   const seen = useRef<Set<string> | null>(null)
   useEffect(() => {
     if (!items) return
@@ -76,28 +101,87 @@ function useBrowserPush(items: CrmNotification[] | undefined, open: (n: CrmNotif
     }
     const fresh = items.filter((n) => !n.readAt && !seen.current!.has(n._id))
     fresh.forEach((n) => seen.current!.add(n._id))
-    if (!fresh.length || typeof window.Notification === 'undefined' || window.Notification.permission !== 'granted') return
+    if (!fresh.length || !enabled) return // switched off: the bell count still updates, nothing pops up
+    const visible = document.visibilityState === 'visible'
     for (const n of fresh.slice(0, 3)) {
-      const popup = new window.Notification(n.title, { body: n.body ?? undefined, tag: n._id })
-      popup.onclick = () => {
-        window.focus()
-        open(n)
-        popup.close()
+      showPushToast(
+        { notificationId: n._id, type: n.type, title: n.title, body: n.body },
+        () => {
+          markRead(n._id)
+          open(n)
+        },
+        { persist: !visible }
+      )
+      if (!visible && !fcmHandlesBackground && typeof window.Notification !== 'undefined' && window.Notification.permission === 'granted') {
+        const popup = new window.Notification(n.title, { body: n.body ?? undefined, tag: n._id })
+        popup.onclick = () => {
+          window.focus()
+          open(n)
+          popup.close()
+        }
       }
     }
-  }, [items, open])
+  }, [items, open, markRead, fcmHandlesBackground, enabled])
 }
 
 export function NotificationsBell() {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const openNotification = useOpenNotification()
-  const { data } = useListNotificationsQuery({ page: 1 }, { pollingInterval: 30000 })
-  const [permission, setPermission] = useState(() =>
-    typeof window.Notification === 'undefined' ? 'unsupported' : window.Notification.permission
-  )
-  useBrowserPush(data?.data.items, openNotification)
+  // 10 s, plus at once when the tab regains focus: a new lead, follow-up or alert shows as a toast
+  // within that time even without real push
+  const { data } = useListNotificationsQuery({ page: 1 }, { pollingInterval: 10000, refetchOnFocus: true })
+  const { data: pushStatus } = usePushStatusQuery()
+  const [permission, setPermission] = useState<PushState>(pushPermission)
+  const [pushToken, setPushToken] = useState(storedPushToken)
+  const [pushEnabled, setPushEnabled] = useState(pushEnabledPreference)
+  const [enabling, setEnabling] = useState(false)
+  const [subscribePush] = useSubscribePushMutation()
+  const [unsubscribePush] = useUnsubscribePushMutation()
+  const pushOn = pushEnabled && permission === 'granted' && !!pushToken
+  // Permission prompt → device token → registered with the backend, in one click.
+  const enablePush = async () => {
+    setEnabling(true)
+    try {
+      setPushEnabledPreference(true)
+      setPushEnabled(true)
+      const state = await requestPushPermission()
+      setPermission(state)
+      if (state === 'denied') toast.error('Notifications are blocked for this site in the browser settings')
+      if (state !== 'granted') return
+      const token = await currentPushToken()
+      if (!token) {
+        toast.error('Push notifications are not available in this browser')
+        return
+      }
+      await subscribePush({ token, platform: 'web' }).unwrap()
+      setPushToken(token)
+      toast.success('Push notifications are on for this browser')
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    } finally {
+      setEnabling(false)
+    }
+  }
+  // Off: this browser is unregistered and nothing pops up here until it is switched on again.
+  const disablePush = async () => {
+    setEnabling(true)
+    try {
+      setPushEnabledPreference(false)
+      setPushEnabled(false)
+      const token = await forgetPushToken()
+      setPushToken(null)
+      if (token) await unsubscribePush({ token }).unwrap()
+      toast('Push notifications are off for this browser')
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    } finally {
+      setEnabling(false)
+    }
+  }
   const [markRead] = useMarkNotificationReadMutation()
+  const markReadById = useCallback((id: string) => void markRead(id), [markRead])
+  useFreshNotifications(data?.data.items, openNotification, markReadById, pushOn && pushStatus?.data.provider === 'fcm', pushEnabled)
   const [markAll] = useMarkAllNotificationsReadMutation()
   const unread = data?.data.unreadCount ?? 0
   const items = data?.data.items ?? []
@@ -136,23 +220,13 @@ export function NotificationsBell() {
         <>
           <div className="fixed inset-x-2 top-14 z-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[var(--shadow-md)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-1.5 sm:w-96">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2.5">
-              <p className="text-sm font-semibold text-slate-800">
+              <p className="min-w-0 truncate whitespace-nowrap text-sm font-semibold text-slate-800">
                 Notifications {unread > 0 && <span className="ml-1 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] text-red-600">{unread} new</span>}
               </p>
-              <div className="flex items-center gap-3">
-                {permission === 'default' && (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 hover:text-brand-600"
-                    onClick={() => window.Notification.requestPermission().then(setPermission)}
-                    title="Show pop-ups when a lead or follow-up needs you"
-                  >
-                    <BellRing className="h-3 w-3" /> Enable pop-ups
-                  </button>
-                )}
+              <div className="flex shrink-0 items-center gap-3">
                 {unread > 0 && (
-                  <button type="button" className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-600 hover:underline" onClick={() => markAll()}>
-                    <CheckCheck className="h-3 w-3" /> Mark all read
+                  <button type="button" className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-medium text-brand-600 hover:underline" onClick={() => markAll()}>
+                    <CheckCheck className="h-3 w-3" /> Mark All Read
                   </button>
                 )}
                 <button
@@ -166,6 +240,30 @@ export function NotificationsBell() {
                 </button>
               </div>
             </div>
+            {permission !== 'unsupported' && (
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/70 px-4 py-1.5">
+                <span
+                  className="inline-flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-slate-600"
+                  title={
+                    permission === 'denied'
+                      ? 'Notifications are blocked for this site in the browser settings'
+                      : 'Push notifications, toasts and pop-ups for this browser: a lead assigned to you, a lead left untouched, a follow-up due'
+                  }
+                >
+                  <BellRing className={cn('h-3 w-3 shrink-0', pushOn ? 'text-emerald-600' : 'text-slate-400')} />
+                  <span className={cn('truncate', pushOn && 'text-emerald-700')}>
+                    {enabling ? 'Turning push…' : pushOn ? 'Push notifications on' : permission === 'denied' ? 'Notifications blocked in the browser' : 'Push notifications off'}
+                  </span>
+                </span>
+                <Switch
+                  label="Push Notifications"
+                  checked={pushOn}
+                  loading={enabling}
+                  disabled={permission === 'denied'}
+                  onChange={(on) => (on ? enablePush() : disablePush())}
+                />
+              </div>
+            )}
             <div className="max-h-[26rem] overflow-y-auto">
               {items.length === 0 && (
                 <div className="flex flex-col items-center gap-1 px-4 py-10 text-center">

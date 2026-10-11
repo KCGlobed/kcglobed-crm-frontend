@@ -61,7 +61,7 @@ export function FollowUpActions({ task }: { task: Task }) {
       <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>
         <CalendarClock className="h-3.5 w-3.5" /> Reschedule
       </Button>
-      <Button variant="ghost" size="sm" className="text-red-600" aria-label="Cancel follow-up" onClick={() => setClosing('cancelled')}>
+      <Button variant="ghost" size="sm" className="text-red-600" aria-label="Cancel Follow-up" onClick={() => setClosing('cancelled')}>
         <X className="h-3.5 w-3.5" />
       </Button>
 

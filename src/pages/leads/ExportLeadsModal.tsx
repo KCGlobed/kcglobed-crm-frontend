@@ -90,7 +90,7 @@ export function ExportLeadsModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Export leads"
+      title="Export Leads"
       description="Exports the leads matching your current search and filters, within your access."
       footer={
         <>
@@ -129,13 +129,13 @@ export function ExportLeadsModal({
           <div className="flex gap-2">
             <Choice active={columns === 'visible'} onClick={() => setColumns('visible')}>
               <span>
-                <span className="block font-medium text-slate-700">Visible columns</span>
+                <span className="block font-medium text-slate-700">Visible Columns</span>
                 <span className="text-slate-500">{visibleExportKeys.length} fields, in the table's order</span>
               </span>
             </Choice>
             <Choice active={columns === 'all'} onClick={() => setColumns('all')}>
               <span>
-                <span className="block font-medium text-slate-700">All columns</span>
+                <span className="block font-medium text-slate-700">All Columns</span>
                 <span className="text-slate-500">{ALL_EXPORT_KEYS.length} fields</span>
               </span>
             </Choice>
@@ -151,7 +151,7 @@ export function ExportLeadsModal({
           )}
           <p className="mt-0.5 text-slate-500">
             {activeFilters.length ? `${activeFilters.length} filter${activeFilters.length === 1 ? '' : 's'} applied.` : 'No filters applied.'}{' '}
-            All columns include the student profile and counsellor discussion fields. The export is logged.
+            All Columns include the student profile and counsellor discussion fields. The export is logged.
           </p>
         </div>
       </div>

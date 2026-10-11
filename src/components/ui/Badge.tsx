@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '../../lib/utils'
 import { statusTone, type BadgeTone } from '../../lib/status'
+import { stageColor, textOn, type StageLike } from '../../lib/stageColors'
 
 interface BadgeProps {
   children: ReactNode
@@ -53,10 +54,49 @@ export function Badge({ children, color, tone = 'slate', dot, className, title }
 }
 
 export function StatusBadge({ status, label, className }: { status?: string | null; label?: ReactNode; className?: string }) {
-  const text = label ?? (status ? status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ') : '—')
+  const text = label ?? (status ? status.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : '—')
   return (
     <Badge tone={statusTone(status)} dot className={className}>
       {text}
     </Badge>
+  )
+}
+
+/**
+ * A lead status (stage) in its approved colour (lib/stageColors): a solid
+ * fill with the text colour that reads best on it and a hairline ring so pale
+ * fills keep an edge. Stages outside the palette use their Masters colour;
+ * without one they render as a neutral badge. The name is always shown.
+ */
+export function StageBadge({
+  stage,
+  children,
+  className,
+  title,
+}: {
+  stage: StageLike | string | null | undefined
+  children?: ReactNode
+  className?: string
+  title?: string
+}) {
+  const name = typeof stage === 'string' ? stage : stage?.name
+  const color = stageColor(stage)
+  if (!color) {
+    return (
+      <Badge className={className} title={title}>
+        {children ?? name ?? '—'}
+      </Badge>
+    )
+  }
+  return (
+    <span
+      title={title}
+      data-stage={name ?? undefined}
+      data-stage-color={color}
+      style={{ backgroundColor: color, color: textOn(color), boxShadow: 'inset 0 0 0 1px rgba(15, 23, 42, 0.14)' }}
+      className={cn('inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-semibold leading-4', className)}
+    >
+      {children ?? name}
+    </span>
   )
 }

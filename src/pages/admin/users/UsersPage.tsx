@@ -269,7 +269,7 @@ export default function UsersPage() {
         onClose={() => setConfirmUser(null)}
         onConfirm={onDeactivate}
         title="Deactivate user"
-        message={`${confirmUser?.name} is signed out at once, can no longer log in and leaves round-robin. Their open leads appear under the "Owner inactive" filter for reassignment.`}
+        message={`${confirmUser?.name} is signed out at once, can no longer log in and leaves round-robin. Their open leads appear under the "Inactive Counsellors" filter for reassignment.`}
         confirmLabel="Deactivate"
         danger
         loading={deactivating}

@@ -99,7 +99,7 @@ export function DocumentsStep({ leadId, readOnly, onBack, onNext }: { leadId: st
         <Button variant="outline" onClick={onBack}>
           Back
         </Button>
-        <Button onClick={onNext}>Continue to declaration</Button>
+        <Button onClick={onNext}>Continue to Declaration</Button>
       </div>
     </div>
   )

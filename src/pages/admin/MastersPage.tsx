@@ -15,7 +15,7 @@ import { can } from '../../constants/permissions'
 import { DataTable, type Column } from '../../components/ui/DataTable'
 import { FilterBar, PageHeader, SearchInput, Tabs } from '../../components/ui/misc'
 import { RowActions } from '../../components/ui/RowActions'
-import { Badge } from '../../components/ui/Badge'
+import { Badge, StageBadge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
 import { ConfirmDialog } from '../../components/ui/feedback'
@@ -90,7 +90,7 @@ const CONFIGS: MasterConfig[] = [
   {
     type: 'stages',
     label: 'Lead stages',
-    description: 'Lead stages and sub-stages with the counsellor action for each. System stages are set by the CRM only.',
+    description: 'Lead stages and sub-stages with the counsellor action for each. System stages are set by the CRM only. The approved lead statuses always show their CRM palette colour; the colour picked here applies to other stages.',
     sortBy: 'order',
     // `type` (open/converted/lost) is no longer edited here: the backend ignores it on
     // create/edit and makes every new stage "open". It still arrives in GET responses.
@@ -109,7 +109,7 @@ const CONFIGS: MasterConfig[] = [
         sortable: true,
         render: (r) => (
           <span className="inline-flex items-center gap-1.5">
-            <Badge color={r.color as string}>{String(r.name)}</Badge>
+            <StageBadge stage={{ name: String(r.name), color: r.color as string }} />
             {!!r.isSystem && <Badge>System</Badge>}
           </span>
         ),

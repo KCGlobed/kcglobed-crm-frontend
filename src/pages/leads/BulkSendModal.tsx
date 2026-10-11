@@ -68,7 +68,7 @@ export function BulkSendModal({
               Back
             </Button>
             <Button onClick={send} loading={isLoading} disabled={!preview.final}>
-              {schedule ? 'Schedule' : 'Send now'} to {preview.final}
+              {schedule ? 'Schedule' : 'Send Now'} to {preview.final}
             </Button>
           </>
         ) : (
@@ -129,14 +129,14 @@ export function BulkSendModal({
           </FormField>
           <div className="flex gap-4 text-sm">
             <label className="flex items-center gap-1.5">
-              <input type="radio" checked={!schedule} onChange={() => setSchedule(false)} /> Send now
+              <input type="radio" checked={!schedule} onChange={() => setSchedule(false)} /> Send Now
             </label>
             <label className="flex items-center gap-1.5">
               <input type="radio" checked={schedule} onChange={() => setSchedule(true)} /> Schedule
             </label>
           </div>
           {schedule && (
-            <FormField label="Date & time" hint="Bulk sends run between 9 am and 9 pm only">
+            <FormField label="Date & Time" hint="Bulk sends run between 9 am and 9 pm only">
               <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
             </FormField>
           )}

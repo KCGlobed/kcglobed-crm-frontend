@@ -87,7 +87,7 @@ export function BulkUploadModal({ open, onClose }: { open: boolean; onClose: () 
       open={open}
       onClose={onClose}
       size="xl"
-      title="Bulk upload leads"
+      title="Bulk Upload Leads"
       description="Excel or CSV · max 20,000 rows · 10 MB. Bulk-uploaded leads get no welcome message unless you tick it."
       footer={
         result ? (
@@ -163,7 +163,7 @@ export function BulkUploadModal({ open, onClose }: { open: boolean; onClose: () 
               size="sm"
               onClick={() => authorizedDownload('/leads/import/template', 'lead-upload-template.xlsx').catch((e) => toast.error(parseApiError(e).message))}
             >
-              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" /> Download sample template
+              <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-600" /> Download Sample Template
             </Button>
             <label className="cursor-pointer rounded-lg border border-dashed border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
               <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
@@ -175,7 +175,7 @@ export function BulkUploadModal({ open, onClose }: { open: boolean; onClose: () 
           {preview && (
             <>
               <div>
-                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Map columns</p>
+                <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Map Columns</p>
                 <div className="grid gap-2 sm:grid-cols-3">
                   {preview.fields.map((f) => (
                     <FormField key={f.key} label={f.label} required={f.required && !updating}>
@@ -200,7 +200,7 @@ export function BulkUploadModal({ open, onClose }: { open: boolean; onClose: () 
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
-                <FormField label="Source for this file" required>
+                <FormField label="Source for This File" required>
                   <Select value={source} onChange={(e) => setSource(e.target.value)}>
                     <option value="">Choose…</option>
                     {masters?.data.sources.map((s) => (
@@ -210,17 +210,17 @@ export function BulkUploadModal({ open, onClose }: { open: boolean; onClose: () 
                     ))}
                   </Select>
                 </FormField>
-                <FormField label="Assign to" required>
+                <FormField label="Assign To" required>
                   <Select value={assignMode} onChange={(e) => { setAssignMode(e.target.value as typeof assignMode); setOwners([]) }}>
-                    <option value="unassigned">Unassigned pool</option>
-                    <option value="one">One counsellor</option>
+                    <option value="unassigned">Unassigned Pool</option>
+                    <option value="one">One Counsellor</option>
                     <option value="split">Split equally among…</option>
                   </Select>
                 </FormField>
                 <FormField label="Duplicates" required>
                   <Select value={duplicates} onChange={(e) => setDuplicates(e.target.value as typeof duplicates)}>
                     <option value="skip">Skip (default)</option>
-                    <option value="update_empty">Update empty fields</option>
+                    <option value="update_empty">Update Empty Fields</option>
                   </Select>
                 </FormField>
               </div>

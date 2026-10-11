@@ -43,6 +43,7 @@ export interface LeadListParams {
   created_from?: string
   created_to?: string
   unassigned?: string
+  assigned?: string
   smart?: string
   /** JSON list of {field, op, value} (GL-34) */
   filters?: string

@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { ApiResponse, DashboardSummary, Notification, Pagination } from '../types/models'
+import type { ApiResponse, DashboardSummary, Notification, Pagination, PushDevice, PushStatus } from '../types/models'
 
 interface NotificationList {
   items: Notification[]
@@ -32,6 +32,19 @@ export const miscApi = api.injectEndpoints({
       query: () => ({ url: '/notifications/read-all', method: 'PATCH' }),
       invalidatesTags: ['Notifications'],
     }),
+    // browser push (Firebase Cloud Messaging): this device's registration with the backend
+    pushStatus: build.query<ApiResponse<PushStatus>, void>({
+      query: () => '/notifications/push/status',
+      providesTags: ['PushDevices'],
+    }),
+    subscribePush: build.mutation<ApiResponse<PushDevice>, { token: string; platform?: 'web' | 'android' | 'ios' }>({
+      query: (body) => ({ url: '/notifications/push/subscriptions', method: 'POST', body }),
+      invalidatesTags: ['PushDevices'],
+    }),
+    unsubscribePush: build.mutation<ApiResponse<{ removed: boolean }>, { token: string }>({
+      query: (body) => ({ url: '/notifications/push/subscriptions', method: 'DELETE', body }),
+      invalidatesTags: ['PushDevices'],
+    }),
   }),
 })
 
@@ -40,4 +53,7 @@ export const {
   useListNotificationsQuery,
   useMarkNotificationReadMutation,
   useMarkAllNotificationsReadMutation,
+  usePushStatusQuery,
+  useSubscribePushMutation,
+  useUnsubscribePushMutation,
 } = miscApi

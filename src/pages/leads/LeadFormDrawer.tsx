@@ -1,9 +1,9 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { useCreateLeadMutation, useUpdateLeadMutation } from '../../services/leadsApi'
+import { useCreateLeadMutation, useDispositionOptionsQuery, useUpdateLeadMutation } from '../../services/leadsApi'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
 import { useUserOptionsQuery } from '../../services/adminApi'
 import { useCurrentUser } from '../../app/hooks'
@@ -13,6 +13,8 @@ import { Button } from '../../components/ui/Button'
 import { Checkbox, FormField, Input, Select } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import type { Lead } from '../../types/models'
+import { StageFields } from './StageFields'
+import { STAGE_ERROR_KEYS, stageChanged, stagePayload, stageValueOf, validateStage, type StageValue } from './stageForm'
 
 const schema = z.object({
   firstName: z
@@ -52,8 +54,21 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
   const user = useCurrentUser()
   const { data: masters } = useMasterBootstrapQuery()
   const { data: userOptions } = useUserOptionsQuery()
+  // the stage picker (edit only): stages and their rules come from Masters through the disposition options
+  const { data: dispositionOptions } = useDispositionOptionsQuery(undefined, { skip: !isEdit })
+  const stages = useMemo(() => (dispositionOptions?.data.stages ?? []).filter((s) => !s.locked), [dispositionOptions])
   const [createLead, { isLoading: creating }] = useCreateLeadMutation()
   const [updateLead, { isLoading: updating }] = useUpdateLeadMutation()
+  const [stageValue, setStageValue] = useState<StageValue>(() => stageValueOf(lead ?? {}))
+  const [stageErrors, setStageErrors] = useState<Record<string, string>>({})
+  // Another lead starts the picker from that lead's stage — adopted during render (like SearchInput),
+  // while a refetch of the same lead keeps what the user has picked.
+  const [stageLeadId, setStageLeadId] = useState(lead?._id)
+  if (stageLeadId !== lead?._id) {
+    setStageLeadId(lead?._id)
+    setStageValue(stageValueOf(lead ?? {}))
+    setStageErrors({})
+  }
 
   const hiddenFields = useMemo(
     () => new Set(user?.fieldRules.filter((r) => r.mode !== 'masked').map((r) => r.field) ?? []),
@@ -114,9 +129,15 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
         ? { referral: { code: values.referralCode || undefined, partnerName: values.partnerName || undefined } }
         : {}),
     }
+    if (lead && stageChanged(stageValue, lead)) {
+      // the same checks the backend makes, so the picker can point at the field
+      const local = validateStage(stageValue, stages)
+      if (Object.keys(local).length) return setStageErrors(local)
+      Object.assign(payload, stagePayload(stageValue, stages))
+    }
     try {
-      if (isEdit) {
-        await updateLead({ id: lead!._id, body: payload }).unwrap()
+      if (lead) {
+        await updateLead({ id: lead._id, body: payload }).unwrap()
         toast.success('Lead updated')
       } else {
         if (values.owner) payload.owner = values.owner
@@ -128,9 +149,12 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
     } catch (err) {
       // Failed submits keep the drawer open with the user's data intact (SOW §6).
       const { message, errors: fieldErrors } = parseApiError(err)
+      const stageIssues: Record<string, string> = {}
       Object.entries(fieldErrors).forEach(([field, msg]) => {
-        if (field in schema.shape) setError(field as keyof FormValues, { message: msg })
+        if (STAGE_ERROR_KEYS.includes(field)) stageIssues[field] = msg
+        else if (field in schema.shape) setError(field as keyof FormValues, { message: msg })
       })
+      setStageErrors(stageIssues)
       toast.error(message)
     }
   }
@@ -141,7 +165,7 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
     <Drawer
       open={open}
       onClose={onClose}
-      title={isEdit ? `Edit lead ${lead?.leadNo}` : 'Add lead'}
+      title={isEdit ? `Edit Lead ${lead?.leadNo}` : 'Add Lead'}
       description={isEdit ? undefined : 'Walk-ins and phone enquiries go straight into the pipeline'}
       footer={
         <>
@@ -149,17 +173,17 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
             Cancel
           </Button>
           <Button onClick={handleSubmit(onSubmit)} loading={creating || updating}>
-            {isEdit ? 'Save changes' : 'Create lead'}
+            {isEdit ? 'Save Changes' : 'Create Lead'}
           </Button>
         </>
       }
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="First name" error={errors.firstName?.message} required>
+          <FormField label="First Name" error={errors.firstName?.message} required>
             <Input aria-invalid={!!errors.firstName} {...register('firstName')} />
           </FormField>
-          <FormField label="Last name">
+          <FormField label="Last Name">
             <Input {...register('lastName')} />
           </FormField>
           {!hiddenFields.has('mobile') && (
@@ -183,7 +207,7 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Source">
             <Select {...register('source')}>
-              <option value="">Select source</option>
+              <option value="">Select Source</option>
               {masters?.data.sources.map((s) => (
                 <option key={s._id} value={s._id}>
                   {s.name}
@@ -194,13 +218,13 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
           <FormField label="Track">
             <Select {...register('track')}>
               <option value="other">Other</option>
-              <option value="ads">Paid ads</option>
-              <option value="partner">Channel partner</option>
+              <option value="ads">Paid Ads</option>
+              <option value="partner">Channel Partner</option>
             </Select>
           </FormField>
-          <FormField label="Program interest">
+          <FormField label="Program Interest">
             <Select {...register('programInterest')}>
-              <option value="">Select program</option>
+              <option value="">Select Program</option>
               {masters?.data.programs.map((p) => (
                 <option key={p._id} value={p._id}>
                   {p.name}
@@ -210,7 +234,7 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
           </FormField>
           <FormField label="Cohort">
             <Select {...register('cohort')}>
-              <option value="">Select cohort</option>
+              <option value="">Select Cohort</option>
               {cohorts?.map((c) => (
                 <option key={c._id} value={c._id}>
                   {c.name}
@@ -221,10 +245,10 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Referral code">
+          <FormField label="Referral Code">
             <Input placeholder="e.g. CP-204" {...register('referralCode')} />
           </FormField>
-          <FormField label="Partner name">
+          <FormField label="Partner Name">
             <Input {...register('partnerName')} />
           </FormField>
         </div>
@@ -232,7 +256,7 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
         {customFieldDefs.length > 0 && (
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Additional fields
+              Additional Fields
             </p>
             <div className="grid grid-cols-2 gap-3">
               {customFieldDefs.map((def) => (
@@ -264,18 +288,39 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
           </div>
         )}
 
+        {lead && (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3" data-testid="edit-lead-stage">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Stage</p>
+            <p className="mb-3 text-xs text-slate-500">
+              Current: <b className="font-medium text-slate-700">{lead.stage?.name ?? '—'}</b>
+              {lead.stage?.isSystem ? ' (set by the system)' : ''}. Pick another stage to move the lead; open stages need a next follow-up.
+            </p>
+            <StageFields
+              value={stageValue}
+              onChange={(v) => {
+                setStageValue(v)
+                setStageErrors({})
+              }}
+              stages={stages}
+              followUpTypes={dispositionOptions?.data.followUpTypes ?? []}
+              errors={stageErrors}
+              required={false}
+            />
+          </div>
+        )}
+
         {!isEdit && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Assignment</p>
             <div className="flex flex-col gap-2">
               <label className="flex items-center gap-2 text-xs text-slate-600">
                 <Checkbox {...register('autoAssign')} />
-                Auto-assign via round-robin
+                Auto-assign via Round Robin
               </label>
               {can(user, 'leads', 'reassign') && (
-                <FormField label="Or assign directly">
+                <FormField label="Or Assign Directly">
                   <Select {...register('owner')}>
-                    <option value="">Leave unassigned</option>
+                    <option value="">Leave Unassigned</option>
                     {userOptions?.data.map((u) => (
                       <option key={u._id} value={u._id}>
                         {u.name}

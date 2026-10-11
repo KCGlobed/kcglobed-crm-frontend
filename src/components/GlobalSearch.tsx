@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { StageBadge } from './ui/Badge'
 import { useNavigate } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import { useGlobalSearchQuery } from '../services/leadsApi'
@@ -78,8 +79,8 @@ export function GlobalSearch() {
                     {l.leadNo} · {l.mobile ?? '—'} {l.email ? `· ${l.email}` : ''}
                   </span>
                 </span>
-                <span className="shrink-0 text-right text-[11px] text-slate-500">
-                  {l.stage}
+                <span className="flex shrink-0 flex-col items-end text-right text-[11px] text-slate-500">
+                  {l.stage ? <StageBadge stage={l.stage} /> : '—'}
                   <span className="block text-slate-400">{l.owner ?? 'Unassigned'}</span>
                 </span>
               </button>

@@ -164,7 +164,7 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
             <FormField label="Subject">
               <Input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} />
             </FormField>
-            <FormField label="Message (you can edit before sending)">
+            <FormField label="Message (You Can Edit Before Sending)">
               <div
                 className="min-h-40 rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-100"
                 contentEditable
@@ -188,7 +188,7 @@ export function AddNoteModal({ lead, onClose }: { lead: Lead; onClose: () => voi
     <Modal
       open
       onClose={onClose}
-      title="Add note"
+      title="Add Note"
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -207,7 +207,7 @@ export function AddNoteModal({ lead, onClose }: { lead: Lead; onClose: () => voi
               }
             }}
           >
-            Save note
+            Save Note
           </Button>
         </>
       }

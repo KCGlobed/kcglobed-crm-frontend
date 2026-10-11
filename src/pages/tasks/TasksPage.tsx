@@ -67,7 +67,7 @@ export default function TasksPage() {
       render: (t) => (
         <div className="max-w-64">
           <p className="flex items-center gap-1 text-xs font-medium text-slate-700">
-            {t.priority === 'high' && <Flag className="h-3 w-3 text-red-500" aria-label="High priority" />}
+            {t.priority === 'high' && <Flag className="h-3 w-3 text-red-500" aria-label="High Priority" />}
             {t.typeLabel}
           </p>
           {(t.outcome || t.notes) && <p className="truncate text-[11px] text-slate-500">{t.outcome || t.notes}</p>}
@@ -109,12 +109,12 @@ export default function TasksPage() {
       >
         {canSeeTeam && (
           <Select className="!w-auto" value={who ? 'me' : 'team'} onChange={(e) => set('who', e.target.value === 'team' ? 'team' : undefined)}>
-            <option value="me">My follow-ups</option>
-            <option value="team">My team&apos;s follow-ups</option>
+            <option value="me">My Follow-ups</option>
+            <option value="team">My Team&apos;s Follow-ups</option>
           </Select>
         )}
         <Select className="!w-auto" value={type} onChange={(e) => set('type', e.target.value)}>
-          <option value="">All types</option>
+          <option value="">All Types</option>
           {TASK_TYPES.map((t) => (
             <option key={t.value} value={t.value}>
               {t.label}

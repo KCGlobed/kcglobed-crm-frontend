@@ -22,8 +22,9 @@ import { useLeadTasksQuery } from '../../services/tasksApi'
 import { useCurrentUser } from '../../app/hooks'
 import { can } from '../../constants/permissions'
 import { isAdminLike } from '../../lib/roles'
-import { Badge } from '../../components/ui/Badge'
+import { Badge, StageBadge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
+import { ProgressRing } from '../../components/ui/ProgressRing'
 import { ConfirmDialog, ErrorState, Skeleton } from '../../components/ui/feedback'
 import { Tabs } from '../../components/ui/misc'
 import { cn, formatDateTime, fullName, initials, parseApiError, timeAgo } from '../../lib/utils'
@@ -69,39 +70,39 @@ function OverviewTab({ lead }: { lead: Lead }) {
         <DetailRow label="Email" value={lead.email} />
         <DetailRow label="City" value={lead.city} />
         <DetailRow label="State" value={lead.state} />
-        <DetailRow label="Program interest" value={lead.programInterest?.name} />
+        <DetailRow label="Program Interest" value={lead.programInterest?.name} />
         {/* <DetailRow
-          label="Opted out"
+          label="Opted Out"
           value={[lead.optedOut?.sms ? 'SMS' : null, lead.optedOut?.email ? 'Email' : null].filter(Boolean).join(', ') || 'No'}
         /> */}
       </Card>
-      <Card title="System fields">
+      <Card title="System Fields">
         <DetailRow label="Lead ID" value={lead.leadNo} />
-        <DetailRow label="Created on" value={formatDateTime(lead.createdAt)} />
-        <DetailRow label="Created via" value={lead.createdViaLabel ?? lead.createdVia} />
-        <DetailRow label="Created by" value={lead.createdBy?.name ?? 'System'} />
-        <DetailRow label="First source" value={lead.firstSource?.name} />
-        <DetailRow label="Latest source" value={lead.source?.name} />
-        {lead.meta?.campaignName && <DetailRow label="Meta campaign" value={lead.meta.campaignName} />}
-        {lead.meta?.adsetName && <DetailRow label="Meta ad set" value={lead.meta.adsetName} />}
-        {lead.meta?.adName && <DetailRow label="Meta ad" value={lead.meta.adName} />}
-        {lead.meta?.formName && <DetailRow label="Meta form" value={lead.meta.formName} />}
-        {lead.uploadFileName && <DetailRow label="Upload file" value={lead.uploadFileName} />}
+        <DetailRow label="Created On" value={formatDateTime(lead.createdAt)} />
+        <DetailRow label="Created Via" value={lead.createdViaLabel ?? lead.createdVia} />
+        <DetailRow label="Created By" value={lead.createdBy?.name ?? 'System'} />
+        <DetailRow label="First Source" value={lead.firstSource?.name} />
+        <DetailRow label="Latest Source" value={lead.source?.name} />
+        {lead.meta?.campaignName && <DetailRow label="Meta Campaign" value={lead.meta.campaignName} />}
+        {lead.meta?.adsetName && <DetailRow label="Meta Ad Set" value={lead.meta.adsetName} />}
+        {lead.meta?.adName && <DetailRow label="Meta Ad" value={lead.meta.adName} />}
+        {lead.meta?.formName && <DetailRow label="Meta Form" value={lead.meta.formName} />}
+        {lead.uploadFileName && <DetailRow label="Upload File" value={lead.uploadFileName} />}
         <DetailRow label="Owner" value={lead.owner?.name ?? 'Unassigned'} />
-        <DetailRow label="Assigned on" value={formatDateTime(lead.assignedAt)} />
-        <DetailRow label="Re-enquiry count" value={lead.reEnquiryCount ?? 0} />
-        <DetailRow label="Profile completion" value={`${lead.profileCompletion ?? 0}%`} />
+        <DetailRow label="Assigned On" value={formatDateTime(lead.assignedAt)} />
+        <DetailRow label="Re-enquiry Count" value={lead.reEnquiryCount ?? 0} />
+        <DetailRow label="Profile Completion" value={`${lead.profileCompletion ?? 0}%`} />
         {/* Only from the new backend: before it, customFieldsCompletion held the discussion %, so both wait for discussionCompletion */}
         {lead.discussionCompletion !== undefined && (
           <>
-            <DetailRow label="Custom fields completion" value={`${lead.customFieldsCompletion ?? 0}%`} />
-            <DetailRow label="Discussion completion" value={`${lead.discussionCompletion}%`} />
+            <DetailRow label="Custom Fields Completion" value={`${lead.customFieldsCompletion ?? 0}%`} />
+            <DetailRow label="Discussion Completion" value={`${lead.discussionCompletion}%`} />
           </>
         )}
       </Card>
       <div className="space-y-4">
-        <Card title="Recent calls">
-          {!calls?.data.length && <p className="text-xs text-slate-400">No calls logged yet</p>}
+        <Card title="Recent Calls">
+          {!calls?.data.length && <p className="text-xs text-slate-400">No Calls Logged Yet</p>}
           {calls?.data.slice(0, 5).map((c) => (
             <div key={c._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0">
               <p className="font-medium text-slate-700">
@@ -115,8 +116,8 @@ function OverviewTab({ lead }: { lead: Lead }) {
             </div>
           ))}
         </Card>
-        <Card title="SMS & email">
-          {!messages?.data.length && <p className="text-xs text-slate-400">Nothing sent yet</p>}
+        <Card title="SMS & Email">
+          {!messages?.data.length && <p className="text-xs text-slate-400">Nothing Sent Yet</p>}
           {messages?.data.slice(0, 5).map((m) => (
             <div key={m._id} className="flex items-start justify-between gap-2 border-b border-slate-50 py-1.5 text-xs last:border-0">
               <span className="min-w-0">
@@ -172,7 +173,7 @@ export default function LeadDetailPage() {
     return (
       <>
         <Button variant="ghost" size="sm" onClick={() => navigate('/app/leads')}>
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to leads
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to Leads
         </Button>
         <ErrorState message={parseApiError(error).message} onRetry={refetch} />
       </>
@@ -210,19 +211,28 @@ export default function LeadDetailPage() {
         ) : (
           <>
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
-                  {initials(fullName(lead))}
-                </span>
+              <div className="flex min-w-0 items-center gap-4">
+                {/* the profile photo, ringed by the student-profile completion */}
+                <ProgressRing
+                  value={lead.profileCompletion ?? 0}
+                  tone="emerald"
+                  label={`Profile ${lead.profileCompletion ?? 0}%`}
+                  testId="profile-completion-ring"
+                  title="Student profile completion"
+                >
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+                    {initials(fullName(lead))}
+                  </span>
+                </ProgressRing>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-lg font-semibold text-slate-800">{fullName(lead)}</h1>
                     <span className="text-xs text-slate-400">{lead.leadNo}</span>
                     {lead.stage && (
-                      <Badge color={lead.stage.color}>
+                      <StageBadge stage={lead.stage}>
                         {lead.stage.name}
-                        {subStageOf(lead) && <span className="font-normal opacity-80">· {subStageOf(lead)!.name}</span>}
-                      </Badge>
+                        {subStageOf(lead) && <span className="font-normal opacity-90">· {subStageOf(lead)!.name}</span>}
+                      </StageBadge>
                     )}
                     {!!lead.reEnquiryCount && <Badge tone="blue">Re-enquired ×{lead.reEnquiryCount}</Badge>}
                   </div>
@@ -232,7 +242,23 @@ export default function LeadDetailPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              {/* the Lead Score, at the right corner */}
+              <div className="flex items-center" data-testid="lead-scores">
+                <ProgressRing
+                  value={lead.score ?? 0}
+                  tone="brand"
+                  label="Lead Score"
+                  testId="lead-score-ring"
+                  title={`Profile ${lead.profileCompletion ?? 0}% × ${(lead.scoreWeights ?? { profile: 50, discussion: 50 }).profile}% + Discussion ${lead.discussionCompletion ?? 0}% × ${(lead.scoreWeights ?? { profile: 50, discussion: 50 }).discussion}%`}
+                >
+                  <span className="text-lg font-bold tabular-nums text-slate-800">{lead.score ?? 0}</span>
+                </ProgressRing>
+              </div>
+            </div>
+
+            {/* every action on its own line: lead work, then messaging, then assignment / edit / delete at the right */}
+            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3" data-testid="lead-actions">
+              <div className="flex flex-wrap items-center gap-2" data-testid="lead-primary-actions">
                 {canEdit && lead.mobile && (
                   // Disabled until a dialer is connected
                   <Button variant="outline" size="sm" disabled title="Calling is not available yet">
@@ -246,7 +272,7 @@ export default function LeadDetailPage() {
                 )}
                 {canEdit && (
                   <Button variant="outline" size="sm" onClick={() => setModal('stage')}>
-                    <Milestone className="h-3.5 w-3.5" /> Change stage
+                    <Milestone className="h-3.5 w-3.5" /> Change Stage
                   </Button>
                 )}
                 {can(user, 'tasks', 'create') && (
@@ -257,6 +283,9 @@ export default function LeadDetailPage() {
                 <Button variant="outline" size="sm" onClick={() => setModal('note')}>
                   <NotebookPen className="h-3.5 w-3.5" /> Add Note
                 </Button>
+              </div>
+              {canSend && (
+                <div className="flex flex-wrap items-center gap-2 sm:border-l sm:border-slate-200 sm:pl-2" data-testid="lead-messaging-actions">
                 {canSend && (
                   <>
                     <Button variant="outline" size="sm" onClick={() => setModal('sms')}>
@@ -279,13 +308,16 @@ export default function LeadDetailPage() {
                     </Button>
                   </>
                 )}
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-2 sm:ml-auto" data-testid="lead-admin-actions">
                 {can(user, 'leads', 'reassign') && (
                   <Button variant="outline" size="sm" onClick={() => setModal('assign')}>
                     <UserPlus className="h-3.5 w-3.5" /> {lead.owner ? 'Reassign' : 'Assign'}
                   </Button>
                 )}
                 {canEdit && (
-                  <Button variant="ghost" size="sm" onClick={() => setModal('edit')} title="Edit lead fields">
+                  <Button variant="ghost" size="sm" onClick={() => setModal('edit')} title="Edit Lead Fields">
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                 )}
@@ -298,12 +330,12 @@ export default function LeadDetailPage() {
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-3 lg:grid-cols-6">
               <HeaderFact label="Owner">{lead.owner?.name ?? 'Unassigned'}</HeaderFact>
-              <HeaderFact label="First source">{lead.firstSource?.name ?? '—'}</HeaderFact>
-              <HeaderFact label="Latest source">{lead.source?.name ?? '—'}</HeaderFact>
-              <HeaderFact label="Next follow-up" danger={lead.isOverdue}>
+              <HeaderFact label="First Source">{lead.firstSource?.name ?? '—'}</HeaderFact>
+              <HeaderFact label="Latest Source">{lead.source?.name ?? '—'}</HeaderFact>
+              <HeaderFact label="Next Follow-up" danger={lead.isOverdue}>
                 {lead.nextFollowUpAt ? `${lead.isOverdue ? 'Overdue · ' : ''}${formatDateTime(lead.nextFollowUpAt)}` : 'None'}
               </HeaderFact>
-              <HeaderFact label="Last activity">{timeAgo(lead.lastActivityAt)}</HeaderFact>
+              <HeaderFact label="Last Activity">{timeAgo(lead.lastActivityAt)}</HeaderFact>
               <HeaderFact label="Program">{lead.programInterest?.name ?? '—'}</HeaderFact>
             </div>
           </>
@@ -367,7 +399,7 @@ export default function LeadDetailPage() {
         open={modal === 'delete'}
         onClose={close}
         onConfirm={onDelete}
-        title="Delete lead"
+        title="Delete Lead"
         message={`Delete ${lead ? fullName(lead) : 'this lead'} (${lead?.leadNo})? The record is soft-deleted and kept in the audit trail.`}
         confirmLabel="Delete"
         danger

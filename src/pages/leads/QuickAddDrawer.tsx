@@ -114,7 +114,7 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
     try {
       const res = await createLead(body).unwrap()
       toast.success(
-        `Lead ${res.data.leadNo} created${res.data.owner ? ` · owner ${res.data.owner.name}` : ' · in the Unassigned pool'}`
+        `Lead ${res.data.leadNo} created${res.data.owner ? ` · owner ${res.data.owner.name}` : ' · in the Unassigned Pool'}`
       )
       onClose()
       navigate(`/app/leads/${res.data._id}`)
@@ -129,15 +129,15 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
     <Drawer
       open={open}
       onClose={onClose}
-      title="Quick Add lead"
-      description={counsellor ? 'The lead will be assigned to you.' : 'Pick a counsellor, or leave it in the Unassigned pool.'}
+      title="Quick Add Lead"
+      description={counsellor ? 'The lead will be assigned to you.' : 'Pick a counsellor, or leave it in the Unassigned Pool.'}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button onClick={handleSubmit(onSubmit)} loading={isLoading} disabled={!!duplicate}>
-            Save lead
+            Save Lead
           </Button>
         </>
       }
@@ -162,10 +162,10 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
         )}
         <FieldGroup title="Contact">
           <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="First name" error={errors.firstName?.message} required>
+            <FormField label="First Name" error={errors.firstName?.message} required>
               <Input {...register('firstName')} placeholder="e.g. Aarav" autoFocus aria-invalid={!!errors.firstName} />
             </FormField>
-            <FormField label="Last name" error={errors.lastName?.message}>
+            <FormField label="Last Name" error={errors.lastName?.message}>
               <Input {...register('lastName')} placeholder="e.g. Sharma" />
             </FormField>
             <FormField label="Mobile" error={errors.mobile?.message} required hint="10 digits; +91 / leading 0 removed">
@@ -186,7 +186,7 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
             </FormField>
           </div>
         </FieldGroup>
-        <FieldGroup title="Location & interest">
+        <FieldGroup title="Location & Interest">
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="State" error={errors.state?.message}>
               <Select {...register('state')}>
@@ -208,7 +208,7 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
                 ))}
               </datalist>
             </FormField>
-            <FormField label="Program interest">
+            <FormField label="Program Interest">
               <Select {...register('programInterest')}>
                 <option value="">—</option>
                 {masters?.data.programs.map((p) => (
@@ -232,9 +232,9 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
         </FieldGroup>
         <FieldGroup title={counsellor ? 'Note' : 'Assignment & note'}>
           {!counsellor && (
-            <FormField label="Assign to" hint="Leave empty to keep it in the Unassigned pool">
+            <FormField label="Assign To" hint="Leave empty to keep it in the Unassigned Pool">
               <Select {...register('owner')}>
-                <option value="">Unassigned pool</option>
+                <option value="">Unassigned Pool</option>
                 {counsellors.map((u) => (
                   <option key={u._id} value={u._id}>
                     {u.name}

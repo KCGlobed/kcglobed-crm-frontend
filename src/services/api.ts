@@ -104,6 +104,7 @@ export const api = createApi({
     'Campaigns',
     'MetaIntegration',
     'RoundRobin',
+    'PushDevices',
   ],
   endpoints: () => ({}),
 })

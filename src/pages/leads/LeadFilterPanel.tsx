@@ -6,28 +6,38 @@ import { Input, Select } from '../../components/ui/fields'
 import type { FilterCondition, FilterField } from '../../types/models'
 
 const OP_LABELS: Record<string, string> = {
-  is: 'is',
-  is_not: 'is not',
-  any_of: 'any of',
-  none_of: 'none of',
-  contains: 'contains',
-  empty: 'is empty',
-  not_empty: 'is not empty',
-  before: 'before',
-  after: 'after',
-  between: 'between',
-  today: 'today',
-  yesterday: 'yesterday',
-  last_7_days: 'last 7 days',
-  this_month: 'this month',
+  is: 'Is',
+  is_not: 'Is Not',
+  any_of: 'Any Of',
+  none_of: 'None Of',
+  contains: 'Contains',
+  empty: 'Is Empty',
+  not_empty: 'Is Not Empty',
+  before: 'Before',
+  after: 'After',
+  between: 'Between',
+  today: 'Today',
+  yesterday: 'Yesterday',
+  last_7_days: 'Last 7 Days',
+  this_month: 'This Month',
   eq: '=',
   gte: '≥',
   lte: '≤',
 }
 const NO_VALUE = new Set(['empty', 'not_empty', 'today', 'yesterday', 'last_7_days', 'this_month'])
+/** Field types whose values come from a list; with nothing to list, the condition cannot be built. */
+const LISTED_TYPES = new Set(['fk', 'choice', 'optout'])
+const noValues = (field: FilterField | undefined, op: string) => !!field && LISTED_TYPES.has(field.type) && !field.options?.length && !NO_VALUE.has(op)
 
 function ValueInput({ field, cond, onChange }: { field?: FilterField; cond: FilterCondition; onChange: (v: FilterCondition['value']) => void }) {
   if (!field || NO_VALUE.has(cond.op)) return <span className="text-xs text-slate-400">—</span>
+  if (noValues(field, cond.op)) {
+    return (
+      <Select value="" disabled title="Nothing to choose from yet for this field">
+        <option value="">No Values Available</option>
+      </Select>
+    )
+  }
   if (cond.op === 'between') {
     const [low, high] = Array.isArray(cond.value) ? cond.value : ['', '']
     const type = field.type === 'date' ? 'date' : 'number'
@@ -103,6 +113,7 @@ export function LeadFilterPanel({
   const complete = rows.filter((r) => {
     if (!r.field || !r.op) return false
     if (NO_VALUE.has(r.op)) return true
+    if (noValues(byKey[r.field], r.op)) return false
     if (Array.isArray(r.value)) return r.value.length > 0 && r.value.every((v) => v !== '')
     return r.value !== undefined && r.value !== ''
   })
@@ -111,13 +122,13 @@ export function LeadFilterPanel({
     <Drawer
       open={open}
       onClose={onClose}
-      title="Filter leads"
+      title="Filter Leads"
       description="Every condition must match. Operators change with the field type."
       wide
       footer={
         <>
           <Button variant="ghost" onClick={() => setRows([])}>
-            Clear all
+            Clear All
           </Button>
           <Button variant="outline" onClick={onClose}>
             Cancel
@@ -174,7 +185,7 @@ export function LeadFilterPanel({
           )
         })}
         <Button variant="outline" size="sm" onClick={() => setRows((r) => [...r, { field: '', op: 'is' }])}>
-          <Plus className="h-3.5 w-3.5" /> Add condition
+          <Plus className="h-3.5 w-3.5" /> Add Condition
         </Button>
       </div>
     </Drawer>
