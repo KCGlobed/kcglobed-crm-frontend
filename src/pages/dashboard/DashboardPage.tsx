@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronRight, GraduationCap, Inbox, ThumbsDown, ThumbsUp, UserCheck, Users, type LucideIcon } from 'lucide-react'
+import { CalendarCheck, ChevronRight, GraduationCap, Inbox, PhoneCall, PhoneOff, ThumbsDown, ThumbsUp, UserCheck, Users, type LucideIcon } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useDashboardSummaryQuery } from '../../services/miscApi'
 import { Card, PageHeader } from '../../components/ui/misc'
@@ -30,6 +30,13 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
 }
 
 type PeriodKey = 'overall' | 'thisWeek' | 'today'
+
+/** Pipeline cards: each shows the count of the stage of that name from the summary's `byStage` rows. */
+const PIPELINE_CARDS: { label: string; icon: LucideIcon }[] = [
+  { label: 'Connected', icon: PhoneCall },
+  { label: 'Not Connected', icon: PhoneOff },
+  { label: 'Interview', icon: CalendarCheck },
+]
 const PERIODS: { key: PeriodKey; label: string }[] = [
   { key: 'overall', label: 'Overall' },
   { key: 'thisWeek', label: 'This Week' },
@@ -319,6 +326,29 @@ export default function DashboardPage() {
                 color={STAGE_COLORS[tile?.name ?? label]}
                 loading={isLoading}
                 onClick={tile?.count && stageId ? () => open({ stage: stageId }) : undefined}
+              />
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="mt-5" aria-label="Pipeline">
+        <SectionHeading title="Pipeline" hint="By stage, all time" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+          {PIPELINE_CARDS.map(({ label, icon }) => {
+            const stage = summary?.byStage.find((s) => s.name.trim().toLowerCase() === label.toLowerCase())
+            const stageId = stage?._id
+            return (
+              <KpiCard
+                key={label}
+                label={stage?.name ?? label}
+                value={stage?.count}
+                progress={share(stage?.count, summary?.totals.total)}
+                hint={stage ? 'Leads on this stage' : summary ? 'Stage not found in Masters' : undefined}
+                icon={icon}
+                color={STAGE_COLORS[label]}
+                loading={isLoading}
+                onClick={stage?.count && stageId ? () => open({ stage: stageId }) : undefined}
               />
             )
           })}
