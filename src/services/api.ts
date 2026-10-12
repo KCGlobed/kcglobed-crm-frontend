@@ -53,6 +53,9 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
             api.dispatch(setCredentials({ user: data.user, accessToken: data.access_token }))
           } else {
             api.dispatch(signedOut())
+            // Drop the previous user's cached data — the next sign-in on this tab
+            // may be a different account (same as the explicit-logout path).
+            api.dispatch(crmApi.util.resetApiState())
           }
         } finally {
           release()
@@ -74,7 +77,7 @@ export const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, Fetch
     return result
   }
 
-export const api = createApi({
+const crmApi = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
   tagTypes: [
@@ -108,3 +111,5 @@ export const api = createApi({
   ],
   endpoints: () => ({}),
 })
+
+export const api = crmApi

@@ -45,7 +45,11 @@ function Stat({ label, value, hint, icon: Icon, accent }: { label: string; value
   )
 }
 
-const isoDay = (daysAgo = 0) => new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10)
+/** local YYYY-MM-DD, `daysAgo` days back — toISOString() would be UTC and lag IST until 05:30 */
+const isoDay = (daysAgo = 0) => {
+  const d = new Date(Date.now() - daysAgo * 86_400_000)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 /** Date-ranged export of every assignment the rotation made, as Excel or PDF. */
 function ReportsCard() {

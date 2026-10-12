@@ -11,6 +11,7 @@ import { Modal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
 import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
+import { sanitizeHtml } from '../../lib/sanitize'
 import type { Lead, MessagePreview } from '../../types/models'
 import { useCounsellors } from './leadSelection'
 
@@ -169,8 +170,8 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
                 className="min-h-40 rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-100"
                 contentEditable
                 suppressContentEditableWarning
-                onBlur={(e) => setBody(e.currentTarget.innerHTML)}
-                dangerouslySetInnerHTML={{ __html: shown.body }}
+                onBlur={(e) => setBody(sanitizeHtml(e.currentTarget.innerHTML))}
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(shown.body) }}
               />
             </FormField>
           </>
