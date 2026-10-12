@@ -19,7 +19,7 @@ export const STAGE_COLORS: Readonly<Record<string, string>> = {
   'Interview': '#4F46E5',
   'PPO': '#7C3AED',
   'Registration & Fee': '#0891B2',
-  'Risk': '#EA580C',
+  'Cancellation': '#EA580C',
   'Future Batch': '#7DD3FC',
   'Closed - Lost': '#64748B',
   'Enrolled': '#15803D',

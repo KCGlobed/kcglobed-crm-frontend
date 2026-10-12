@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarCheck, ChevronRight, GraduationCap, Inbox, PhoneCall, PhoneOff, ThumbsDown, ThumbsUp, UserCheck, Users, type LucideIcon } from 'lucide-react'
+import { CalendarCheck, ChevronRight, CircleDashed, Coffee, GraduationCap, Inbox, PhoneCall, PhoneOff, Receipt, ThumbsDown, ThumbsUp, Timer, UserCheck, Users, type LucideIcon } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useDashboardSummaryQuery } from '../../services/miscApi'
 import { Card, PageHeader } from '../../components/ui/misc'
@@ -9,6 +9,7 @@ import { StageBadge } from '../../components/ui/Badge'
 import { STAGE_COLORS, stageColor } from '../../lib/stageColors'
 import { KpiCard } from '../../components/ui/KpiCard'
 import { useCurrentUser } from '../../app/hooks'
+import { isCounsellor } from '../../lib/roles'
 import { cn, fullName, timeAgo } from '../../lib/utils'
 import type { DashboardRecentLead, DashboardStatusTile, DashboardSummary } from '../../types/models'
 
@@ -127,6 +128,90 @@ const STATUS_TILES: { key: DashboardStatusTile['key']; label: string; icon: Luci
   { key: 'notInterested', label: 'Not Interested', icon: ThumbsDown, accent: 'red' },
   { key: 'enrolled', label: 'Enrolled', icon: GraduationCap, accent: 'green' },
 ]
+
+/** The summary's row for a stage of this name (case and surrounding spaces ignored). */
+const stageRow = (summary: DashboardSummary | undefined, name: string) =>
+  summary?.byStage.find((s) => s.name.trim().toLowerCase() === name.toLowerCase())
+
+/**
+ * DUMMY for now: figures the dashboard summary does not carry yet. Each card
+ * shows the real number when the backend sends one and falls back to these
+ * otherwise, saying "Sample data" so nobody takes them for live counts.
+ */
+const COUNSELLOR_SAMPLE = {
+  untouched: 23,
+  registrationFee: 6,
+  callsToday: 34,
+  talktimeToday: '2h 15m',
+  breakTimeToday: '45m',
+}
+
+/**
+ * Admission Counsellor's dashboard cards (their own leads): lead counts by stage,
+ * then today's calling activity. Replaces the admin's Leads / Lead Status / Pipeline cards.
+ */
+function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSummary; loading: boolean; onOpen: (params: ListParams) => void }) {
+  const total = summary?.totals.total
+  const stageCard = (name: string, icon: LucideIcon, sample?: number) => {
+    const stage = stageRow(summary, name)
+    const stageId = stage?._id
+    const live = stage !== undefined
+    const value = live ? stage.count : sample
+    return (
+      <KpiCard
+        key={name}
+        label={stage?.name ?? name}
+        value={value}
+        progress={share(value, total)}
+        hint={live ? 'Leads on this stage' : summary ? 'Sample data' : undefined}
+        icon={icon}
+        color={STAGE_COLORS[name]}
+        loading={loading}
+        onClick={live && stage.count && stageId ? () => onOpen({ stage: stageId }) : undefined}
+      />
+    )
+  }
+  return (
+    <>
+      <section aria-label="My Leads">
+        <SectionHeading title="My Leads" hint="Leads assigned to you, all time" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+          <KpiCard
+            label="Total Leads"
+            value={total}
+            hint="All time"
+            icon={Users}
+            loading={loading}
+            onClick={total ? () => onOpen({}) : undefined}
+          />
+          <KpiCard
+            label="Untouched"
+            value={COUNSELLOR_SAMPLE.untouched}
+            progress={share(COUNSELLOR_SAMPLE.untouched, total)}
+            hint="Sample data"
+            icon={CircleDashed}
+            accent="amber"
+            loading={loading}
+            onClick={() => onOpen({ smart: 'untouched' })}
+          />
+          {stageCard('Interested', ThumbsUp)}
+          {stageCard('Not Interested', ThumbsDown)}
+          {stageCard('Registration & Fee', Receipt, COUNSELLOR_SAMPLE.registrationFee)}
+          {stageCard('Enrolled', GraduationCap)}
+        </div>
+      </section>
+
+      <section className="mt-5" aria-label="Today's Activity">
+        <SectionHeading title="Today's Activity" hint="Sample data, for preview only" />
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+          <KpiCard label="Total Calls Today" value={COUNSELLOR_SAMPLE.callsToday} hint="Calls placed" icon={PhoneCall} accent="cyan" loading={loading} />
+          <KpiCard label="Total Talktime Today" value={COUNSELLOR_SAMPLE.talktimeToday} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
+          <KpiCard label="Total Break Time Today" value={COUNSELLOR_SAMPLE.breakTimeToday} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
+        </div>
+      </section>
+    </>
+  )
+}
 
 interface BarItem {
   id: string
@@ -261,6 +346,7 @@ function RecentLeadsCard({
 
 export default function DashboardPage() {
   const user = useCurrentUser()
+  const counsellor = isCounsellor(user)
   const navigate = useNavigate()
   const { data, isLoading, isError, error, refetch } = useDashboardSummaryQuery()
 
@@ -306,54 +392,60 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <LeadsSection summary={summary} loading={isLoading} onOpen={open} />
+      {counsellor ? (
+        <CounsellorCards summary={summary} loading={isLoading} onOpen={open} />
+      ) : (
+        <>
+          <LeadsSection summary={summary} loading={isLoading} onOpen={open} />
 
-      <section className="mt-5" aria-label="Lead Status">
-        <SectionHeading title="Lead Status" hint="By stage, all time" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-          {STATUS_TILES.map(({ key, label, icon, accent }) => {
-            const tile = summary?.leadStatus.find((t) => t.key === key)
-            const stageId = tile?.stageId
-            return (
-              <KpiCard
-                key={key}
-                label={tile?.name ?? label}
-                value={tile?.count}
-                progress={share(tile?.count, summary?.totals.total)}
-                hint={stageId ? 'Leads on this stage' : summary ? 'Stage not found in Masters' : undefined}
-                icon={icon}
-                accent={accent}
-                color={STAGE_COLORS[tile?.name ?? label]}
-                loading={isLoading}
-                onClick={tile?.count && stageId ? () => open({ stage: stageId }) : undefined}
-              />
-            )
-          })}
-        </div>
-      </section>
+          <section className="mt-5" aria-label="Lead Status">
+            <SectionHeading title="Lead Status" hint="By stage, all time" />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+              {STATUS_TILES.map(({ key, label, icon, accent }) => {
+                const tile = summary?.leadStatus.find((t) => t.key === key)
+                const stageId = tile?.stageId
+                return (
+                  <KpiCard
+                    key={key}
+                    label={tile?.name ?? label}
+                    value={tile?.count}
+                    progress={share(tile?.count, summary?.totals.total)}
+                    hint={stageId ? 'Leads on this stage' : summary ? 'Stage not found in Masters' : undefined}
+                    icon={icon}
+                    accent={accent}
+                    color={STAGE_COLORS[tile?.name ?? label]}
+                    loading={isLoading}
+                    onClick={tile?.count && stageId ? () => open({ stage: stageId }) : undefined}
+                  />
+                )
+              })}
+            </div>
+          </section>
 
-      <section className="mt-5" aria-label="Pipeline">
-        <SectionHeading title="Pipeline" hint="By stage, all time" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-          {PIPELINE_CARDS.map(({ label, icon }) => {
-            const stage = summary?.byStage.find((s) => s.name.trim().toLowerCase() === label.toLowerCase())
-            const stageId = stage?._id
-            return (
-              <KpiCard
-                key={label}
-                label={stage?.name ?? label}
-                value={stage?.count}
-                progress={share(stage?.count, summary?.totals.total)}
-                hint={stage ? 'Leads on this stage' : summary ? 'Stage not found in Masters' : undefined}
-                icon={icon}
-                color={STAGE_COLORS[label]}
-                loading={isLoading}
-                onClick={stage?.count && stageId ? () => open({ stage: stageId }) : undefined}
-              />
-            )
-          })}
-        </div>
-      </section>
+          <section className="mt-5" aria-label="Pipeline">
+            <SectionHeading title="Pipeline" hint="By stage, all time" />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+              {PIPELINE_CARDS.map(({ label, icon }) => {
+                const stage = stageRow(summary, label)
+                const stageId = stage?._id
+                return (
+                  <KpiCard
+                    key={label}
+                    label={stage?.name ?? label}
+                    value={stage?.count}
+                    progress={share(stage?.count, summary?.totals.total)}
+                    hint={stage ? 'Leads on this stage' : summary ? 'Stage not found in Masters' : undefined}
+                    icon={icon}
+                    color={STAGE_COLORS[label]}
+                    loading={isLoading}
+                    onClick={stage?.count && stageId ? () => open({ stage: stageId }) : undefined}
+                  />
+                )
+              })}
+            </div>
+          </section>
+        </>
+      )}
 
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
         <DistributionCard title="Lead Source Analytics" hint="Highest volume first" items={sources} loading={isLoading} onOpen={open} />

@@ -31,7 +31,8 @@ export function KpiCard({
   onClick,
 }: {
   label: string
-  value?: number
+  /** a count, or ready-made text such as a duration ("2h 15m") */
+  value?: number | string
   hint?: string
   icon: LucideIcon
   accent?: keyof typeof ACCENTS
