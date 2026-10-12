@@ -205,7 +205,7 @@ function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSumm
         <SectionHeading title="Today's Activity" hint="" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
           <KpiCard label="Total Calls Today" value={COUNSELLOR_SAMPLE.callsToday} hint="Calls placed" icon={PhoneCall} accent="cyan" loading={loading} />
-          <KpiCard label="Total Talktime Today" value={COUNSELLOR_SAMPLE.talktimeToday} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
+          <KpiCard label="Total Talk time Today" value={COUNSELLOR_SAMPLE.talktimeToday} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
           <KpiCard label="Total Break Time Today" value={COUNSELLOR_SAMPLE.breakTimeToday} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
         </div>
       </section>
