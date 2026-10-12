@@ -6,7 +6,7 @@ import { FormField, Input, Select, Textarea } from '../../../components/ui/field
 import { GENDERS, INDIAN_STATES, MAX_AGE, MIN_AGE, RELATIONSHIPS } from '../../../constants/profileOptions'
 import type { LeadProfile } from '../../../types/models'
 import { ageFrom, personalSchema, type PersonalValues, showSaveError } from './profileSchemas'
-import { Section, StepActions } from './ProfileFields'
+import { Section, PROFILE_STEP_FORM, PROFILE_STEP_SAVE } from './ProfileFields'
 import { CityField } from './CityField'
 
 /** Bounds for the date picker from the 17–40 age rule (#5). */
@@ -27,7 +27,7 @@ export function PersonalStep({
   readOnly: boolean
   onSaved: () => void
 }) {
-  const [save, { isLoading }] = useSaveLeadProfileStepMutation()
+  const [save] = useSaveLeadProfileStepMutation({ fixedCacheKey: PROFILE_STEP_SAVE })
   const p = profile.personal ?? {}
   const g = profile.guardian ?? {}
   const {
@@ -75,7 +75,7 @@ export function PersonalStep({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+    <form id={PROFILE_STEP_FORM} onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       <fieldset disabled={readOnly} className="space-y-4">
         <Section title="Personal Information">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -165,7 +165,6 @@ export function PersonalStep({
           </div>
         </Section>
       </fieldset>
-      <StepActions saving={isLoading} readOnly={readOnly} />
     </form>
   )
 }

@@ -14,7 +14,7 @@ import {
 } from '../../../constants/profileOptions'
 import type { LeadProfile } from '../../../types/models'
 import { academicSchema, showSaveError, toNumber, type AcademicInput, type AcademicValues } from './profileSchemas'
-import { RadioGroup, Section, StepActions } from './ProfileFields'
+import { RadioGroup, Section, PROFILE_STEP_FORM, PROFILE_STEP_SAVE } from './ProfileFields'
 
 type Register = UseFormRegister<AcademicInput>
 
@@ -124,16 +124,14 @@ export function AcademicStep({
   leadId,
   profile,
   readOnly,
-  onBack,
   onSaved,
 }: {
   leadId: string
   profile: LeadProfile
   readOnly: boolean
-  onBack: () => void
   onSaved: () => void
 }) {
-  const [save, { isLoading }] = useSaveLeadProfileStepMutation()
+  const [save] = useSaveLeadProfileStepMutation({ fixedCacheKey: PROFILE_STEP_SAVE })
   const a = profile.academic
   const {
     register,
@@ -181,7 +179,7 @@ export function AcademicStep({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+    <form id={PROFILE_STEP_FORM} onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       <fieldset disabled={readOnly} className="space-y-4">
         <Section title="Academic Information — Class 10th">
           <SchoolFields cls="10" register={register} errors={ae?.class10} gradeType={g10} years={schoolYears} />
@@ -247,7 +245,6 @@ export function AcademicStep({
           </div>
         </Section>
       </fieldset>
-      <StepActions onBack={onBack} saving={isLoading} readOnly={readOnly} />
     </form>
   )
 }

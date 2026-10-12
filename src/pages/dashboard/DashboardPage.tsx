@@ -135,15 +135,15 @@ const stageRow = (summary: DashboardSummary | undefined, name: string) =>
 
 /**
  * DUMMY for now: figures the dashboard summary does not carry yet. Each card
- * shows the real number when the backend sends one and falls back to these
- * otherwise, saying "Sample data" so nobody takes them for live counts.
+ * shows the real number when the backend sends one and falls back to these otherwise.
  */
 const COUNSELLOR_SAMPLE = {
   untouched: 23,
   registrationFee: 6,
-  callsToday: 34,
-  talktimeToday: '2h 15m',
-  breakTimeToday: '45m',
+  // today's calling activity: nothing is tracked yet, so every figure stays at zero
+  callsToday: 0,
+  talktimeToday: '0m',
+  breakTimeToday: '0m',
 }
 
 /**
@@ -163,7 +163,7 @@ function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSumm
         label={stage?.name ?? name}
         value={value}
         progress={share(value, total)}
-        hint={live ? 'Leads on this stage' : summary ? 'Sample data' : undefined}
+        hint="Leads on this stage"
         icon={icon}
         color={STAGE_COLORS[name]}
         loading={loading}
@@ -188,7 +188,7 @@ function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSumm
             label="Untouched"
             value={COUNSELLOR_SAMPLE.untouched}
             progress={share(COUNSELLOR_SAMPLE.untouched, total)}
-            hint="Sample data"
+            hint="Not contacted yet"
             icon={CircleDashed}
             accent="amber"
             loading={loading}
@@ -202,7 +202,7 @@ function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSumm
       </section>
 
       <section className="mt-5" aria-label="Today's Activity">
-        <SectionHeading title="Today's Activity" hint="Sample data, for preview only" />
+        <SectionHeading title="Today's Activity" hint="" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
           <KpiCard label="Total Calls Today" value={COUNSELLOR_SAMPLE.callsToday} hint="Calls placed" icon={PhoneCall} accent="cyan" loading={loading} />
           <KpiCard label="Total Talktime Today" value={COUNSELLOR_SAMPLE.talktimeToday} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
@@ -289,15 +289,17 @@ function RecentLeadsCard({
   loading,
   onOpenLead,
   onViewAll,
+  className,
 }: {
   leads: DashboardRecentLead[] | undefined
   loading: boolean
   onOpenLead: (id: string) => void
   onViewAll: () => void
+  className?: string
 }) {
   return (
     <Card
-      className="mt-4"
+      className={className}
       bodyClassName="p-0"
       title="Recent Leads"
       actions={
@@ -306,7 +308,8 @@ function RecentLeadsCard({
         </button>
       }
     >
-      <div className="divide-y divide-slate-100">
+      {/* same height as a DistributionCard (its padded 24rem list), scrolling past that */}
+      <div className="max-h-104 divide-y divide-slate-100 overflow-y-auto">
         {loading &&
           Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="px-4 py-3">
@@ -363,6 +366,8 @@ export default function DashboardPage() {
 
   const summary = data?.data
   const open = (params: ListParams) => navigate(`/app/leads?${new URLSearchParams(params).toString()}`)
+  const openLead = (id: string) => navigate(`/app/leads/${id}`)
+  const viewAllLeads = () => navigate('/app/leads')
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
 
   const sources: BarItem[] | undefined = summary?.bySource.map((s) => {
@@ -370,7 +375,7 @@ export default function DashboardPage() {
     const params: ListParams = s._id ? { source: s._id } : { filters: JSON.stringify([{ field: 'source', op: 'empty' }]) }
     return { id: s._id ?? 'none', name: s.name, count: s.count, params }
   })
-  const owners: BarItem[] | undefined = summary?.byOwner.map((o) => ({ id: o._id, name: o.name, count: o.count, params: { owner: o._id } }))
+  const owners: BarItem[] | undefined = counsellor ? undefined : summary?.byOwner.map((o) => ({ id: o._id, name: o.name, count: o.count, params: { owner: o._id } }))
   const stages: BarItem[] | undefined = summary?.byStage.map((s) => {
     // the "No stage" row has no id: it lists the leads whose stage is empty
     const params: ListParams = s._id ? { stage: s._id } : { filters: JSON.stringify([{ field: 'stage', op: 'empty' }]) }
@@ -447,13 +452,16 @@ export default function DashboardPage() {
         </>
       )}
 
+      {/* A counsellor only ever sees their own leads, so "Leads by Counsellor" is dropped and
+          Recent Leads takes its row; an admin keeps all three charts with Recent Leads below. */}
       <div className="mt-5 grid gap-4 lg:grid-cols-3">
         <DistributionCard title="Lead Source Analytics" hint="Highest volume first" items={sources} loading={isLoading} onOpen={open} />
-        <DistributionCard title="Leads by Counsellor" hint="Highest volume first" items={owners} loading={isLoading} onOpen={open} />
+        {!counsellor && <DistributionCard title="Leads by Counsellor" hint="Highest volume first" items={owners} loading={isLoading} onOpen={open} />}
         <DistributionCard title="Stage Distribution" hint="In stage order" items={stages} loading={isLoading} onOpen={open} />
+        {counsellor && <RecentLeadsCard leads={summary?.recentLeads} loading={isLoading} onOpenLead={openLead} onViewAll={viewAllLeads} />}
       </div>
 
-      <RecentLeadsCard leads={summary?.recentLeads} loading={isLoading} onOpenLead={(id) => navigate(`/app/leads/${id}`)} onViewAll={() => navigate('/app/leads')} />
+      {!counsellor && <RecentLeadsCard className="mt-4" leads={summary?.recentLeads} loading={isLoading} onOpenLead={openLead} onViewAll={viewAllLeads} />}
     </>
   )
 }

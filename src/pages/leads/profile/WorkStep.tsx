@@ -6,22 +6,20 @@ import { FormField, Input, Select } from '../../../components/ui/fields'
 import { EMPLOYMENT_STATUSES } from '../../../constants/profileOptions'
 import type { LeadProfile } from '../../../types/models'
 import { toNumber, workSchema, type WorkValues, showSaveError } from './profileSchemas'
-import { Section, StepActions } from './ProfileFields'
+import { Section, PROFILE_STEP_FORM, PROFILE_STEP_SAVE } from './ProfileFields'
 
 export function WorkStep({
   leadId,
   profile,
   readOnly,
-  onBack,
   onSaved,
 }: {
   leadId: string
   profile: LeadProfile
   readOnly: boolean
-  onBack: () => void
   onSaved: () => void
 }) {
-  const [save, { isLoading }] = useSaveLeadProfileStepMutation()
+  const [save] = useSaveLeadProfileStepMutation({ fixedCacheKey: PROFILE_STEP_SAVE })
   const {
     register,
     control,
@@ -49,7 +47,7 @@ export function WorkStep({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+    <form id={PROFILE_STEP_FORM} onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       <fieldset disabled={readOnly}>
         <Section title="Work Experience">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -108,7 +106,6 @@ export function WorkStep({
           </div>
         </Section>
       </fieldset>
-      <StepActions onBack={onBack} saving={isLoading} readOnly={readOnly} />
     </form>
   )
 }

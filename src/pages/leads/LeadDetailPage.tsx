@@ -212,18 +212,9 @@ export default function LeadDetailPage() {
           <>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex min-w-0 items-center gap-4">
-                {/* the profile photo, ringed by the student-profile completion */}
-                <ProgressRing
-                  value={lead.profileCompletion ?? 0}
-                  tone="emerald"
-                  label={`Profile ${lead.profileCompletion ?? 0}%`}
-                  testId="profile-completion-ring"
-                  title="Student profile completion"
-                >
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
-                    {initials(fullName(lead))}
-                  </span>
-                </ProgressRing>
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
+                  {initials(fullName(lead))}
+                </span>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-lg font-semibold text-slate-800">{fullName(lead)}</h1>
@@ -242,8 +233,17 @@ export default function LeadDetailPage() {
                 </div>
               </div>
 
-              {/* the Lead Score, at the right corner */}
-              <div className="flex items-center" data-testid="lead-scores">
+              {/* Profile completion and the Lead Score side by side, at the right corner */}
+              <div className="flex items-center gap-4" data-testid="lead-scores">
+                <ProgressRing
+                  value={lead.profileCompletion ?? 0}
+                  tone="emerald"
+                  label="Profile"
+                  testId="profile-completion-ring"
+                  title="Student profile completion"
+                >
+                  <span className="text-sm font-bold tabular-nums text-slate-800">{lead.profileCompletion ?? 0}%</span>
+                </ProgressRing>
                 <ProgressRing
                   value={lead.score ?? 0}
                   tone="brand"
@@ -256,77 +256,75 @@ export default function LeadDetailPage() {
               </div>
             </div>
 
-            {/* every action on its own line: lead work, then messaging, then assignment / edit / delete at the right */}
-            <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3" data-testid="lead-actions">
-              <div className="flex flex-wrap items-center gap-2" data-testid="lead-primary-actions">
-                {canEdit && lead.mobile && (
-                  // Disabled until a dialer is connected
-                  <Button variant="outline" size="sm" disabled title="Calling is not available yet">
-                    <Phone className="h-3.5 w-3.5" /> Call
+            {/* line one: lead work on the left, assignment / edit / delete on the right; line two: messaging */}
+            <div className="mt-3 space-y-2 border-t border-slate-100 pt-3" data-testid="lead-actions">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2" data-testid="lead-primary-actions">
+                  {canEdit && lead.mobile && (
+                    // Disabled until a dialer is connected
+                    <Button variant="outline" size="sm" disabled title="Calling is not available yet">
+                      <Phone className="h-3.5 w-3.5" /> Call
+                    </Button>
+                  )}
+                  {canEdit && (
+                    <Button size="sm" onClick={() => setModal('call')}>
+                      <PhoneCall className="h-3.5 w-3.5" /> Log Call / Update
+                    </Button>
+                  )}
+                  {canEdit && (
+                    <Button variant="outline" size="sm" onClick={() => setModal('stage')}>
+                      <Milestone className="h-3.5 w-3.5" /> Change Stage
+                    </Button>
+                  )}
+                  {can(user, 'tasks', 'create') && (
+                    <Button variant="outline" size="sm" onClick={() => setModal('followup')}>
+                      <CalendarPlus className="h-3.5 w-3.5" /> Add Follow-up
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => setModal('note')}>
+                    <NotebookPen className="h-3.5 w-3.5" /> Add Note
                   </Button>
-                )}
-                {canEdit && (
-                  <Button size="sm" onClick={() => setModal('call')}>
-                    <PhoneCall className="h-3.5 w-3.5" /> Log Call / Update
-                  </Button>
-                )}
-                {canEdit && (
-                  <Button variant="outline" size="sm" onClick={() => setModal('stage')}>
-                    <Milestone className="h-3.5 w-3.5" /> Change Stage
-                  </Button>
-                )}
-                {can(user, 'tasks', 'create') && (
-                  <Button variant="outline" size="sm" onClick={() => setModal('followup')}>
-                    <CalendarPlus className="h-3.5 w-3.5" /> Add Follow-up
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={() => setModal('note')}>
-                  <NotebookPen className="h-3.5 w-3.5" /> Add Note
-                </Button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 sm:ml-auto" data-testid="lead-admin-actions">
+                  {can(user, 'leads', 'reassign') && (
+                    <Button variant="outline" size="sm" onClick={() => setModal('assign')}>
+                      <UserPlus className="h-3.5 w-3.5" /> {lead.owner ? 'Reassign' : 'Assign'}
+                    </Button>
+                  )}
+                  {canEdit && (
+                    <Button variant="ghost" size="sm" onClick={() => setModal('edit')} title="Edit Lead Fields">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  {can(user, 'leads', 'delete') && (
+                    <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setModal('delete')}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
               {canSend && (
-                <div className="flex flex-wrap items-center gap-2 sm:border-l sm:border-slate-200 sm:pl-2" data-testid="lead-messaging-actions">
-                {canSend && (
-                  <>
-                    <Button variant="outline" size="sm" onClick={() => setModal('sms')}>
-                      <MessageSquareText className="h-3.5 w-3.5" /> Send SMS
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setModal('email')}>
-                      <Mail className="h-3.5 w-3.5" /> Send Email
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!whatsappLink(lead.mobile)}
-                      title={whatsappLink(lead.mobile) ? 'Open a WhatsApp chat with this lead' : 'No valid mobile number'}
-                      onClick={() => {
-                        const url = whatsappLink(lead.mobile)
-                        if (url) window.open(url, '_blank', 'noopener')
-                      }}
-                    >
-                      <MessageCircle className="h-3.5 w-3.5" /> Send WhatsApp
-                    </Button>
-                  </>
-                )}
+                <div className="flex flex-wrap items-center gap-2" data-testid="lead-messaging-actions">
+                  <Button variant="outline" size="sm" onClick={() => setModal('sms')}>
+                    <MessageSquareText className="h-3.5 w-3.5" /> Send SMS
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setModal('email')}>
+                    <Mail className="h-3.5 w-3.5" /> Send Email
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!whatsappLink(lead.mobile)}
+                    title={whatsappLink(lead.mobile) ? 'Open a WhatsApp chat with this lead' : 'No valid mobile number'}
+                    onClick={() => {
+                      const url = whatsappLink(lead.mobile)
+                      if (url) window.open(url, '_blank', 'noopener')
+                    }}
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" /> Send WhatsApp
+                  </Button>
                 </div>
               )}
-              <div className="flex flex-wrap items-center gap-2 sm:ml-auto" data-testid="lead-admin-actions">
-                {can(user, 'leads', 'reassign') && (
-                  <Button variant="outline" size="sm" onClick={() => setModal('assign')}>
-                    <UserPlus className="h-3.5 w-3.5" /> {lead.owner ? 'Reassign' : 'Assign'}
-                  </Button>
-                )}
-                {canEdit && (
-                  <Button variant="ghost" size="sm" onClick={() => setModal('edit')} title="Edit Lead Fields">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-                {can(user, 'leads', 'delete') && (
-                  <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setModal('delete')}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                )}
-              </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-3 lg:grid-cols-6">
               <HeaderFact label="Owner">{lead.owner?.name ?? 'Unassigned'}</HeaderFact>

@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import type { UseFormRegisterReturn } from 'react-hook-form'
-import { Button } from '../../../components/ui/Button'
 import { cn } from '../../../lib/utils'
 
 /** Two-or-three choice fields the doc writes as "A/B" (e.g. Fresher/Experienced). */
@@ -38,31 +37,7 @@ export function Section({ title, children }: { title: string; children: ReactNod
   )
 }
 
-export function StepActions({
-  onBack,
-  saving,
-  readOnly,
-  submitLabel = 'Save & continue',
-}: {
-  onBack?: () => void
-  saving?: boolean
-  readOnly?: boolean
-  submitLabel?: string
-}) {
-  return (
-    <div className="flex justify-between gap-2">
-      {onBack ? (
-        <Button type="button" variant="outline" onClick={onBack}>
-          Back
-        </Button>
-      ) : (
-        <span />
-      )}
-      {!readOnly && (
-        <Button type="submit" loading={saving}>
-          {submitLabel}
-        </Button>
-      )}
-    </div>
-  )
-}
+/** The id every step's <form> carries, so the tab header's "Save & Next" button can submit it from outside. */
+export const PROFILE_STEP_FORM = 'lead-profile-step-form'
+/** Shared mutation cache key: the header shows the step's saving state without the step passing it up. */
+export const PROFILE_STEP_SAVE = 'lead-profile-step-save'

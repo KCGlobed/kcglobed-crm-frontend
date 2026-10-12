@@ -82,7 +82,7 @@ function Slot({ leadId, slot, readOnly }: { leadId: string; slot: DocumentSlot; 
 }
 
 /** Student profile documents #34–#41 (replacing keeps the old file in history). */
-export function DocumentsStep({ leadId, readOnly, onBack, onNext }: { leadId: string; readOnly: boolean; onBack: () => void; onNext: () => void }) {
+export function DocumentsStep({ leadId, readOnly }: { leadId: string; readOnly: boolean }) {
   const { data, isLoading, isError, error, refetch } = useLeadDocumentsQuery(leadId)
   if (isLoading) return <Skeleton className="h-64 w-full" />
   if (isError || !data) return <ErrorState message={parseApiError(error).message} onRetry={refetch} />
@@ -95,12 +95,6 @@ export function DocumentsStep({ leadId, readOnly, onBack, onNext }: { leadId: st
           ))}
         </ul>
       </Section>
-      <div className="flex justify-between">
-        <Button variant="outline" onClick={onBack}>
-          Back
-        </Button>
-        <Button onClick={onNext}>Continue to Declaration</Button>
-      </div>
     </div>
   )
 }
