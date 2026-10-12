@@ -42,6 +42,11 @@ const isoDay = (daysAgo = 0) => {
 // HIDDEN for now: filter fields the backend offers but the panel leaves out.
 // - tag: no screen assigns tags to leads yet
 const HIDDEN_FILTER_FIELDS = ['tag']
+// HIDDEN for now: every Meta (Facebook Lead Ads) filter field — campaign, ad set, ad, form,
+// Meta lead ID — whatever key, label or group the backend sends it under. Delete this
+// function's uses to bring them back.
+const isMetaFilterField = (f: FilterField) => /meta/i.test(f.key) || /\bmeta\b/i.test(f.label) || /\bmeta\b/i.test(f.group)
+const isHiddenFilterField = (f: FilterField) => HIDDEN_FILTER_FIELDS.includes(f.key) || isMetaFilterField(f)
 /** Quick-filter pill names (the backend's smart filter keys), in Title Case. */
 const SMART_LABELS: Record<string, string> = {
   new_today: 'New Today',
@@ -557,7 +562,7 @@ export default function LeadsListPage() {
         <LeadFilterPanel
           open
           onClose={() => setFilterOpen(false)}
-          fields={meta.data.fields.filter((f) => !HIDDEN_FILTER_FIELDS.includes(f.key))}
+          fields={meta.data.fields.filter((f) => !isHiddenFilterField(f))}
           value={conditions}
           onApply={(c) => setParam('filters', c.length ? JSON.stringify(c) : undefined)}
         />

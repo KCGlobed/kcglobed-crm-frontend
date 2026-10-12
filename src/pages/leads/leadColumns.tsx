@@ -194,7 +194,8 @@ const ALL_LEAD_COLUMNS: LeadColumn[] = [
 // simply drop them. Delete a key here to bring its column back.
 // - tags: no screen assigns tags to leads yet
 // - lastDisposition: the Stage column already shows the sub-stage
-const HIDDEN_COLUMNS = ['tags', 'lastDisposition']
+// - metaCampaign / metaAdset / metaAd / metaForm: Meta (Facebook Lead Ads) fields hidden for now
+const HIDDEN_COLUMNS = ['tags', 'lastDisposition', 'metaCampaign', 'metaAdset', 'metaAd', 'metaForm']
 export const LEAD_COLUMNS = ALL_LEAD_COLUMNS.filter((c) => !HIDDEN_COLUMNS.includes(c.key))
 
 export const LEAD_COLUMN_KEYS = LEAD_COLUMNS.map((c) => c.key)

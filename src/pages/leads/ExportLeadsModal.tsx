@@ -10,7 +10,8 @@ import { LEAD_COLUMNS } from './leadColumns'
 
 // GL-38: up to 10,000 rows download at once; larger exports are prepared in the background
 const EXPORT_LIMIT = 10_000
-const ALL_EXPORT_KEYS = [...new Set([...LEAD_COLUMNS.flatMap((c) => c.exportKeys), 'subStage', 'channel', 'metaLeadId'])]
+// HIDDEN for now: the Meta lead ID export key goes with the hidden Meta columns (see leadColumns.tsx)
+const ALL_EXPORT_KEYS = [...new Set([...LEAD_COLUMNS.flatMap((c) => c.exportKeys), 'subStage', 'channel'])]
 
 type Format = 'csv' | 'xlsx'
 type ColumnChoice = 'visible' | 'all'
