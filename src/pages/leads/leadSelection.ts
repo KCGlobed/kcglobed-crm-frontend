@@ -1,4 +1,5 @@
-import { useListUsersQuery } from '../../services/adminApi'
+import { useMemo } from 'react'
+import { useUserOptionsQuery } from '../../services/adminApi'
 import type { FilterCondition } from '../../types/models'
 
 export interface LeadSelection {
@@ -14,10 +15,23 @@ export function selectionBody(sel: LeadSelection) {
   return sel.allMatching ? { selectAll: true, filters: sel.filters } : { leadIds: sel.ids }
 }
 
-/** Active Admission Counsellors — the only people leads can be assigned to. */
-export function useCounsellors() {
-  const { data } = useListUsersQuery({ role: 'counsellor', is_active: 'true', page_size: 100, sort_by: 'name', sort_order: 'asc' })
-  return data?.data ?? []
+/** "Name · in round-robin" so pool members are easy to spot in Assign / Reassign lists. */
+export const ownerLabel = (u: { name: string; receivesLeads?: boolean }) => (u.receivesLeads ? `${u.name} · in round-robin` : u.name)
+
+/**
+ * Everyone a lead can be assigned to: active users who can view Leads, except Super
+ * Admins — the same people the round-robin pool draws from, whatever their role.
+ */
+export function useAssignableOwners() {
+  const { data } = useUserOptionsQuery()
+  return useMemo(
+    () =>
+      (data?.data ?? []).filter(
+        // an older backend without canOwnLeads: fall back to counsellors and pool members
+        (u) => u.canOwnLeads ?? (u.role === 'counsellor' || u.receivesLeads)
+      ),
+    [data]
+  )
 }
 
 /** The list's `filters` URL param → conditions. */

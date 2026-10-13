@@ -110,6 +110,7 @@ interface Draft {
   windowStart: string
   windowEnd: string
   days: number[]
+  onlineOnly: boolean
 }
 
 const toDraft = (s: RoundRobinSettings): Draft => ({
@@ -119,6 +120,7 @@ const toDraft = (s: RoundRobinSettings): Draft => ({
   windowStart: s.windowStart ?? '',
   windowEnd: s.windowEnd ?? '',
   days: s.days,
+  onlineOnly: s.onlineOnly,
 })
 
 const sameList = (a: unknown[], b: unknown[]) => a.length === b.length && a.every((v) => b.includes(v))
@@ -129,6 +131,7 @@ function diff(draft: Draft, server: RoundRobinSettings): Partial<RoundRobinSetti
   if (draft.enabled !== server.enabled) body.enabled = draft.enabled
   if (!sameList(draft.channels, server.channels)) body.channels = draft.channels
   if (!sameList(draft.days, server.days)) body.days = draft.days
+  if (draft.onlineOnly !== server.onlineOnly) body.onlineOnly = draft.onlineOnly
   const start = draft.allDay ? null : draft.windowStart
   const end = draft.allDay ? null : draft.windowEnd
   // start and end always travel together
@@ -198,11 +201,26 @@ function SettingsCard({ settings, editable }: { settings: RoundRobinSettings; ed
           <div>
             <p className="text-sm font-medium text-slate-800">Auto-assign new leads</p>
             <p className="text-[11px] text-slate-500">
-              {draft.enabled ? `On · ${window} · ${days}` : 'Off — new leads wait in the Unassigned pool'}
+              {draft.enabled ? `On · ${window} · ${days}${draft.onlineOnly ? ' · online members only' : ''}` : 'Off — new leads wait in the Unassigned pool'}
             </p>
           </div>
           <Switch label="Round-robin enabled" checked={draft.enabled} onChange={(v) => set({ enabled: v })} disabled={!editable} />
         </div>
+
+        <FormField
+          label="Who receives leads"
+          error={errors.onlineOnly}
+          hint={
+            draft.onlineOnly
+              ? 'Leads wait in the pool until a pool member is logged in; whoever logs in gets them.'
+              : 'Every pool member gets leads in turn, logged in or not.'
+          }
+        >
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <Checkbox checked={draft.onlineOnly} disabled={!editable} onChange={(e) => set({ onlineOnly: e.target.checked })} />
+            Only members who are online
+          </label>
+        </FormField>
 
         <FormField label="Channels" error={errors.channels} hint="Leads from these sources are handed out in rotation. Quick Add still picks an owner by hand.">
           <div className="flex flex-wrap gap-x-5 gap-y-2">
@@ -298,8 +316,9 @@ function sortRotation(rows: RoundRobinMember[]) {
  * Round-robin control room: who gets the next Meta / Google / Website lead,
  * the Super Admin's on/off, channel and IST window settings, and a per-member
  * in/out toggle. Membership is role-free: anyone with the pool flag and View on
- * Leads, except a Super Admin. Polls so online state follows members logging in
- * and out.
+ * Leads, except a Super Admin; a live login is only required while the "Only
+ * members who are online" setting is on. Polls so online state follows members
+ * logging in and out.
  */
 export default function RoundRobinPage() {
   const me = useCurrentUser()
@@ -378,7 +397,7 @@ export default function RoundRobinPage() {
     <>
       <PageHeader
         title="Round Robin"
-        description="New Meta, Google, Website, Telephony and Chatbot leads go to online pool members in turn. Manual leads are unaffected."
+        description="New Meta, Google, Website, Telephony and Chatbot leads go to pool members in turn. Manual leads are unaffected."
         actions={
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} /> Refresh
@@ -404,7 +423,7 @@ export default function RoundRobinPage() {
             <Stat
               label="Unassigned pool"
               value={data.data.unassignedPoolCount.toLocaleString()}
-              hint="waiting for the window / someone online"
+              hint={data.data.settings.onlineOnly ? 'waiting for the window / someone online' : 'waiting for the window / a pool member'}
               icon={Inbox}
               accent={data.data.unassignedPoolCount ? 'from-gold-300 to-gold-500 shadow-gold-400/50' : 'from-slate-400 to-slate-500 shadow-slate-400/40'}
             />

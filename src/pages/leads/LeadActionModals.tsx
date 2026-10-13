@@ -13,11 +13,11 @@ import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import { sanitizeHtml } from '../../lib/sanitize'
 import type { Lead, MessagePreview } from '../../types/models'
-import { useCounsellors } from './leadSelection'
+import { ownerLabel, useAssignableOwners } from './leadSelection'
 
-/** GL-13 single assign / reassign: counsellor + reason. */
+/** GL-13 single assign / reassign: new owner (anyone who can own leads) + reason. */
 export function AssignLeadModal({ lead, onClose }: { lead: Lead; onClose: () => void }) {
-  const counsellors = useCounsellors()
+  const assignable = useAssignableOwners()
   const { data: meta } = useFilterFieldsQuery()
   const [owner, setOwner] = useState('')
   const [reason, setReason] = useState('')
@@ -53,14 +53,18 @@ export function AssignLeadModal({ lead, onClose }: { lead: Lead; onClose: () => 
       }
     >
       <div className="space-y-3">
-        <FormField label="Admission Counsellor" required>
+        <FormField
+          label="Assign to"
+          required
+          hint={assignable.length ? undefined : 'Nobody can be assigned yet — users need View on the Leads module.'}
+        >
           <Select value={owner} onChange={(e) => setOwner(e.target.value)}>
             <option value="">Choose…</option>
-            {counsellors
+            {assignable
               .filter((u) => u._id !== lead.owner?._id)
               .map((u) => (
                 <option key={u._id} value={u._id}>
-                  {u.name}
+                  {ownerLabel(u)}
                 </option>
               ))}
           </Select>

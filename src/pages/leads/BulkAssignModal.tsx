@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button'
 import { Checkbox, FormField, Select } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import type { BulkAssignResult } from '../../types/models'
-import { selectionBody, useCounsellors, type LeadSelection } from './leadSelection'
+import { ownerLabel, selectionBody, useAssignableOwners, type LeadSelection } from './leadSelection'
 
 
 /**
@@ -14,7 +14,7 @@ import { selectionBody, useCounsellors, type LeadSelection } from './leadSelecti
  * reason → confirm screen with the count per counsellor.
  */
 export function BulkAssignModal({ selection, onClose, onDone }: { selection: LeadSelection; onClose: () => void; onDone: () => void }) {
-  const counsellors = useCounsellors()
+  const assignable = useAssignableOwners()
   const { data: meta } = useFilterFieldsQuery()
   const [mode, setMode] = useState<'one' | 'split'>('one')
   const [owner, setOwner] = useState('')
@@ -95,26 +95,26 @@ export function BulkAssignModal({ selection, onClose, onDone }: { selection: Lea
             ))}
           </div>
           {mode === 'one' ? (
-            <FormField label="Counsellor" required>
+            <FormField label="Assign to" required>
               <Select value={owner} onChange={(e) => setOwner(e.target.value)}>
                 <option value="">Choose…</option>
-                {counsellors.map((u) => (
+                {assignable.map((u) => (
                   <option key={u._id} value={u._id}>
-                    {u.name}
+                    {ownerLabel(u)}
                   </option>
                 ))}
               </Select>
             </FormField>
           ) : (
-            <FormField label="Split Equally Among" required hint="Pick two or more Admission Counsellors">
+            <FormField label="Split Equally Among" required hint="Pick two or more people who can own leads">
               <div className="max-h-48 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
-                {counsellors.map((u) => (
+                {assignable.map((u) => (
                   <label key={u._id} className="flex items-center gap-2 text-sm text-slate-700">
                     <Checkbox
                       checked={owners.includes(u._id)}
                       onChange={(e) => setOwners((o) => (e.target.checked ? [...o, u._id] : o.filter((x) => x !== u._id)))}
                     />
-                    {u.name}
+                    {ownerLabel(u)}
                   </label>
                 ))}
               </div>

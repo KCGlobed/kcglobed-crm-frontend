@@ -25,7 +25,7 @@ import type {
   ImportResult,
   ImportValue,
 } from '../../types/models'
-import { useCounsellors } from './leadSelection'
+import { ownerLabel, useAssignableOwners } from './leadSelection'
 
 const MAX_BYTES = 10 * 1024 * 1024
 /** choices in the per-column dropdown that are decisions, not fields */
@@ -76,7 +76,7 @@ type ValueChoices = Record<string, Record<string, string | null>>
 export default function BulkUploadPage() {
   const navigate = useNavigate()
   const { data: masters } = useMasterBootstrapQuery()
-  const counsellors = useCounsellors()
+  const assignable = useAssignableOwners()
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   /** CRM field key → Excel column(s) (the API's mapping shape) */
@@ -580,23 +580,23 @@ export default function BulkUploadPage() {
                   </div>
                   {assignMode === 'one' && (
                     <Select value={owners[0] ?? ''} onChange={(e) => setOwners(e.target.value ? [e.target.value] : [])}>
-                      <option value="">Choose counsellor…</option>
-                      {counsellors.map((u) => (
+                      <option value="">Choose owner…</option>
+                      {assignable.map((u) => (
                         <option key={u._id} value={u._id}>
-                          {u.name}
+                          {ownerLabel(u)}
                         </option>
                       ))}
                     </Select>
                   )}
                   {assignMode === 'split' && (
                     <div className="flex flex-wrap gap-3 rounded-lg border border-slate-200 p-2">
-                      {counsellors.map((u) => (
+                      {assignable.map((u) => (
                         <label key={u._id} className="flex items-center gap-1.5 text-sm text-slate-700">
                           <Checkbox
                             checked={owners.includes(u._id)}
                             onChange={(e) => setOwners((o) => (e.target.checked ? [...o, u._id] : o.filter((x) => x !== u._id)))}
                           />
-                          {u.name}
+                          {ownerLabel(u)}
                         </label>
                       ))}
                     </div>

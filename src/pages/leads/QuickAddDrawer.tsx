@@ -13,11 +13,15 @@ import { Drawer } from '../../components/ui/Drawer'
 import { Button } from '../../components/ui/Button'
 import { FieldGroup, FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
-import type { DuplicateCheck } from '../../types/models'
-import { useCounsellors } from './leadSelection'
+import type { DuplicateCheck, Source } from '../../types/models'
+import { ownerLabel, useAssignableOwners } from './leadSelection'
 
-// GL-10 Quick Add sources
+// GL-10 Quick Add sources: these lead the dropdown when Masters has them (matched
+// loosely, so "Walk In" / "walk-in" still count); every other active source follows,
+// so the list is never empty just because the names in Masters differ.
 const QUICK_ADD_SOURCES = ['Walk-in', 'Inbound Call', 'Referral', 'Event', 'Other']
+const sourceKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '')
+const QUICK_ADD_KEYS = new Set(QUICK_ADD_SOURCES.map(sourceKey))
 const NAME = /^[A-Za-z][A-Za-z .]*$/
 
 const schema = z.object({
@@ -53,9 +57,9 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
   const user = useCurrentUser()
   const navigate = useNavigate()
   const counsellor = isCounsellor(user)
-  const { data: masters } = useMasterBootstrapQuery()
+  const { data: masters, isLoading: mastersLoading, isError: mastersError } = useMasterBootstrapQuery()
   const { data: places } = useProfileOptionsQuery()
-  const counsellors = useCounsellors()
+  const assignable = useAssignableOwners()
   const [createLead, { isLoading }] = useCreateLeadMutation()
   const [checkDuplicate] = useLazyCheckDuplicateQuery()
   const [checked, setChecked] = useState<{ key: string; result: DuplicateCheck | null } | null>(null)
@@ -102,7 +106,14 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
   }, [checkKey, checkDuplicate])
   const duplicate = checked && checked.key === checkKey ? checked.result : null
 
-  const sources = (masters?.data.sources ?? []).filter((s) => QUICK_ADD_SOURCES.includes(s.name))
+  const allSources = masters?.data.sources ?? []
+  const quickSources = allSources.filter((s) => QUICK_ADD_KEYS.has(sourceKey(s.name)))
+  const otherSources = allSources.filter((s) => !QUICK_ADD_KEYS.has(sourceKey(s.name)))
+  const sourceOption = (s: Source) => (
+    <option key={s._id} value={s._id}>
+      {s.name}
+    </option>
+  )
   const cities = state ? (places?.data.citiesByState[state] ?? []) : []
 
   const onSubmit = async (values: FormValues) => {
@@ -130,7 +141,7 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
       open={open}
       onClose={onClose}
       title="Quick Add Lead"
-      description={counsellor ? 'The lead will be assigned to you.' : 'Pick a counsellor, or leave it in the Unassigned Pool.'}
+      description={counsellor ? 'The lead will be assigned to you.' : 'Pick an owner, or leave it in the Unassigned Pool.'}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -218,14 +229,29 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
                 ))}
               </Select>
             </FormField>
-            <FormField label="Source" error={errors.source?.message} required>
-              <Select {...register('source')} aria-invalid={!!errors.source}>
-                <option value="">Choose…</option>
-                {sources.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.name}
-                  </option>
-                ))}
+            <FormField
+              label="Source"
+              required
+              error={
+                errors.source?.message ??
+                (mastersError ? 'Sources could not be loaded. Close the form and try again.' : undefined)
+              }
+              hint={
+                !mastersLoading && !mastersError && !allSources.length
+                  ? 'No active sources in Masters yet — add one under Administration › Masters.'
+                  : undefined
+              }
+            >
+              <Select {...register('source')} aria-invalid={!!errors.source} disabled={mastersLoading}>
+                <option value="">{mastersLoading ? 'Loading…' : 'Choose…'}</option>
+                {quickSources.length > 0 && otherSources.length > 0 ? (
+                  <>
+                    <optgroup label="Quick add">{quickSources.map(sourceOption)}</optgroup>
+                    <optgroup label="Other sources">{otherSources.map(sourceOption)}</optgroup>
+                  </>
+                ) : (
+                  [...quickSources, ...otherSources].map(sourceOption)
+                )}
               </Select>
             </FormField>
           </div>
@@ -235,9 +261,9 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
             <FormField label="Assign To" hint="Leave empty to keep it in the Unassigned Pool">
               <Select {...register('owner')}>
                 <option value="">Unassigned Pool</option>
-                {counsellors.map((u) => (
+                {assignable.map((u) => (
                   <option key={u._id} value={u._id}>
-                    {u.name}
+                    {ownerLabel(u)}
                   </option>
                 ))}
               </Select>

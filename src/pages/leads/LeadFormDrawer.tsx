@@ -321,11 +321,13 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
                 <FormField label="Or Assign Directly">
                   <Select {...register('owner')}>
                     <option value="">Leave Unassigned</option>
-                    {userOptions?.data.map((u) => (
-                      <option key={u._id} value={u._id}>
-                        {u.name}
-                      </option>
-                    ))}
+                    {userOptions?.data
+                      .filter((u) => u.canOwnLeads !== false)
+                      .map((u) => (
+                        <option key={u._id} value={u._id}>
+                          {u.name}
+                        </option>
+                      ))}
                   </Select>
                 </FormField>
               )}

@@ -960,6 +960,8 @@ export interface RoundRobinSettings {
   windowEnd: string | null
   /** 0=Mon … 6=Sun; [] = every day */
   days: number[]
+  /** true: only logged-in members get leads, the rest wait in the pool; false: every pool member, logged in or not */
+  onlineOnly: boolean
 }
 
 /**

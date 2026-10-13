@@ -28,7 +28,10 @@ function cleanParams(params: Record<string, unknown>) {
 
 export const adminApi = api.injectEndpoints({
   endpoints: (build) => ({
-    userOptions: build.query<ApiResponse<Pick<User, '_id' | 'name' | 'email' | 'receivesLeads' | 'designation' | 'team'>[]>, void>({
+    userOptions: build.query<
+      ApiResponse<(Pick<User, '_id' | 'name' | 'email' | 'receivesLeads' | 'designation' | 'team' | 'role'> & { canOwnLeads?: boolean })[]>,
+      void
+    >({
       query: () => '/users/options',
       providesTags: [{ type: 'Users', id: 'OPTIONS' }],
     }),
