@@ -9,6 +9,7 @@ import {
   Pencil,
   Plus,
   Power,
+  Trash2,
   UserMinus,
   UserPlus,
   Users,
@@ -16,6 +17,7 @@ import {
 import { toast } from 'sonner'
 import {
   useDeleteTeamMutation,
+  useDeleteTeamPermanentlyMutation,
   useGetTeamQuery,
   useRemoveTeamMemberMutation,
   useTeamStatsQuery,
@@ -70,11 +72,13 @@ export default function TeamDetailPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [removing, setRemoving] = useState<TeamMember | null>(null)
   const [confirmDeactivate, setConfirmDeactivate] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const { data, isLoading, isError, error, refetch } = useGetTeamQuery(id, { skip: !id })
   const stats = useTeamStatsQuery({ id, include_sub_teams: includeSubTeams }, { skip: !id })
   const [removeMember, { isLoading: removingBusy }] = useRemoveTeamMemberMutation()
   const [deleteTeam, { isLoading: deactivating }] = useDeleteTeamMutation()
+  const [deleteTeamPermanently, { isLoading: deleting }] = useDeleteTeamPermanentlyMutation()
   const [updateTeam, { isLoading: reactivating }] = useUpdateTeamMutation()
 
   const team = data?.data
@@ -110,6 +114,17 @@ export default function TeamDetailPage() {
       await deleteTeam(team._id).unwrap()
       toast.success('Team deactivated')
       setConfirmDeactivate(false)
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    }
+  }
+
+  const onDelete = async () => {
+    if (!team) return
+    try {
+      await deleteTeamPermanently(team._id).unwrap()
+      toast.success('Team deleted')
+      navigate('/app/admin/teams')
     } catch (err) {
       toast.error(parseApiError(err).message)
     }
@@ -345,6 +360,11 @@ export default function TeamDetailPage() {
                       <Power className="h-3.5 w-3.5" /> Reactivate
                     </Button>
                   )}
+              {can(me, 'teams', 'delete') && (
+                <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setConfirmDelete(true)}>
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -508,6 +528,16 @@ export default function TeamDetailPage() {
         confirmLabel="Deactivate"
         danger
         loading={deactivating}
+      />
+      <ConfirmDialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={onDelete}
+        title="Delete team"
+        message={`Delete ${team?.name} permanently? This cannot be undone. The team must have no sub-teams or active members first.`}
+        confirmLabel="Delete"
+        danger
+        loading={deleting}
       />
     </>
   )

@@ -92,9 +92,15 @@ export const adminApi = api.injectEndpoints({
       query: ({ id, body }) => ({ url: `/teams/${id}`, method: 'PUT', body }),
       invalidatesTags: ['Teams', 'RoundRobin'],
     }),
+    // plain DELETE only switches the team off
     deleteTeam: build.mutation<ApiResponse<Team>, string>({
       query: (id) => ({ url: `/teams/${id}`, method: 'DELETE' }),
       invalidatesTags: ['Teams', 'RoundRobin'],
+    }),
+    // ?permanent=true removes it for good; deactivated users still in it are detached
+    deleteTeamPermanently: build.mutation<ApiResponse<Team>, string>({
+      query: (id) => ({ url: `/teams/${id}`, method: 'DELETE', params: { permanent: 'true' } }),
+      invalidatesTags: ['Teams', { type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }, 'RoundRobin'],
     }),
     addTeamMembers: build.mutation<
       ApiResponse<{ added: number; alreadyMembers: number }>,
@@ -150,6 +156,7 @@ export const {
   useCreateTeamMutation,
   useUpdateTeamMutation,
   useDeleteTeamMutation,
+  useDeleteTeamPermanentlyMutation,
   useAddTeamMembersMutation,
   useRemoveTeamMemberMutation,
   useListTemplatesQuery,

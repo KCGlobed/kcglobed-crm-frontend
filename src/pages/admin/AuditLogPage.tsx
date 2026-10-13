@@ -17,7 +17,7 @@ import type { AuditLogEntry } from '../../types/models'
 
 const MODULE_OPTIONS = ['users', 'leads', 'tasks', 'communications', 'integrations', 'teams', 'masters']
 // GL-28: logins/logouts, users created/deactivated, assignments, uploads, bulk sends, exports, template & automation changes
-const ACTION_OPTIONS = ['login', 'logout', 'create', 'update', 'deactivate', 'reactivate', 'resend_credentials', 'assign', 'bulk_assign', 'disposition', 'import', 'export', 'bulk_send', 'message_send', 'template_create', 'template_update', 'automation_update', 'meta_mapping_update', 'change_password']
+const ACTION_OPTIONS = ['login', 'logout', 'create', 'update', 'delete', 'deactivate', 'reactivate', 'resend_credentials', 'assign', 'bulk_assign', 'disposition', 'import', 'export', 'bulk_send', 'message_send', 'template_create', 'template_update', 'automation_update', 'meta_mapping_update', 'change_password']
 
 export default function AuditLogPage() {
   const { query, setParam } = useListParams({ sort_by: 'createdAt', sort_order: 'desc' }, [

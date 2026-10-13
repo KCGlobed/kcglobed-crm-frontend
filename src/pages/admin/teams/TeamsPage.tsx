@@ -1,8 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Ban, ExternalLink, List, Network, PauseCircle, Plus } from 'lucide-react'
+import { Ban, ExternalLink, List, Network, PauseCircle, Pencil, Plus, Power, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useDeleteTeamMutation, useListTeamsQuery, useTeamTreeQuery } from '../../../services/adminApi'
+import {
+  useDeleteTeamMutation,
+  useDeleteTeamPermanentlyMutation,
+  useListTeamsQuery,
+  useTeamTreeQuery,
+  useUpdateTeamMutation,
+} from '../../../services/adminApi'
 import { useCurrentUser } from '../../../app/hooks'
 import { can } from '../../../constants/permissions'
 import { DataTable, type Column } from '../../../components/ui/DataTable'
@@ -20,6 +26,9 @@ import { TeamTree } from './TeamTree'
 import { TeamTypeBadge } from './TeamTypeBadge'
 import { TEAM_TYPES } from './teamMeta'
 
+/** Deactivate switches a team off (reversible); delete removes it for good. */
+type Confirm = { team: Team; mode: 'deactivate' | 'delete' }
+
 export default function TeamsPage() {
   const me = useCurrentUser()
   const navigate = useNavigate()
@@ -35,16 +44,36 @@ export default function TeamsPage() {
 
   const list = useListTeamsQuery(listQuery, { skip: view !== 'list' })
   const tree = useTeamTreeQuery({ include_inactive: query.include_inactive === 'true' }, { skip: view !== 'tree' })
-  const [deleteTeam, { isLoading: deleting }] = useDeleteTeamMutation()
+  const [deactivateTeam, { isLoading: deactivating }] = useDeleteTeamMutation()
+  const [deleteTeam, { isLoading: deleting }] = useDeleteTeamPermanentlyMutation()
+  const [updateTeam] = useUpdateTeamMutation()
   const [formOpen, setFormOpen] = useState(false)
-  const [confirm, setConfirm] = useState<Team | null>(null)
+  const [editing, setEditing] = useState<Team | null>(null)
+  const [confirm, setConfirm] = useState<Confirm | null>(null)
 
-  const onDeactivate = async () => {
+  const canEdit = can(me, 'teams', 'edit')
+  const canDelete = can(me, 'teams', 'delete')
+
+  const onConfirm = async () => {
     if (!confirm) return
     try {
-      await deleteTeam(confirm._id).unwrap()
-      toast.success('Team deactivated')
+      if (confirm.mode === 'delete') {
+        await deleteTeam(confirm.team._id).unwrap()
+        toast.success('Team deleted')
+      } else {
+        await deactivateTeam(confirm.team._id).unwrap()
+        toast.success('Team deactivated')
+      }
       setConfirm(null)
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    }
+  }
+
+  const onReactivate = async (t: Team) => {
+    try {
+      await updateTeam({ id: t._id, body: { isActive: true } }).unwrap()
+      toast.success('Team reactivated')
     } catch (err) {
       toast.error(parseApiError(err).message)
     }
@@ -104,7 +133,16 @@ export default function TeamsPage() {
           label={`Actions for ${t.name}`}
           actions={[
             { label: 'Open', icon: ExternalLink, onClick: () => navigate(`/app/admin/teams/${t._id}`) },
-            { label: 'Deactivate', icon: Ban, danger: true, hidden: !can(me, 'teams', 'delete') || !t.isActive, onClick: () => setConfirm(t) },
+            { label: 'Edit', icon: Pencil, hidden: !canEdit, onClick: () => setEditing(t) },
+            { label: 'Reactivate', icon: Power, hidden: !canEdit || t.isActive, onClick: () => onReactivate(t) },
+            {
+              label: 'Deactivate',
+              icon: Ban,
+              danger: true,
+              hidden: !canDelete || !t.isActive,
+              onClick: () => setConfirm({ team: t, mode: 'deactivate' }),
+            },
+            { label: 'Delete', icon: Trash2, danger: true, hidden: !canDelete, onClick: () => setConfirm({ team: t, mode: 'delete' }) },
           ]}
         />
       ),
@@ -214,20 +252,31 @@ export default function TeamsPage() {
         />
       )}
 
+      {/* one drawer: "Create Department" opens it empty, a row's Edit opens it on that team */}
       <TeamFormDrawer
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        onSaved={(t) => navigate(`/app/admin/teams/${t._id}`)}
+        open={formOpen || !!editing}
+        team={editing ?? undefined}
+        onClose={() => {
+          setFormOpen(false)
+          setEditing(null)
+        }}
+        onSaved={(t) => {
+          if (!editing) navigate(`/app/admin/teams/${t._id}`)
+        }}
       />
       <ConfirmDialog
         open={!!confirm}
         onClose={() => setConfirm(null)}
-        onConfirm={onDeactivate}
-        title="Deactivate team"
-        message={`Deactivate ${confirm?.name}? This is only allowed once it has no active members or sub-teams.`}
-        confirmLabel="Deactivate"
+        onConfirm={onConfirm}
+        title={confirm?.mode === 'delete' ? 'Delete team' : 'Deactivate team'}
+        message={
+          confirm?.mode === 'delete'
+            ? `Delete ${confirm.team.name} permanently? This cannot be undone. The team must have no sub-teams or active members first.`
+            : `Deactivate ${confirm?.team.name}? This is only allowed once it has no active members or sub-teams.`
+        }
+        confirmLabel={confirm?.mode === 'delete' ? 'Delete' : 'Deactivate'}
         danger
-        loading={deleting}
+        loading={deactivating || deleting}
       />
     </>
   )
