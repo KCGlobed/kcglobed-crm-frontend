@@ -6,8 +6,8 @@
  * dev proxy reads this file at start-up.
  */
 const BACKEND: { PROD_URL?: string; BASE_URL?: string } = {
-  // PROD_URL: 'https://crm-backend.kcglobed.com',
-  BASE_URL: 'http://localhost:4000',
+  PROD_URL: 'https://crm-backend.kcglobed.com',
+  // BASE_URL: 'http://localhost:4000',
 }
 
 /** Backend origin in use, without a trailing slash. */
