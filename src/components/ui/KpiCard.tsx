@@ -16,7 +16,8 @@ const ACCENTS = {
 /**
  * Metric card: gradient icon disc + title, then the supporting line and the
  * number over a bar. `progress` (0–100) sets the bar's length — e.g. the
- * metric's share of a total; without it the bar is full. Clickable when it
+ * metric's share of a total; without it the bar is full for a non-zero value and
+ * empty for zero. Clickable when it
  * opens a list.
  */
 export function KpiCard({
@@ -44,8 +45,8 @@ export function KpiCard({
 }) {
   const Tag = onClick ? 'button' : 'div'
   const tone = ACCENTS[accent]
-  // a non-zero metric always shows at least a sliver of bar
-  const fill = progress === undefined ? 100 : value ? Math.min(100, Math.max(4, progress)) : 0
+  // a non-zero metric always shows at least a sliver of bar; zero draws none, even without `progress`
+  const fill = progress === undefined ? (value ? 100 : 0) : progress > 0 ? Math.min(100, Math.max(4, progress)) : 0
   return (
     <Tag
       {...(onClick ? { type: 'button' as const, onClick } : {})}

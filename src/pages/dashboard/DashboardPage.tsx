@@ -190,9 +190,9 @@ function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSumm
         <SectionHeading title="Today's Activity" hint="" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
           {/* straight from the summary's activityToday; 0 until the backend sends it */}
-          <KpiCard label="Total Calls Today" value={activity?.calls ?? 0} hint="Calls placed" icon={PhoneCall} accent="cyan" loading={loading} />
-          <KpiCard label="Total Talk time Today" value={duration(activity?.talktimeSeconds)} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
-          <KpiCard label="Total Break Time Today" value={duration(activity?.breakSeconds)} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
+          <KpiCard label="Total Calls Today" value={activity?.calls ?? 0} progress={activity?.calls ? 100 : 0} hint="Calls placed" icon={PhoneCall} accent="cyan" loading={loading} />
+          <KpiCard label="Total Talk time Today" value={duration(activity?.talktimeSeconds)} progress={activity?.talktimeSeconds ? 100 : 0} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
+          <KpiCard label="Total Break Time Today" value={duration(activity?.breakSeconds)} progress={activity?.breakSeconds ? 100 : 0} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
         </div>
       </section>
     </>
