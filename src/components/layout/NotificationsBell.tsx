@@ -9,6 +9,7 @@ import {
   CheckCheck,
   Download,
   Hourglass,
+  Mail,
   Inbox,
   Languages,
   PlugZap,
@@ -43,6 +44,16 @@ import { Switch } from '../ui/fields'
 import { parseApiError } from '../../lib/utils'
 import { cn, timeAgo } from '../../lib/utils'
 import type { Notification as CrmNotification } from '../../types/models'
+
+/** How the email-type keys read in the bell's "also by email" line. */
+const EMAIL_TYPE_LABELS: Record<string, string> = {
+  lead_assigned: 'lead assigned',
+  lead_reassigned: 'lead reassigned',
+  untouched: 'lead left untouched',
+  task_due: 'follow-up due',
+  task_overdue: 'follow-up overdue',
+}
+const emailTypeLabel = (key: string) => EMAIL_TYPE_LABELS[key] ?? key.replace(/_/g, ' ')
 
 const NOTIFICATION_ICONS: Record<string, { icon: typeof Bell; className: string }> = {
   lead_assigned: { icon: UserPlus, className: 'bg-brand-50 text-brand-600' },
@@ -185,6 +196,8 @@ export function NotificationsBell() {
   const [markAll] = useMarkAllNotificationsReadMutation()
   const unread = data?.data.unreadCount ?? 0
   const items = data?.data.items ?? []
+  // Email copies (lead assigned, untouched, follow-up overdue) go to the user's own address, browser open or not.
+  const emailStatus = pushStatus?.data.email
 
   // Close on a click anywhere outside the bell and its panel, or on Escape.
   useEffect(() => {
@@ -262,6 +275,23 @@ export function NotificationsBell() {
                   disabled={permission === 'denied'}
                   onChange={(on) => (on ? enablePush() : disablePush())}
                 />
+              </div>
+            )}
+            {emailStatus && (
+              <div
+                className="flex items-center gap-1.5 border-b border-slate-100 px-4 py-1.5 text-[11px] text-slate-500"
+                title={
+                  emailStatus.enabled
+                    ? `Also emailed to ${emailStatus.address ?? 'your address'}: ${emailStatus.types.map(emailTypeLabel).join(', ')}`
+                    : 'Email alerts are off for this account'
+                }
+              >
+                <Mail className={cn('h-3 w-3 shrink-0', emailStatus.enabled ? 'text-emerald-600' : 'text-slate-400')} />
+                <span className="min-w-0 truncate">
+                  {emailStatus.enabled
+                    ? `Also by email (${emailStatus.types.map(emailTypeLabel).join(', ')})`
+                    : 'Email alerts off'}
+                </span>
               </div>
             )}
             <div className="max-h-[26rem] overflow-y-auto">

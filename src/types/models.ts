@@ -399,6 +399,14 @@ export interface PushStatus {
   /** notification types that are pushed to devices */
   types: string[]
   devices: PushDevice[]
+  /** email copies of the alerts, sent to the user's own address at the same moment as the push */
+  email?: {
+    /** on for this user: the feature is enabled, the user is active and has an email address */
+    enabled: boolean
+    /** notification types that are also emailed */
+    types: string[]
+    address?: string | null
+  }
 }
 
 export interface Notification {
@@ -406,7 +414,19 @@ export interface Notification {
   type: string
   title: string
   body?: string
-  data?: { leadId?: string; taskId?: string; exportId?: string; url?: string; smart?: string; errorFile?: string }
+  data?: {
+    leadId?: string
+    taskId?: string
+    exportId?: string
+    url?: string
+    smart?: string
+    errorFile?: string
+    /** one alert for several leads (bulk assign / upload): how many, the first of them, who did it */
+    bulk?: boolean
+    count?: number
+    leadIds?: string[]
+    by?: string
+  }
   readAt?: string | null
   createdAt: string
 }
