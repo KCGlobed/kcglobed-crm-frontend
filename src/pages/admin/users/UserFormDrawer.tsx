@@ -12,10 +12,11 @@ import {
   useUserOptionsQuery,
 } from '../../../services/adminApi'
 import { useCurrentUser } from '../../../app/hooks'
+import { can } from '../../../constants/permissions'
 import { Drawer } from '../../../components/ui/Drawer'
 import { Button } from '../../../components/ui/Button'
 import { Checkbox, FieldGroup, FormField, Input, Select } from '../../../components/ui/fields'
-import { parseApiError } from '../../../lib/utils'
+import { cn, parseApiError } from '../../../lib/utils'
 import type { RoleKey, User } from '../../../types/models'
 import { PermissionBuilder, type PermissionState } from './PermissionBuilder'
 import { MenuPreview } from './MenuPreview'
@@ -51,10 +52,11 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 const ROLE_HINTS: Record<string, string> = {
-  admin: 'All leads, assignment, uploads, exports, SMS/email admin and users (counsellors only).',
+  admin: 'All leads, assignment, uploads, exports, SMS/email admin and user management (counsellors only).',
   counsellor: 'Own leads only: work, follow up and message them. No export or reassignment.',
   other: 'Tick modules, actions, data scope and masked fields below — or start from a role template.',
 }
+const NO_LEADS_ACCESS_HINT = 'Grant View on the Leads module to add this user to the round-robin pool.'
 
 /** Role dropdown value for a role template: the user follows that template's access. */
 const TPL = 'tpl:'
@@ -66,6 +68,10 @@ const refId = (v: User['team'] | User['reportingManager']) => (typeof v === 'obj
  * profile → team & reporting manager → role. "Custom access" opens the
  * plug-and-play permission builder (template → modules/actions → data scope →
  * field masking). Without a password the login credentials are emailed.
+ *
+ * Round-robin: any role can be in the lead pool except a Super Admin; the tick
+ * needs View on the Leads module (from the role template for Admin / Counsellor,
+ * from the builder for custom access) — the backend enforces the same rule.
  */
 export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose: () => void; user?: User }) {
   const isEdit = !!user
@@ -146,6 +152,18 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
       ? `${ROLE_HINTS[role]} Follows the "${linkedRoleTemplate.name}" role template — edit the template to change every user with this role.`
       : ROLE_HINTS[role]
 
+  // Can this user see Leads? Custom access: the ticks in the builder. Admin / Counsellor: the
+  // linked role template (allowed while it has not loaded — the backend enforces the rule).
+  const leadsAccess = custom
+    ? can({ isSuperAdmin: false, permissions: perms.permissions }, 'leads', 'view')
+    : linkedRoleTemplate
+      ? can({ isSuperAdmin: false, permissions: linkedRoleTemplate.permissions }, 'leads', 'view')
+      : true
+  // no Leads access → the round-robin box unticks itself at once (e.g. Leads › View just came off in the builder)
+  useEffect(() => {
+    if (!leadsAccess) setValue('receivesLeads', false)
+  }, [leadsAccess, setValue])
+
   const fromTemplate = (key: string): PermissionState | undefined => {
     const t = (templates?.data ?? []).find((x) => x.key === key)
     return t
@@ -174,8 +192,13 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
       team: values.team || null,
       reportingManager: values.reportingManager || null,
       isActive: values.isActive,
-      // on create, an untouched box lets the server default it (counsellors in, others out)
-      ...(isEdit || dirtyFields.receivesLeads ? { receivesLeads: values.receivesLeads } : {}),
+      // a Super Admin is never in the pool; otherwise the box is sent when touched or on edit
+      // (on create, an untouched box lets the server default it: counsellors in, others out)
+      ...(values.isSuperAdmin
+        ? { receivesLeads: false }
+        : isEdit || dirtyFields.receivesLeads
+          ? { receivesLeads: !!values.receivesLeads }
+          : {}),
       ...(superAdmin ? { isSuperAdmin: values.isSuperAdmin } : {}),
     }
     if (values.password) base.password = values.password
@@ -190,8 +213,9 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
     try {
       if (isEdit) {
         const roleChanged = apiRole !== user!.role
-        await updateUser({ id: user!._id, body: { ...base, ...(superAdmin && roleChanged ? { role: apiRole } : {}) } }).unwrap()
+        // permissions first: granting Leads › View and ticking the pool in one save must not hit the backend's 400
         if (custom && superAdmin) await setPermissions({ id: user!._id, body: access }).unwrap()
+        await updateUser({ id: user!._id, body: { ...base, ...(superAdmin && roleChanged ? { role: apiRole } : {}) } }).unwrap()
         toast.success('User updated')
       } else {
         const res = await createUser({
@@ -331,9 +355,20 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
             <label className="flex items-center gap-2 text-sm text-slate-700">
               <Checkbox {...register('isActive')} disabled={isEdit && user?._id === me?._id} /> Active (can sign in)
             </label>
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <Checkbox {...register('receivesLeads')} /> In round-robin lead pool
-            </label>
+            {!isSuperAdminChecked && (
+              <div data-testid="round-robin-field">
+                <label className={cn('flex items-center gap-2 text-sm', leadsAccess ? 'text-slate-700' : 'text-slate-400')}>
+                  <Checkbox {...register('receivesLeads')} disabled={!leadsAccess} aria-invalid={!!errors.receivesLeads} /> In round-robin lead
+                  pool
+                </label>
+                {!leadsAccess && <p className="mt-1 text-[11px] leading-4 text-slate-500">{NO_LEADS_ACCESS_HINT}</p>}
+                {errors.receivesLeads && (
+                  <p role="alert" className="mt-1 text-[11px] font-medium leading-4 text-red-600">
+                    {errors.receivesLeads.message}
+                  </p>
+                )}
+              </div>
+            )}
             {superAdmin && (
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <Checkbox {...register('isSuperAdmin')} disabled={isEdit && user?._id === me?._id} /> Super admin (bypasses all

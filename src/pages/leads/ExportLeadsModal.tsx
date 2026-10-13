@@ -6,12 +6,10 @@ import { Modal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
 import { API_BASE_URL } from '../../constants/config'
 import { cn, downloadBlob, parseApiError } from '../../lib/utils'
-import { LEAD_COLUMNS } from './leadColumns'
+import { useLeadColumns } from './useLeadColumns'
 
 // GL-38: up to 10,000 rows download at once; larger exports are prepared in the background
 const EXPORT_LIMIT = 10_000
-// HIDDEN for now: the Meta lead ID export key goes with the hidden Meta columns (see leadColumns.tsx)
-const ALL_EXPORT_KEYS = [...new Set([...LEAD_COLUMNS.flatMap((c) => c.exportKeys), 'subStage', 'channel'])]
 
 type Format = 'csv' | 'xlsx'
 type ColumnChoice = 'visible' | 'all'
@@ -56,7 +54,10 @@ export function ExportLeadsModal({
   const [columns, setColumns] = useState<ColumnChoice>('visible')
   const [busy, setBusy] = useState(false)
 
-  const visibleExportKeys = LEAD_COLUMNS.filter((c) => visibleColumnKeys.includes(c.key))
+  const { columns: leadColumns } = useLeadColumns()
+  // HIDDEN for now: the Meta lead ID export key goes with the hidden Meta columns (see leadColumns.tsx)
+  const allExportKeys = [...new Set([...leadColumns.flatMap((c) => c.exportKeys), 'subStage', 'channel'])]
+  const visibleExportKeys = leadColumns.filter((c) => visibleColumnKeys.includes(c.key))
     .sort((a, b) => visibleColumnKeys.indexOf(a.key) - visibleColumnKeys.indexOf(b.key))
     .flatMap((c) => c.exportKeys)
   const activeFilters = [...filters.entries()].filter(([k, v]) => v && !['page', 'page_size', 'sort_by', 'sort_order'].includes(k))
@@ -66,7 +67,7 @@ export function ExportLeadsModal({
     try {
       const qs = new URLSearchParams(activeFilters)
       qs.set('format', format)
-      qs.set('columns', (columns === 'visible' ? visibleExportKeys : ALL_EXPORT_KEYS).join(','))
+      qs.set('columns', (columns === 'visible' ? visibleExportKeys : allExportKeys).join(','))
       const res = await fetch(`${API_BASE_URL}/leads/export?${qs.toString()}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
@@ -137,7 +138,7 @@ export function ExportLeadsModal({
             <Choice active={columns === 'all'} onClick={() => setColumns('all')}>
               <span>
                 <span className="block font-medium text-slate-700">All Columns</span>
-                <span className="text-slate-500">{ALL_EXPORT_KEYS.length} fields</span>
+                <span className="text-slate-500">{allExportKeys.length} fields</span>
               </span>
             </Choice>
           </div>

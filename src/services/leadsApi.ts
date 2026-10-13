@@ -11,6 +11,7 @@ import type {
   ExportJob,
   FieldChangeEntry,
   FilterFieldsMeta,
+  CustomFieldDef,
   ImportPreview,
   ImportResult,
   Lead,
@@ -232,6 +233,11 @@ export const leadsApi = api.injectEndpoints({
     profileOptions: build.query<ApiResponse<{ states: string[]; citiesByState: Record<string, string[]> }>, void>({
       query: () => '/leads/profile-options',
     }),
+    /** Masters → Custom field created from the bulk-upload mapping screen (leads.import, not masters.create). */
+    createImportCustomField: build.mutation<ApiResponse<CustomFieldDef>, Record<string, unknown>>({
+      query: (body) => ({ url: '/leads/import/custom-fields', method: 'POST', body }),
+      invalidatesTags: ['Masters', { type: 'MasterList', id: 'custom-fields' }],
+    }),
     importPreview: build.mutation<ApiResponse<ImportPreview>, FormData>({
       query: (body) => ({ url: '/leads/import/preview', method: 'POST', body }),
     }),
@@ -330,6 +336,7 @@ export const {
   useUploadLeadDocumentMutation,
   useProfileOptionsQuery,
   useImportPreviewMutation,
+  useCreateImportCustomFieldMutation,
   useBulkUploadLeadsMutation,
   useLazyExportJobQuery,
   useLeadProfileQuery,

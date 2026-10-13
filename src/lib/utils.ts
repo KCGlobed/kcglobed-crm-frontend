@@ -54,3 +54,10 @@ export function downloadBlob(blob: Blob, filename: string) {
   a.remove()
   URL.revokeObjectURL(url)
 }
+
+/** camelCase key from a label, e.g. "Highest Qualification" → highestQualification (Masters → Custom fields). */
+export function camelKey(label: string): string {
+  const words = label.toLowerCase().replace(/['’]/g, '').match(/[a-z0-9]+/g) ?? []
+  const key = words.map((w, i) => (i ? w[0].toUpperCase() + w.slice(1) : w)).join('')
+  return (/^[a-z]/.test(key) ? key : key && `field${key[0].toUpperCase()}${key.slice(1)}`).slice(0, 50)
+}

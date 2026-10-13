@@ -2,7 +2,7 @@ import { Badge, StageBadge, StatusBadge } from '../../components/ui/Badge'
 import type { Column } from '../../components/ui/DataTable'
 import { formatDate, formatDateTime, fullName, timeAgo } from '../../lib/utils'
 import { subStageOf } from '../../lib/stages'
-import type { Lead } from '../../types/models'
+import type { CustomFieldDef, Lead } from '../../types/models'
 import { DISCUSSION_COLUMNS, PROFILE_COLUMNS } from './fieldCatalog'
 
 export interface LeadColumn extends Column<Lead> {
@@ -33,6 +33,26 @@ const show = (value: unknown) => {
   if (typeof value === 'boolean') return text(value ? 'Yes' : 'No')
   if (typeof value === 'object') return text(Object.values(value as Record<string, unknown>).filter(Boolean).join(' / '))
   return text(String(value))
+}
+
+/** Display text for a Masters → Custom field value (list, detail): booleans as Yes/No, dates formatted. */
+export function formatCustomValue(value: unknown, def?: Pick<CustomFieldDef, 'type'>): string | null {
+  if (value === undefined || value === null || value === '') return null
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (def?.type === 'date' && typeof value === 'string') return formatDate(value)
+  if (Array.isArray(value)) return value.map(String).join(', ')
+  if (typeof value === 'object') return Object.values(value as Record<string, unknown>).filter(Boolean).join(' / ')
+  return String(value)
+}
+
+/** One list column per active custom field; `custom.<key>` is also the export key the backend accepts. */
+export function customFieldColumn(def: CustomFieldDef): LeadColumn {
+  return {
+    key: `custom.${def.key}`,
+    header: def.label,
+    exportKeys: [`custom.${def.key}`],
+    render: (l) => text(formatCustomValue(l.customFields?.[def.key], def)),
+  }
 }
 
 /**

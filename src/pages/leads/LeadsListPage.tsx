@@ -25,13 +25,13 @@ import { cn, parseApiError } from '../../lib/utils'
 import { useColumnPrefs } from '../../hooks/useColumnPrefs'
 import type { FilterField, Lead } from '../../types/models'
 import { QuickAddDrawer } from './QuickAddDrawer'
-import { BulkUploadModal } from './BulkUploadModal'
 import { ExportLeadsModal } from './ExportLeadsModal'
 import { LeadFilterPanel } from './LeadFilterPanel'
 import { BulkAssignModal } from './BulkAssignModal'
 import { parseConditions, type LeadSelection } from './leadSelection'
 import { BulkSendModal } from './BulkSendModal'
-import { DEFAULT_VISIBLE_COLUMNS, LEAD_COLUMNS, LEAD_COLUMN_KEYS, LOCKED_COLUMNS } from './leadColumns'
+import { DEFAULT_VISIBLE_COLUMNS, LOCKED_COLUMNS } from './leadColumns'
+import { useLeadColumns } from './useLeadColumns'
 
 const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order']
 /** local YYYY-MM-DD, `daysAgo` days back */
@@ -88,7 +88,6 @@ export default function LeadsListPage() {
   const user = useCurrentUser()
   const admin = isAdminLike(user)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
-  const [bulkOpen, setBulkOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
@@ -99,8 +98,10 @@ export default function LeadsListPage() {
   const [allMatching, setAllMatching] = useState(false)
   const [bulkAction, setBulkAction] = useState<'assign' | 'sms' | 'email' | null>(null)
 
+  // the static lead columns plus one per active custom field (Masters → Custom fields)
+  const { columns: leadColumns, keys: leadColumnKeys } = useLeadColumns()
   const columnPrefs = useColumnPrefs(`crm.leads.columns.v2.${user?._id ?? 'anon'}`, {
-    allKeys: LEAD_COLUMN_KEYS,
+    allKeys: leadColumnKeys,
     defaultVisible: DEFAULT_VISIBLE_COLUMNS,
     locked: LOCKED_COLUMNS,
   })
@@ -219,7 +220,7 @@ export default function LeadsListPage() {
   }
   const columns = [
     ...(admin ? [selectColumn] : []),
-    ...columnPrefs.visibleKeys.map((key) => LEAD_COLUMNS.find((c) => c.key === key)!).filter(Boolean),
+    ...columnPrefs.visibleKeys.map((key) => leadColumns.find((c) => c.key === key)!).filter(Boolean),
   ]
   const smart = params.get('smart')
   const chips = linkedFilterChips(params, meta?.data.fields)
@@ -237,7 +238,7 @@ export default function LeadsListPage() {
               </Button>
             )}
             {can(user, 'leads', 'import') && (
-              <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}>
+              <Button variant="outline" size="sm" onClick={() => navigate('/app/leads/import')}>
                 <Upload className="h-3.5 w-3.5" /> Bulk Upload
               </Button>
             )}
@@ -291,7 +292,7 @@ export default function LeadsListPage() {
               </Button>
             )}
             <ColumnChooser
-              columns={LEAD_COLUMNS.map((c) => ({ key: c.key, label: c.header }))}
+              columns={leadColumns.map((c) => ({ key: c.key, label: c.header }))}
               order={columnPrefs.order}
               isVisible={columnPrefs.isVisible}
               locked={LOCKED_COLUMNS}
@@ -548,7 +549,6 @@ export default function LeadsListPage() {
       />
 
       {quickAddOpen && <QuickAddDrawer open onClose={() => setQuickAddOpen(false)} />}
-      {bulkOpen && <BulkUploadModal open onClose={() => setBulkOpen(false)} />}
       {exportOpen && (
         <ExportLeadsModal
           open

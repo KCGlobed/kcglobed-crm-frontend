@@ -33,27 +33,29 @@ function write(storageKey: string, prefs: StoredPrefs) {
 
 /**
  * Which table columns are visible and in what order, remembered per user in
- * this browser. Columns added to the table later appear at the end, hidden;
- * columns that no longer exist are dropped from saved layouts.
+ * this browser. `allKeys` may change after mount (custom-field columns arrive
+ * with the masters): columns added later appear at the end, hidden; columns
+ * that no longer exist are dropped from saved layouts.
  */
 export function useColumnPrefs(storageKey: string, { allKeys, defaultVisible, locked = [] }: Options) {
   const defaults = useMemo<StoredPrefs>(() => ({ order: allKeys, visible: defaultVisible }), [allKeys, defaultVisible])
 
-  const [prefs, setPrefs] = useState<StoredPrefs>(() => {
-    const saved = read(storageKey)
-    if (!saved) return defaults
-    const known = new Set(allKeys)
-    const order = [...saved.order.filter((k) => known.has(k)), ...allKeys.filter((k) => !saved.order.includes(k))]
-    return { order, visible: saved.visible.filter((k) => known.has(k)) }
-  })
+  const [stored, setStored] = useState<StoredPrefs>(() => read(storageKey) ?? defaults)
 
   const update = useCallback(
     (next: StoredPrefs) => {
-      setPrefs(next)
+      setStored(next)
       write(storageKey, next)
     },
     [storageKey]
   )
+
+  // the saved layout reconciled with the columns that exist right now
+  const prefs = useMemo<StoredPrefs>(() => {
+    const known = new Set(allKeys)
+    const order = [...stored.order.filter((k) => known.has(k)), ...allKeys.filter((k) => !stored.order.includes(k))]
+    return { order, visible: stored.visible.filter((k) => known.has(k)) }
+  }, [stored, allKeys])
 
   const visibleKeys = useMemo(() => {
     const shown = new Set([...prefs.visible, ...locked])

@@ -19,6 +19,7 @@ import { toast } from 'sonner'
 import { useDeleteLeadMutation, useGetLeadQuery, useLeadCallsQuery } from '../../services/leadsApi'
 import { useLeadMessagesQuery } from '../../services/messagingApi'
 import { useLeadTasksQuery } from '../../services/tasksApi'
+import { useMasterBootstrapQuery } from '../../services/mastersApi'
 import { useCurrentUser } from '../../app/hooks'
 import { can } from '../../constants/permissions'
 import { isAdminLike } from '../../lib/roles'
@@ -29,12 +30,14 @@ import { ConfirmDialog, ErrorState, Skeleton } from '../../components/ui/feedbac
 import { Tabs } from '../../components/ui/misc'
 import { cn, formatDateTime, fullName, initials, parseApiError, timeAgo } from '../../lib/utils'
 import { LeadFormDrawer } from './LeadFormDrawer'
+import { formatCustomValue } from './leadColumns'
 import { LeadTimeline } from './LeadTimeline'
 import { LeadNotes } from './LeadNotes'
 import { LeadProfileTab } from './profile/LeadProfileTab'
 import { LeadFollowUps } from './LeadFollowUps'
 import { LeadHistory } from './LeadHistory'
 import { CounsellorDiscussion } from './CounsellorDiscussion'
+import { CustomInformation } from './CustomInformation'
 import { DispositionDrawer } from './DispositionDrawer'
 import { ChangeStageModal } from './ChangeStageModal'
 import { AddNoteModal, AssignLeadModal, SendMessageModal } from './LeadActionModals'
@@ -60,22 +63,38 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   )
 }
 
-function OverviewTab({ lead }: { lead: Lead }) {
+function OverviewTab({ lead, onEditCustom }: { lead: Lead; onEditCustom?: () => void }) {
   const { data: calls } = useLeadCallsQuery(lead._id)
   const { data: messages } = useLeadMessagesQuery(lead._id)
+  const { data: masters } = useMasterBootstrapQuery()
+  const customDefs = masters?.data.customFields ?? []
   return (
     <div className="grid gap-4 lg:grid-cols-3">
-      <Card title="Contact">
-        <DetailRow label="Mobile" value={lead.mobile} />
-        <DetailRow label="Email" value={lead.email} />
-        <DetailRow label="City" value={lead.city} />
-        <DetailRow label="State" value={lead.state} />
-        <DetailRow label="Program Interest" value={lead.programInterest?.name} />
-        {/* <DetailRow
-          label="Opted Out"
-          value={[lead.optedOut?.sms ? 'SMS' : null, lead.optedOut?.email ? 'Email' : null].filter(Boolean).join(', ') || 'No'}
-        /> */}
-      </Card>
+      <div className="space-y-4">
+        <Card title="Contact">
+          <DetailRow label="Mobile" value={lead.mobile} />
+          <DetailRow label="Email" value={lead.email} />
+          <DetailRow label="City" value={lead.city} />
+          <DetailRow label="State" value={lead.state} />
+          <DetailRow label="Program Interest" value={lead.programInterest?.name} />
+          {/* <DetailRow
+            label="Opted Out"
+            value={[lead.optedOut?.sms ? 'SMS' : null, lead.optedOut?.email ? 'Email' : null].filter(Boolean).join(', ') || 'No'}
+          /> */}
+        </Card>
+        {customDefs.length > 0 && (
+          <Card title="Additional Lead Information">
+            {customDefs.map((def) => (
+              <DetailRow key={def.key} label={def.label} value={formatCustomValue(lead.customFields?.[def.key], def)} />
+            ))}
+            {onEditCustom && (
+              <Button variant="outline" size="sm" className="mt-2" onClick={onEditCustom}>
+                <Pencil className="h-3.5 w-3.5" /> Edit additional information
+              </Button>
+            )}
+          </Card>
+        )}
+      </div>
       <Card title="System Fields">
         <DetailRow label="Lead ID" value={lead.leadNo} />
         <DetailRow label="Created On" value={formatDateTime(lead.createdAt)} />
@@ -369,11 +388,14 @@ export default function LeadDetailPage() {
         {isLoading || !lead ? (
           <Skeleton className="h-48 w-full" />
         ) : tab === 'overview' ? (
-          <OverviewTab lead={lead} />
+          <OverviewTab lead={lead} onEditCustom={canEdit ? () => setTab('discussion') : undefined} />
         ) : tab === 'profile' ? (
           <LeadProfileTab leadId={lead._id} />
         ) : tab === 'discussion' ? (
-          <CounsellorDiscussion leadId={lead._id} readOnly={!canEdit} />
+          <div className="space-y-4">
+            <CounsellorDiscussion leadId={lead._id} readOnly={!canEdit} />
+            <CustomInformation lead={lead} readOnly={!canEdit} />
+          </div>
         ) : tab === 'followups' ? (
           <LeadFollowUps leadId={lead._id} />
         ) : tab === 'timeline' ? (

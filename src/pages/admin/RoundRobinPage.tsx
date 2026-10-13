@@ -75,7 +75,7 @@ function ReportsCard() {
   return (
     <Card title="Assignment reports">
       <p className="mb-3 text-xs text-slate-500">
-        Every lead the rotation handed out in the period, with a per-counsellor summary.
+        Every lead the rotation handed out in the period, with a per-user summary.
       </p>
       <div className="flex flex-wrap items-end gap-3">
         <FormField label="From">
@@ -280,11 +280,12 @@ function SettingsCard({ settings, editable }: { settings: RoundRobinSettings; ed
 function memberStatus(m: RoundRobinMember): { label: string; tone: 'green' | 'slate' | 'amber' } {
   if (m.eligible) return { label: 'Eligible', tone: 'green' }
   if (!m.receivesLeads) return { label: 'Opted out', tone: 'slate' }
+  if (!m.hasLeadsAccess) return { label: 'No leads access', tone: 'amber' }
   if (m.teamPaused) return { label: 'Paused team', tone: 'amber' }
   return { label: 'Offline', tone: 'slate' }
 }
 
-/** Eligible counsellors in rotation order, then everyone else by name. */
+/** Eligible members in rotation order, then everyone else by name. */
 function sortRotation(rows: RoundRobinMember[]) {
   return [...rows].sort((a, b) => {
     if (a.eligible !== b.eligible) return a.eligible ? -1 : 1
@@ -295,8 +296,10 @@ function sortRotation(rows: RoundRobinMember[]) {
 
 /**
  * Round-robin control room: who gets the next Meta / Google / Website lead,
- * the Super Admin's on/off, channel and IST window settings, and a per-counsellor
- * in/out toggle. Polls so online state follows counsellors logging in and out.
+ * the Super Admin's on/off, channel and IST window settings, and a per-member
+ * in/out toggle. Membership is role-free: anyone with the pool flag and View on
+ * Leads, except a Super Admin. Polls so online state follows members logging in
+ * and out.
  */
 export default function RoundRobinPage() {
   const me = useCurrentUser()
@@ -326,11 +329,11 @@ export default function RoundRobinPage() {
     },
     {
       key: 'name',
-      header: 'Counsellor',
+      header: 'User',
       render: (m) => (
         <div className="min-w-0">
           <p className="font-medium text-slate-800">{m.name}</p>
-          <p className="text-[11px] text-slate-500">{m.team ?? m.email}</p>
+          <p className="text-[11px] text-slate-500">{[m.roleLabel, m.team ?? m.email].filter(Boolean).join(' · ')}</p>
         </div>
       ),
     },
@@ -358,13 +361,15 @@ export default function RoundRobinPage() {
       align: 'right',
       className: 'w-32',
       render: (m) => (
-        <Switch
-          label={`${m.name} receives leads`}
-          checked={m.receivesLeads}
-          disabled={!canToggle}
-          loading={pendingId === m._id}
-          onChange={(v) => onToggle(m, v)}
-        />
+        <span title={!m.hasLeadsAccess ? 'Grant View on the Leads module first' : undefined}>
+          <Switch
+            label={`${m.name} receives leads`}
+            checked={m.receivesLeads}
+            disabled={!canToggle || !m.hasLeadsAccess}
+            loading={pendingId === m._id}
+            onChange={(v) => onToggle(m, v)}
+          />
+        </span>
       ),
     },
   ]
@@ -373,7 +378,7 @@ export default function RoundRobinPage() {
     <>
       <PageHeader
         title="Round Robin"
-        description="New Meta, Google, Website, Telephony and Chatbot leads go to online counsellors in turn. Manual leads are unaffected."
+        description="New Meta, Google, Website, Telephony and Chatbot leads go to online pool members in turn. Manual leads are unaffected."
         actions={
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} /> Refresh
@@ -419,8 +424,8 @@ export default function RoundRobinPage() {
                 columns={columns}
                 rows={sortRotation(data.data.rotation)}
                 rowKey={(m) => m._id}
-                emptyTitle="No counsellors in the pool"
-                emptyDescription="Tick “In round-robin lead pool” on a counsellor in Users & Access."
+                emptyTitle="No users in the pool"
+                emptyDescription="Tick 'In round-robin lead pool' on any user with Leads access, except a Super Admin, in Users & Access."
                 rowClassName={(m) => (m.eligible ? undefined : 'opacity-70')}
               />
             </div>

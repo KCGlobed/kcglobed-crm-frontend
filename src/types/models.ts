@@ -536,14 +536,80 @@ export interface ImportResult {
   errorFile: string | null
   errors: { row: number; reason: string }[]
   perCounsellor: { _id: string; name: string; count: number }[]
+  mappedColumns?: number
+  skippedColumns?: number
+  notesAdded?: number
 }
+
+export type ImportColumnStatus = 'mapped' | 'unmapped' | 'skipped'
+/** CRM lists a lookup column's values must match */
+export type ImportLookup = 'program' | 'cohort' | 'track' | 'source' | 'stage' | 'owner'
+
+export interface ImportChoice {
+  value: string
+  label: string
+  /** stage choices are grouped by stage (stage, then its dispositions) */
+  group?: string
+}
+
+/** something an Excel column can be imported as: a standard lead field or a custom field (`custom.<key>`) */
+export interface ImportField {
+  key: string
+  label: string
+  required: boolean
+  kind: 'standard' | 'custom'
+  /** custom fields: the field type and, for dropdowns, its options */
+  type?: CustomFieldDef['type']
+  options?: string[]
+  /** standard lookup fields: which CRM list the values must match, and its choices */
+  lookup?: ImportLookup | null
+  choices?: ImportChoice[]
+  /** several columns may map to this field (notes) */
+  multi?: boolean
+  hint?: string
+}
+
+/** one column of the uploaded file with its mapping decision and a profile of its values */
+export interface ImportColumn {
+  header: string
+  /** ImportField key it is mapped to */
+  field: string | null
+  status: ImportColumnStatus
+  /** rows with a value */
+  filled: number
+  distinct: number
+  /** distinct values (first 50) — dropdown options for a new custom field */
+  values: string[]
+  suggestedType: CustomFieldDef['type']
+}
+
+/** one distinct text of a lookup column and the CRM record it resolves to */
+export interface ImportValue {
+  value: string
+  count: number
+  /** ImportChoice value; null = leave the field empty */
+  target: string | null
+  how: 'explicit' | 'auto' | 'missing'
+}
+
+/** ImportField key → Excel column (a list for multi fields such as notes) */
+export type ImportMapping = Record<string, string | string[]>
 
 export interface ImportPreview {
   headers: string[]
-  mapping: Record<string, string>
+  mapping: ImportMapping
+  /** Excel columns explicitly left out */
+  skipped: string[]
+  columns: ImportColumn[]
+  /** Excel columns that are neither mapped nor skipped */
+  unmapped: string[]
+  /** per mapped lookup field: every distinct text in the file with its resolution */
+  values: Record<string, ImportValue[]>
+  /** per mapped lookup field: how many distinct texts are unmatched */
+  unresolved: Record<string, number>
   totalRows: number
   rows: { row: number; values: Record<string, string>; error: string | null; duplicateOf: string | null }[]
-  fields: { key: string; label: string; required: boolean }[]
+  fields: ImportField[]
 }
 
 export interface FilterFieldOption {
@@ -859,7 +925,11 @@ export interface DashboardSummary {
   }
 }
 
-/** Round-robin auto-assignment: Meta / Google / Website leads rotate over online counsellors. */
+/**
+ * Round-robin auto-assignment: Meta / Google / Website leads rotate over the online pool
+ * members — any active user with "In round-robin lead pool" ticked and View on the Leads
+ * module, whatever their role, except a Super Admin.
+ */
 export type RoundRobinChannel = 'meta' | 'google' | 'capture' | 'telephony' | 'chatbot'
 
 export interface RoundRobinSettings {
@@ -872,18 +942,26 @@ export interface RoundRobinSettings {
   days: number[]
 }
 
+/**
+ * One row of the Round Robin screen: every active non-super-admin user with the pool flag on
+ * (any role), plus counsellors who opted out so they can be switched back on.
+ */
 export interface RoundRobinMember {
   _id: string
   name: string
   email: string
   team?: string | null
-  /** admin toggle */
+  /** "Admin", "Admission Counsellor", "Custom access" … */
+  roleLabel?: string
+  /** admin toggle ("In round-robin lead pool") */
   receivesLeads: boolean
   /** has a live session now */
   online: boolean
+  /** View on the Leads module (role template for Admin / Counsellor, own permissions for custom access) */
+  hasLeadsAccess: boolean
   /** team opted out / inactive */
   teamPaused: boolean
-  /** all conditions met → in rotation */
+  /** active + flag + not super admin + leads access + online + team not paused → in rotation */
   eligible: boolean
   /** order in rotation; null when not eligible */
   position: number | null

@@ -20,7 +20,7 @@ import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
 import { ConfirmDialog } from '../../components/ui/feedback'
 import { Checkbox, FormField, Input, Select } from '../../components/ui/fields'
-import { cn, formatDate, parseApiError } from '../../lib/utils'
+import { camelKey, cn, formatDate, parseApiError } from '../../lib/utils'
 import { SubStagesEditor, type SubStageDraft } from './SubStagesEditor'
 import { StageReassignModal } from './StageReassignModal'
 
@@ -39,12 +39,6 @@ interface FieldDef {
 }
 
 /** "Sister Name" → "sisterName": the camelCase key the backend requires (`^[a-z][a-zA-Z0-9_]*$`). */
-const camelKey = (label: string) => {
-  const words = label.toLowerCase().replace(/['’]/g, '').match(/[a-z0-9]+/g) ?? []
-  const key = words.map((w, i) => (i ? w[0].toUpperCase() + w.slice(1) : w)).join('')
-  return (/^[a-z]/.test(key) ? key : key && `field${key[0].toUpperCase()}${key.slice(1)}`).slice(0, 50)
-}
-
 interface MasterConfig {
   type: MasterType
   label: string
