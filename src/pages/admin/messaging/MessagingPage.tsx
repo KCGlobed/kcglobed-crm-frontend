@@ -19,6 +19,7 @@ import { Drawer } from '../../../components/ui/Drawer'
 import { Modal } from '../../../components/ui/Modal'
 import { EmptyState, Skeleton } from '../../../components/ui/feedback'
 import { formatDateTime, parseApiError } from '../../../lib/utils'
+import { sanitizeHtml } from '../../../lib/sanitize'
 import type { CampaignRow, MessageTemplate } from '../../../types/models'
 
 /** Minimal rich-text editor for email templates: bold, links, bullet lists, logo image (GL-21). */
@@ -51,7 +52,7 @@ function RichText({ value, onChange }: { value: string; onChange: (html: string)
         suppressContentEditableWarning
         className="min-h-40 p-3 text-sm text-slate-800 focus:outline-none [&_ul]:list-disc [&_ul]:pl-5 [&_a]:text-brand-600 [&_a]:underline"
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
-        dangerouslySetInnerHTML={{ __html: value }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(value) }}
       />
     </div>
   )

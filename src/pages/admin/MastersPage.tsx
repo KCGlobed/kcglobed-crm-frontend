@@ -70,6 +70,7 @@ const CHANNEL_OPTIONS = [
   { value: 'organic', label: 'Organic' },
   { value: 'paid', label: 'Paid Ads' },
   { value: 'referral', label: 'Referral' },
+  { value: 'partner', label: 'Partner' },
   { value: 'event', label: 'Events' },
   { value: 'telephony', label: 'Telephony' },
   { value: 'chatbot', label: 'Chatbot' },

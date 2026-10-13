@@ -5,6 +5,7 @@ import { Modal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
 import { FormField, Input, Select } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
+import { sanitizeHtml } from '../../lib/sanitize'
 import type { CampaignPreview } from '../../types/models'
 import { selectionBody, type LeadSelection } from './leadSelection'
 
@@ -104,7 +105,7 @@ export function BulkSendModal({
               <p className="mb-1 text-[11px] font-semibold uppercase text-slate-500">Sample · to {preview.sample.to}</p>
               {preview.sample.subject && <p className="mb-1 text-sm font-medium text-slate-800">{preview.sample.subject}</p>}
               {channel === 'email' ? (
-                <div className="prose prose-sm text-sm text-slate-700" dangerouslySetInnerHTML={{ __html: preview.sample.body }} />
+                <div className="prose prose-sm text-sm text-slate-700" dangerouslySetInnerHTML={{ __html: sanitizeHtml(preview.sample.body) }} />
               ) : (
                 <p className="whitespace-pre-wrap text-sm text-slate-700">{preview.sample.body}</p>
               )}
