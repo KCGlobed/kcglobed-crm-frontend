@@ -156,7 +156,7 @@ function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSumm
         label={stage?.name ?? name}
         value={stage?.count}
         progress={share(stage?.count, total)}
-        hint={stage ? 'Leads on this stage' : summary ? 'Stage not found in Masters' : undefined}
+        hint="Leads on this stage"
         icon={icon}
         accent={accent}
         color={STAGE_COLORS[name]}
@@ -401,7 +401,7 @@ export default function DashboardPage() {
                     label={tile?.name ?? label}
                     value={tile?.count}
                     progress={share(tile?.count, summary?.totals.total)}
-                    hint={stageId ? 'Leads on this stage' : summary ? 'Stage not found in Masters' : undefined}
+                    hint="Leads on this stage"
                     icon={icon}
                     accent={accent}
                     color={STAGE_COLORS[tile?.name ?? label]}
@@ -425,7 +425,7 @@ export default function DashboardPage() {
                     label={stage?.name ?? label}
                     value={stage?.count}
                     progress={share(stage?.count, summary?.totals.total)}
-                    hint={stage ? 'Leads on this stage' : summary ? 'Stage not found in Masters' : undefined}
+                    hint="Leads on this stage"
                     icon={icon}
                     color={STAGE_COLORS[label]}
                     loading={isLoading}
