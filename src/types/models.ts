@@ -851,6 +851,12 @@ export interface DashboardSummary {
   byOwner: { _id: string; name: string; count: number }[]
   /** the eight newest leads in scope */
   recentLeads: DashboardRecentLead[]
+  /** the signed-in counsellor's calling activity today; absent until the backend tracks it (the cards then show 0) */
+  activityToday?: {
+    calls?: number
+    talktimeSeconds?: number
+    breakSeconds?: number
+  }
 }
 
 /** Round-robin auto-assignment: Meta / Google / Website leads rotate over online counsellors. */

@@ -133,17 +133,10 @@ const STATUS_TILES: { key: DashboardStatusTile['key']; label: string; icon: Luci
 const stageRow = (summary: DashboardSummary | undefined, name: string) =>
   summary?.byStage.find((s) => s.name.trim().toLowerCase() === name.toLowerCase())
 
-/**
- * DUMMY for now: figures the dashboard summary does not carry yet. Each card
- * shows the real number when the backend sends one and falls back to these otherwise.
- */
-const COUNSELLOR_SAMPLE = {
-  untouched: 23,
-  registrationFee: 6,
-  // today's calling activity: nothing is tracked yet, so every figure stays at zero
-  callsToday: 0,
-  talktimeToday: '0m',
-  breakTimeToday: '0m',
+/** Seconds as "2h 15m" / "45m" / "0m". */
+const duration = (seconds = 0) => {
+  const mins = Math.round(seconds / 60)
+  return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`
 }
 
 /**
@@ -152,22 +145,23 @@ const COUNSELLOR_SAMPLE = {
  */
 function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSummary; loading: boolean; onOpen: (params: ListParams) => void }) {
   const total = summary?.totals.total
-  const stageCard = (name: string, icon: LucideIcon, sample?: number) => {
+  const activity = summary?.activityToday
+  // every stage card reads its count straight from the summary's byStage rows (the Stage Distribution data)
+  const stageCard = (name: string, icon: LucideIcon, accent?: 'amber') => {
     const stage = stageRow(summary, name)
     const stageId = stage?._id
-    const live = stage !== undefined
-    const value = live ? stage.count : sample
     return (
       <KpiCard
         key={name}
         label={stage?.name ?? name}
-        value={value}
-        progress={share(value, total)}
-        hint="Leads on this stage"
+        value={stage?.count}
+        progress={share(stage?.count, total)}
+        hint={stage ? 'Leads on this stage' : summary ? 'Stage not found in Masters' : undefined}
         icon={icon}
+        accent={accent}
         color={STAGE_COLORS[name]}
         loading={loading}
-        onClick={live && stage.count && stageId ? () => onOpen({ stage: stageId }) : undefined}
+        onClick={stage?.count && stageId ? () => onOpen({ stage: stageId }) : undefined}
       />
     )
   }
@@ -184,19 +178,10 @@ function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSumm
             loading={loading}
             onClick={total ? () => onOpen({}) : undefined}
           />
-          <KpiCard
-            label="Untouched"
-            value={COUNSELLOR_SAMPLE.untouched}
-            progress={share(COUNSELLOR_SAMPLE.untouched, total)}
-            hint="Not contacted yet"
-            icon={CircleDashed}
-            accent="amber"
-            loading={loading}
-            onClick={() => onOpen({ smart: 'untouched' })}
-          />
+          {stageCard('Untouched', CircleDashed, 'amber')}
           {stageCard('Interested', ThumbsUp)}
           {stageCard('Not Interested', ThumbsDown)}
-          {stageCard('Registration & Fee', Receipt, COUNSELLOR_SAMPLE.registrationFee)}
+          {stageCard('Registration & Fee', Receipt)}
           {stageCard('Enrolled', GraduationCap)}
         </div>
       </section>
@@ -204,9 +189,10 @@ function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSumm
       <section className="mt-5" aria-label="Today's Activity">
         <SectionHeading title="Today's Activity" hint="" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-          <KpiCard label="Total Calls Today" value={COUNSELLOR_SAMPLE.callsToday} hint="Calls placed" icon={PhoneCall} accent="cyan" loading={loading} />
-          <KpiCard label="Total Talk time Today" value={COUNSELLOR_SAMPLE.talktimeToday} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
-          <KpiCard label="Total Break Time Today" value={COUNSELLOR_SAMPLE.breakTimeToday} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
+          {/* straight from the summary's activityToday; 0 until the backend sends it */}
+          <KpiCard label="Total Calls Today" value={activity?.calls ?? 0} hint="Calls placed" icon={PhoneCall} accent="cyan" loading={loading} />
+          <KpiCard label="Total Talk time Today" value={duration(activity?.talktimeSeconds)} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
+          <KpiCard label="Total Break Time Today" value={duration(activity?.breakSeconds)} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
         </div>
       </section>
     </>
