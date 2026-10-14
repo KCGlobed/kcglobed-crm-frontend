@@ -51,6 +51,7 @@ const isHiddenFilterField = (f: FilterField) => HIDDEN_FILTER_FIELDS.includes(f.
 const SMART_LABELS: Record<string, string> = {
   new_today: 'New Today',
   untouched: 'Untouched',
+  not_connected: 'Not Connected',
   followups_all: 'All Follow-ups',
   followups_today: 'Follow-ups Today',
   overdue: 'Overdue',

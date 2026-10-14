@@ -173,7 +173,7 @@ export function LeadProfileTab({ leadId }: { leadId: string }) {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-48 flex-1 items-center gap-3">
-          <span className="text-xs font-medium text-slate-600">Profile Completion</span>
+          <span className="text-xs font-medium text-slate-600">Student Profile Completion</span>
           <div className="h-2 max-w-64 flex-1 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuenow={profile.completionPercent} aria-valuemin={0} aria-valuemax={100}>
             <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${profile.completionPercent}%` }} />
           </div>

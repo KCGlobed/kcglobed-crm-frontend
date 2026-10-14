@@ -110,12 +110,12 @@ function OverviewTab({ lead, onEditCustom }: { lead: Lead; onEditCustom?: () => 
         <DetailRow label="Owner" value={lead.owner?.name ?? 'Unassigned'} />
         <DetailRow label="Assigned On" value={formatDateTime(lead.assignedAt)} />
         <DetailRow label="Re-enquiry Count" value={lead.reEnquiryCount ?? 0} />
-        <DetailRow label="Profile Completion" value={`${lead.profileCompletion ?? 0}%`} />
+        <DetailRow label="Student Profile Completion" value={`${lead.profileCompletion ?? 0}%`} />
         {/* Only from the new backend: before it, customFieldsCompletion held the discussion %, so both wait for discussionCompletion */}
         {lead.discussionCompletion !== undefined && (
           <>
             <DetailRow label="Custom Fields Completion" value={`${lead.customFieldsCompletion ?? 0}%`} />
-            <DetailRow label="Discussion Completion" value={`${lead.discussionCompletion}%`} />
+            <DetailRow label="Counsellor Discussion Completion" value={`${lead.discussionCompletion}%`} />
           </>
         )}
       </Card>
@@ -244,6 +244,13 @@ export default function LeadDetailPage() {
                         {subStageOf(lead) && <span className="font-normal opacity-90">· {subStageOf(lead)!.name}</span>}
                       </StageBadge>
                     )}
+                    <span
+                      className="text-xs text-slate-400"
+                      data-testid="lead-last-updated"
+                      title={lead.stageChangedAt ? `In this stage since ${formatDateTime(lead.stageChangedAt)}` : undefined}
+                    >
+                      Last Updated: {formatDateTime(lead.updatedAt)}
+                    </span>
                     {!!lead.reEnquiryCount && <Badge tone="blue">Re-enquired ×{lead.reEnquiryCount}</Badge>}
                   </div>
                   <p className="mt-0.5 text-xs text-slate-500">
