@@ -48,7 +48,7 @@ const FILTERS: { key: string; label: string; types?: string }[] = [
   { key: 'reenquiry', label: 'Re-enquiry', types: 're_enquiry' },
   { key: 'documents', label: 'Documents', types: 'document' },
   { key: 'followups', label: 'Follow-ups', types: 'task' },
-  { key: 'stages', label: 'Stage & Status', types: 'stage_change,status_change' },
+  { key: 'stages', label: 'Lead Stage', types: 'stage_change,status_change' },
   { key: 'assignment', label: 'Lead Assigned', types: 'assignment' },
   { key: 'edits', label: 'Profile Update', types: 'edit,profile' },
 ]
