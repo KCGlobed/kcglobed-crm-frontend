@@ -226,6 +226,44 @@ export default function LeadsListPage() {
   ]
   const smart = params.get('smart')
   const chips = linkedFilterChips(params, meta?.data.fields)
+  // "Not Connected" pill: the backend lists it as a smart filter from this release on. Against an
+  // older backend (e.g. production before deploy) it falls back to the plain stage filter instead.
+  const notConnectedStage = masters?.data.stages.find((s) => s.name.trim().toLowerCase() === 'not connected')
+  const backendHasNotConnected = meta?.data.smartFilters.some((f) => f.key === 'not_connected') ?? false
+  const notConnectedActive = !smart && !!notConnectedStage && params.get('stage') === notConnectedStage._id
+  const toggleNotConnected = () => {
+    if (!notConnectedStage) return
+    const next = new URLSearchParams(params)
+    next.delete('smart')
+    next.delete('sub_stage')
+    if (notConnectedActive) next.delete('stage')
+    else next.set('stage', notConnectedStage._id)
+    replaceParams(next)
+  }
+  const clearQuick = () => {
+    const next = new URLSearchParams(params)
+    next.delete('smart')
+    if (notConnectedActive) {
+      next.delete('stage')
+      next.delete('sub_stage')
+    }
+    replaceParams(next)
+  }
+  const pill = (key: string, label: string, active: boolean, onClick: () => void, title: string) => (
+    <button
+      key={key}
+      onClick={onClick}
+      className={cn(
+        'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+        active
+          ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
+          : 'border-slate-300 bg-white text-slate-600 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700'
+      )}
+      title={title}
+    >
+      {label}
+    </button>
+  )
 
   return (
     <>
@@ -256,33 +294,14 @@ export default function LeadsListPage() {
       {/* GL-34 smart filters */}
       <div className="-mx-4 mb-3 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&>*]:shrink-0">
         <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Quick Filters</span>
-        <button
-          onClick={() => setParam('smart', undefined)}
-          className={cn(
-            'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-            !smart
-              ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
-              : 'border-slate-300 bg-white text-slate-600 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700'
-          )}
-          title="All leads, no quick filter"
-        >
-          Show All
-        </button>
-        {meta?.data.smartFilters.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setParam('smart', smart === f.key ? undefined : f.key)}
-            className={cn(
-              'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-              smart === f.key
-                ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
-                : 'border-slate-300 bg-white text-slate-600 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700'
-            )}
-            title={f.label}
-          >
-            {smartLabel(f.key)}
-          </button>
-        ))}
+        {pill('all', 'Show All', !smart && !notConnectedActive, clearQuick, 'All leads, no quick filter')}
+        {meta?.data.smartFilters.flatMap((f) => [
+          pill(f.key, smartLabel(f.key), smart === f.key, () => setParam('smart', smart === f.key ? undefined : f.key), f.label),
+          // fallback pill sits where the backend's own not_connected filter would, right after Untouched
+          ...(f.key === 'untouched' && !backendHasNotConnected && notConnectedStage
+            ? [pill('not_connected', 'Not Connected', notConnectedActive, toggleNotConnected, 'Stage = Not Connected')]
+            : []),
+        ])}
       </div>
 
       <FilterBar

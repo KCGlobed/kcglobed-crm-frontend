@@ -190,7 +190,6 @@ export function CustomInformation({
             <div key={d.key} className="space-y-1">
               <label className="block text-xs font-medium text-slate-600">
                 {d.label}
-                {d.required && <span className="ml-0.5 text-red-500">*</span>}
               </label>
               {!editing ? (
                 <p

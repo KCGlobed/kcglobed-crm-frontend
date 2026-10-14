@@ -15,7 +15,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useDeleteLeadMutation, useGetLeadQuery, useLeadCallsQuery } from '../../services/leadsApi'
+import { useDeleteLeadMutation, useGetLeadQuery, useLeadCallsQuery, useLeadNotesQuery } from '../../services/leadsApi'
 import { useLeadMessagesQuery } from '../../services/messagingApi'
 import { useLeadTasksQuery } from '../../services/tasksApi'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
@@ -42,7 +42,7 @@ import { ChangeStageModal } from './ChangeStageModal'
 import { AddNoteModal, AssignLeadModal, SendMessageModal } from './LeadActionModals'
 import { FollowUpFormModal } from '../tasks/FollowUpFormModal'
 import { subStageOf } from '../../lib/stages'
-import type { Lead } from '../../types/models'
+import type { CustomFieldDef, Lead, LeadMessage } from '../../types/models'
 
 function DetailRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
@@ -62,11 +62,29 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   )
 }
 
-function OverviewTab({ lead, onEditCustom }: { lead: Lead; onEditCustom?: () => void }) {
+/**
+ * Console providers only log the message, so their "sent" / "delivered" is not a real delivery
+ * status; a backend that does not report the provider yet cannot confirm it either. Failed and
+ * bounced are real outcomes whatever the provider.
+ */
+const isSimulatedStatus = (m: LeadMessage) =>
+  (m.status === 'sent' || m.status === 'delivered') && (!m.provider || m.provider.startsWith('console'))
+
+/** Masters custom fields that hold the remark captured with the lead (label like "Remarks"). */
+const isRemarkField = (def: CustomFieldDef) => /remark/i.test(def.label) || /remark/i.test(def.key)
+
+function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCustom?: () => void; onViewNotes?: () => void }) {
   const { data: calls } = useLeadCallsQuery(lead._id)
+  const { data: notes } = useLeadNotesQuery(lead._id)
   const { data: messages } = useLeadMessagesQuery(lead._id)
   const { data: masters } = useMasterBootstrapQuery()
   const customDefs = masters?.data.customFields ?? []
+  // The remark moves out of Additional Lead Information and into the Notes card below it
+  const infoDefs = customDefs.filter((def) => !isRemarkField(def))
+  const remarks = customDefs
+    .filter(isRemarkField)
+    .map((def) => ({ def, text: formatCustomValue(lead.customFields?.[def.key], def) }))
+    .filter((r) => r.text !== null && r.text !== undefined && r.text !== '')
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       <div className="space-y-4">
@@ -81,9 +99,9 @@ function OverviewTab({ lead, onEditCustom }: { lead: Lead; onEditCustom?: () => 
             value={[lead.optedOut?.sms ? 'SMS' : null, lead.optedOut?.email ? 'Email' : null].filter(Boolean).join(', ') || 'No'}
           /> */}
         </Card>
-        {customDefs.length > 0 && (
+        {infoDefs.length > 0 && (
           <Card title="Additional Lead Information">
-            {customDefs.map((def) => (
+            {infoDefs.map((def) => (
               <DetailRow key={def.key} label={def.label} value={formatCustomValue(lead.customFields?.[def.key], def)} />
             ))}
             {onEditCustom && (
@@ -93,6 +111,30 @@ function OverviewTab({ lead, onEditCustom }: { lead: Lead; onEditCustom?: () => 
             )}
           </Card>
         )}
+        {/* Notes section beside the lead information: the remark captured with the lead first, then the latest notes (newest first) */}
+        <Card title="Notes">
+          {remarks.map(({ def, text }) => (
+            <div key={def.key} className="border-b border-slate-50 py-1.5 text-xs last:border-0" data-testid={`overview-remark-${def.key}`}>
+              <p className="whitespace-pre-wrap text-slate-700">{text}</p>
+              <p className="mt-0.5 text-slate-400">{def.label} · captured with the lead</p>
+            </div>
+          ))}
+          {!remarks.length && !notes?.data.length && <p className="text-xs text-slate-400">No Notes Yet</p>}
+          {notes?.data.slice(0, 5).map((n) => (
+            <div key={n._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0" data-testid="overview-note">
+              <p className="line-clamp-3 whitespace-pre-wrap text-slate-700">{n.body}</p>
+              <p className="mt-0.5 text-slate-400">
+                {n.createdBy?.name ?? 'System'}
+                {n.category ? ` · ${n.category}` : ''} · {formatDateTime(n.createdAt)}
+              </p>
+            </div>
+          ))}
+          {onViewNotes && (
+            <Button variant="outline" size="sm" className="mt-2" onClick={onViewNotes}>
+              <NotebookPen className="h-3.5 w-3.5" /> View All Notes{notes?.data.length ? ` (${notes.data.length})` : ''}
+            </Button>
+          )}
+        </Card>
       </div>
       <Card title="System Fields">
         <DetailRow label="Lead ID" value={lead.leadNo} />
@@ -141,7 +183,9 @@ function OverviewTab({ lead, onEditCustom }: { lead: Lead; onEditCustom?: () => 
                   {m.sentBy} · {timeAgo(m.createdAt)}
                 </span>
               </span>
-              <Badge tone={m.status === 'delivered' ? 'green' : m.status === 'failed' || m.status === 'bounced' ? 'red' : 'blue'}>{m.status}</Badge>
+              {!isSimulatedStatus(m) && (
+                <Badge tone={m.status === 'delivered' ? 'green' : m.status === 'failed' || m.status === 'bounced' ? 'red' : 'blue'}>{m.status}</Badge>
+              )}
             </div>
           ))}
         </Card>
@@ -384,7 +428,7 @@ export default function LeadDetailPage() {
         {isLoading || !lead ? (
           <Skeleton className="h-48 w-full" />
         ) : tab === 'overview' ? (
-          <OverviewTab lead={lead} onEditCustom={canEdit ? () => setTab('discussion') : undefined} />
+          <OverviewTab lead={lead} onEditCustom={canEdit ? () => setTab('discussion') : undefined} onViewNotes={() => setTab('notes')} />
         ) : tab === 'profile' ? (
           <LeadProfileTab leadId={lead._id} />
         ) : tab === 'discussion' ? (

@@ -791,6 +791,8 @@ export interface LeadMessage {
   body: string
   status: string
   error?: string
+  /** console-sms / console-email only log the message, so their sent/delivered status is a stand-in */
+  provider?: string
   trigger?: string
   sentBy?: string
   sentAt?: string
