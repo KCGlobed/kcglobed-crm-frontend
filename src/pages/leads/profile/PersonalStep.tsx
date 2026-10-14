@@ -2,12 +2,13 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { useSaveLeadProfileStepMutation } from '../../../services/leadsApi'
-import { FormField, Input, Select, Textarea } from '../../../components/ui/fields'
+import { FormField, Input, READ_ONLY_FIELD, Select, Textarea } from '../../../components/ui/fields'
 import { GENDERS, INDIAN_STATES, MAX_AGE, MIN_AGE, RELATIONSHIPS } from '../../../constants/profileOptions'
 import type { LeadProfile } from '../../../types/models'
 import { ageFrom, personalSchema, type PersonalValues, showSaveError } from './profileSchemas'
 import { Section, PROFILE_STEP_FORM, PROFILE_STEP_SAVE } from './ProfileFields'
 import { CityField } from './CityField'
+import { mobileField } from '../../../lib/mobile'
 
 /** Bounds for the date picker from the 17–40 age rule (#5). */
 const yearsAgo = (n: number) => {
@@ -30,6 +31,8 @@ export function PersonalStep({
   const [save] = useSaveLeadProfileStepMutation({ fixedCacheKey: PROFILE_STEP_SAVE })
   const p = profile.personal ?? {}
   const g = profile.guardian ?? {}
+  // the candidate's email, once on the lead, is shown but not editable here
+  const emailLocked = !!p.email
   const {
     register,
     control,
@@ -85,11 +88,17 @@ export function PersonalStep({
             <FormField label="Last Name" required error={pe?.lastName?.message}>
               <Input maxLength={50} aria-invalid={!!pe?.lastName} {...register('personal.lastName')} />
             </FormField>
-            <FormField label="Email ID" required error={pe?.email?.message}>
-              <Input type="email" aria-invalid={!!pe?.email} {...register('personal.email')} />
+            <FormField label="Email ID" required error={pe?.email?.message} hint={emailLocked ? "Can't be changed once set" : undefined}>
+              <Input
+                type="email"
+                aria-invalid={!!pe?.email}
+                readOnly={emailLocked}
+                className={emailLocked ? READ_ONLY_FIELD : undefined}
+                {...register('personal.email')}
+              />
             </FormField>
             <FormField label="Mobile Number" required error={pe?.mobile?.message} hint="10 digits">
-              <Input type="tel" inputMode="numeric" aria-invalid={!!pe?.mobile} {...register('personal.mobile')} />
+              <Input type="tel" aria-invalid={!!pe?.mobile} {...mobileField(register('personal.mobile'))} />
             </FormField>
             <FormField label="Date of Birth" required error={pe?.dob?.message}>
               <Input
@@ -157,7 +166,7 @@ export function PersonalStep({
               </Select>
             </FormField>
             <FormField label="Parent/Guardian Mobile" required error={ge?.mobile?.message} hint="Must differ from the candidate's mobile">
-              <Input type="tel" inputMode="numeric" aria-invalid={!!ge?.mobile} {...register('guardian.mobile')} />
+              <Input type="tel" aria-invalid={!!ge?.mobile} {...mobileField(register('guardian.mobile'))} />
             </FormField>
             <FormField label="Parent/Guardian Email" error={ge?.email?.message} hint="Optional">
               <Input type="email" aria-invalid={!!ge?.email} {...register('guardian.email')} />

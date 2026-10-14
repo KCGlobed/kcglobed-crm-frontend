@@ -120,8 +120,7 @@ function useFreshNotifications(
         () => {
           markRead(n._id)
           open(n)
-        },
-        { persist: !visible }
+        }
       )
       if (!visible && !fcmHandlesBackground && typeof window.Notification !== 'undefined' && window.Notification.permission === 'granted') {
         const popup = new window.Notification(n.title, { body: n.body ?? undefined, tag: n._id })

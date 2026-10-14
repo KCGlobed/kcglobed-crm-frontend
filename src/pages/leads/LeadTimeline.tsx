@@ -44,14 +44,13 @@ const FILTERS: { key: string; label: string; types?: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'calls', label: 'Calls', types: 'call' },
   { key: 'notes', label: 'Notes', types: 'note' },
-  { key: 'messages', label: 'SMS / Email', types: 'communication' },
+  { key: 'messages', label: 'Communications', types: 'communication' },
   { key: 'reenquiry', label: 'Re-enquiry', types: 're_enquiry' },
   { key: 'documents', label: 'Documents', types: 'document' },
   { key: 'followups', label: 'Follow-ups', types: 'task' },
   { key: 'stages', label: 'Stage & Status', types: 'stage_change,status_change' },
-  { key: 'assignment', label: 'Assignment', types: 'assignment' },
-  { key: 'edits', label: 'Edits & Profile', types: 'edit,profile' },
-  { key: 'system', label: 'Created & System', types: 'created,import,system,export' },
+  { key: 'assignment', label: 'Lead Assigned', types: 'assignment' },
+  { key: 'edits', label: 'Profile Update', types: 'edit,profile' },
 ]
 
 
