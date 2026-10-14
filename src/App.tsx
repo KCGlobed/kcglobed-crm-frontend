@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { BrowserRouter } from 'react-router-dom'
-import { Toaster } from 'sonner'
+import { Toasts } from './components/Toasts'
 import AppRoutes from './routes/AppRoutes'
 import { useAppDispatch } from './app/hooks'
 import { useRefreshSessionMutation } from './services/authApi'
@@ -35,7 +35,7 @@ export default function App() {
     <BrowserRouter>
       <SessionBootstrap />
       <AppRoutes />
-      <Toaster position="top-right" richColors closeButton />
+      <Toasts />
     </BrowserRouter>
   )
 }

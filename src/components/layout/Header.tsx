@@ -1,5 +1,5 @@
-import { useLocation } from 'react-router-dom'
-import { Menu } from 'lucide-react'
+import { Link, useLocation } from 'react-router-dom'
+import { ArrowLeft, Menu } from 'lucide-react'
 import { useCurrentUser } from '../../app/hooks'
 import { NAV_SECTIONS } from '../../constants/navigation'
 import { can } from '../../constants/permissions'
@@ -20,6 +20,9 @@ function useCurrentSection() {
 export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
   const user = useCurrentUser()
   const current = useCurrentSection()
+  const { pathname, search } = useLocation()
+  // the dashboard's drill-downs open the leads list with ?from=dashboard: offer the way back
+  const backToDashboard = pathname === '/app/leads' && new URLSearchParams(search).get('from') === 'dashboard'
 
   return (
     <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/85 px-3 backdrop-blur-md sm:px-4">
@@ -33,6 +36,16 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
       </button>
       {/* the sidebar carries the full logo on desktop; phones get the mark here */}
       <img src={logoMark} alt="GCC School CRM" className="h-7 w-7 shrink-0 lg:hidden" />
+      {backToDashboard && (
+        <Link
+          to="/app/dashboard"
+          title="Back to Dashboard"
+          aria-label="Back to Dashboard"
+          className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-slate-200 px-2.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" /> Back
+        </Link>
+      )}
       {current && (
         <div className="hidden min-w-0 items-center gap-2 xl:flex xl:w-56">
           <current.icon className="h-4 w-4 shrink-0 text-brand-500" />

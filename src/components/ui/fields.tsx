@@ -8,6 +8,9 @@ const baseField =
   'disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500 disabled:hover:border-slate-300 ' +
   'aria-[invalid=true]:border-red-400 aria-[invalid=true]:focus:ring-red-100'
 
+/** Extra classes for a field that shows a value the user may not change (`readOnly`). */
+export const READ_ONLY_FIELD = 'cursor-default bg-slate-50 text-slate-500 hover:border-slate-300 focus:border-slate-300 focus:ring-0'
+
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (
     <input ref={ref} className={cn(baseField, 'h-9', className)} {...props} />

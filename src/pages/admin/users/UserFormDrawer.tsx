@@ -16,6 +16,7 @@ import { can } from '../../../constants/permissions'
 import { Drawer } from '../../../components/ui/Drawer'
 import { Button } from '../../../components/ui/Button'
 import { Checkbox, FieldGroup, FormField, Input, Select } from '../../../components/ui/fields'
+import { mobileField } from '../../../lib/mobile'
 import { cn, parseApiError } from '../../../lib/utils'
 import type { RoleKey, User } from '../../../types/models'
 import { PermissionBuilder, type PermissionState } from './PermissionBuilder'
@@ -275,7 +276,7 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
               <Input maxLength={60} placeholder="e.g. Admission Counsellor" {...register('designation')} aria-invalid={!!errors.designation} />
             </FormField>
             <FormField label="Mobile" error={errors.mobile?.message} hint="Optional · 10 digits · used as {counsellor_mobile} in SMS">
-              <Input inputMode="numeric" maxLength={10} {...register('mobile')} aria-invalid={!!errors.mobile} />
+              <Input aria-invalid={!!errors.mobile} {...mobileField(register('mobile'))} />
             </FormField>
             <FormField
               label={isEdit ? 'Reset password (optional)' : 'Password (optional)'}

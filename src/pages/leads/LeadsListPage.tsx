@@ -33,7 +33,8 @@ import { BulkSendModal } from './BulkSendModal'
 import { DEFAULT_VISIBLE_COLUMNS, LOCKED_COLUMNS } from './leadColumns'
 import { useLeadColumns } from './useLeadColumns'
 
-const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order']
+/** URL params that are not lead filters: paging, sorting, and the dashboard's `from` marker */
+const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order', 'from']
 /** local YYYY-MM-DD, `daysAgo` days back */
 const isoDay = (daysAgo = 0) => {
   const d = new Date(Date.now() - daysAgo * 86_400_000)

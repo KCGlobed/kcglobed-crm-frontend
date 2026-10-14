@@ -137,16 +137,14 @@ export function toastClassFor(type?: string): string {
 
 /**
  * The toast for a notification that reaches an open CRM: title, message and a
- * "View" action, coloured by event. With `persist` it stays until closed or
- * viewed — used when the tab is in the background at the time, so it is
- * waiting when the user returns.
+ * "View" action, coloured by event. Like every pop-up it goes after the
+ * toaster's few seconds; the bell keeps the notification for later.
  */
-export function showPushToast(m: PushMessage, navigate: (url: string) => void, options: { persist?: boolean } = {}) {
+export function showPushToast(m: PushMessage, navigate: (url: string) => void) {
   const url = m.url || '/app/dashboard'
   toast(m.title || 'KcGlobed CRM', {
     id: m.notificationId,
     description: m.body || undefined,
-    duration: options.persist ? Infinity : 20_000,
     className: toastClassFor(m.type),
     action: { label: 'View', onClick: () => navigate(url) },
   })

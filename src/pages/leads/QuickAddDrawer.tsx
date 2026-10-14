@@ -12,6 +12,7 @@ import { isCounsellor } from '../../lib/roles'
 import { Drawer } from '../../components/ui/Drawer'
 import { Button } from '../../components/ui/Button'
 import { FieldGroup, FormField, Input, Select, Textarea } from '../../components/ui/fields'
+import { mobileField } from '../../lib/mobile'
 import { parseApiError } from '../../lib/utils'
 import type { DuplicateCheck, Source } from '../../types/models'
 import { ownerLabel, useAssignableOwners } from './leadSelection'
@@ -181,10 +182,9 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
             </FormField>
             <FormField label="Mobile" error={errors.mobile?.message} required hint="10 digits; +91 / leading 0 removed">
               <Input
-                inputMode="tel"
                 placeholder="98765 43210"
-                {...register('mobile')}
                 aria-invalid={!!errors.mobile || duplicate?.field === 'mobile'}
+                {...mobileField(register('mobile'))}
               />
             </FormField>
             <FormField label="Email" error={errors.email?.message}>

@@ -10,9 +10,10 @@ import { useCurrentUser } from '../../app/hooks'
 import { can } from '../../constants/permissions'
 import { Drawer } from '../../components/ui/Drawer'
 import { Button } from '../../components/ui/Button'
-import { Checkbox, FormField, Input, Select } from '../../components/ui/fields'
+import { Checkbox, FormField, Input, READ_ONLY_FIELD, Select } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import type { Lead } from '../../types/models'
+import { mobileField } from '../../lib/mobile'
 import { StageFields } from './StageFields'
 import { STAGE_ERROR_KEYS, stageChanged, stagePayload, stageValueOf, validateStage, type StageValue } from './stageForm'
 
@@ -51,6 +52,8 @@ interface Props {
 
 export function LeadFormDrawer({ open, onClose, lead }: Props) {
   const isEdit = !!lead
+  // an email, once on the lead, is shown but not editable here
+  const emailLocked = isEdit && !!lead?.email
   const user = useCurrentUser()
   const { data: masters } = useMasterBootstrapQuery()
   const { data: userOptions } = useUserOptionsQuery()
@@ -188,12 +191,18 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
           </FormField>
           {!hiddenFields.has('mobile') && (
             <FormField label="Mobile" error={errors.mobile?.message} required>
-              <Input aria-invalid={!!errors.mobile} placeholder="98XXXXXXXX" {...register('mobile')} />
+              <Input aria-invalid={!!errors.mobile} placeholder="98XXXXXXXX" {...mobileField(register('mobile'))} />
             </FormField>
           )}
           {!hiddenFields.has('email') && (
-            <FormField label="Email" error={errors.email?.message}>
-              <Input aria-invalid={!!errors.email} placeholder="name@example.com" {...register('email')} />
+            <FormField label="Email" error={errors.email?.message} hint={emailLocked ? "Can't be changed once set" : undefined}>
+              <Input
+                aria-invalid={!!errors.email}
+                placeholder="name@example.com"
+                readOnly={emailLocked}
+                className={emailLocked ? READ_ONLY_FIELD : undefined}
+                {...register('email')}
+              />
             </FormField>
           )}
           <FormField label="City">
