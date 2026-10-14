@@ -223,7 +223,8 @@ export default function LeadDetailPage() {
           </div>
         ) : (
           <>
-            <div className="flex flex-wrap items-start justify-between gap-4">
+            {/* the name block is centred on the rings, which are the taller side */}
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-4">
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
                   {initials(fullName(lead))}

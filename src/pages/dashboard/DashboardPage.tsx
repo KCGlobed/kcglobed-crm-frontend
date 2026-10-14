@@ -295,6 +295,9 @@ interface BarItem {
   params?: ListParams
 }
 
+/** The dot for a stage with neither a palette nor a usable Masters colour (e.g. Untouched), so every row has one. */
+const NEUTRAL_STAGE_DOT = '#94a3b8'
+
 /**
  * Every active master stage with its count from the summary's byStage rows (0 when the
  * summary has no row for it), plus any summary row for a stage no longer in Masters or
@@ -325,66 +328,71 @@ const FUNNEL_STAGES: { label: string; names: string[] }[] = [
 interface FunnelStep {
   label: string
   count: number
-  /** the stage colour; none for Total Leads, drawn in the brand colour */
-  color?: string
   /** where the step drills down to; a step without one, or with no leads, is inert */
   params?: ListParams
 }
 
-/** The brand colour (brand-600), for the funnel's Total Leads band. */
-const BRAND = '#3d1f73'
-
 /**
- * The funnel's drawing: a cone of three bands narrowing into a stem of two, in a
- * 360 × 290 box. The cone's half-width shrinks from 150 at the top to the stem's
- * 30 where they meet; the last band ends in a point.
+ * The funnel's drawing: an inverted triangle in a 380 × 290 box, 300 wide at the top
+ * and pointed at the bottom, cut into five bands of equal height with a 2px gap.
  */
-const FUNNEL = { w: 360, h: 290, cx: 190, stemHalf: 30, coneBottom: 174 }
-const coneHalf = (y: number) => 150 - ((150 - FUNNEL.stemHalf) * y) / FUNNEL.coneBottom
-/** each band's top and bottom, with a 2px gap between bands; the stem bands are the last two */
-const BANDS: { y0: number; y1: number; stem: boolean }[] = [
-  { y0: 0, y1: 56, stem: false },
-  { y0: 58, y1: 114, stem: false },
-  { y0: 116, y1: 172, stem: false },
-  { y0: 176, y1: 226, stem: true },
-  { y0: 228, y1: 268, stem: true },
+const FUNNEL = { w: 380, h: 290, cx: 200, halfTop: 150 }
+const halfAt = (y: number) => FUNNEL.halfTop * (1 - y / FUNNEL.h)
+/** each band's top and bottom; the last runs to the tip */
+const BANDS: { y0: number; y1: number }[] = [
+  { y0: 0, y1: 56 },
+  { y0: 58, y1: 114 },
+  { y0: 116, y1: 172 },
+  { y0: 174, y1: 230 },
+  { y0: 232, y1: 290 },
 ]
-function bandPoints({ y0, y1, stem }: (typeof BANDS)[number], last: boolean): string {
-  const { cx, stemHalf, h } = FUNNEL
-  if (!stem) {
-    const a = coneHalf(y0)
-    const b = coneHalf(y1)
-    return `${cx - a},${y0} ${cx + a},${y0} ${cx + b},${y1} ${cx - b},${y1}`
-  }
-  const points = [`${cx - stemHalf},${y0}`, `${cx + stemHalf},${y0}`, `${cx + stemHalf},${y1}`]
-  if (last) points.push(`${cx},${h}`)
-  points.push(`${cx - stemHalf},${y1}`)
-  return points.join(' ')
+/** the bands' fills, top to bottom: the brand purple, lightest at the top and deepest at the tip */
+const BAND_FILLS = ['#d5c8eb', '#b6a1db', '#8c6cc3', '#5f3d9e', '#3d1f73']
+/** a band narrower than this at its middle carries its name beside the funnel instead of inside */
+const INSIDE_LABEL_MIN_WIDTH = 120
+
+function bandPoints({ y0, y1 }: (typeof BANDS)[number], last: boolean): string {
+  const { cx, h } = FUNNEL
+  const a = halfAt(y0)
+  if (last) return `${cx - a},${y0} ${cx + a},${y0} ${cx},${h}`
+  const b = halfAt(y1)
+  return `${cx - a},${y0} ${cx + a},${y0} ${cx + b},${y1} ${cx - b},${y1}`
 }
 
 /**
- * Conversion funnel: a funnel-shaped chart, one band per step from Total Leads at the
- * wide top down to Enrolled at the tip, each filled with its stage's colour and showing
- * its count (the summary's figure, or 0). The two stem bands are too narrow for their
- * names, which sit beside them. A band with leads opens their list.
+ * Conversion funnel: an inverted triangle, one band per step from Total Leads at the
+ * wide top down to Enrolled at the tip, shaded from light to deep purple on the way
+ * down, each showing its count (the summary's figure, or 0). The narrow lower bands
+ * carry their names beside the funnel. A band with leads opens their list.
  */
 function FunnelCard({ steps, loading, onOpen }: { steps: FunnelStep[] | undefined; loading: boolean; onOpen: (params: ListParams) => void }) {
-  const { w, h, cx, stemHalf } = FUNNEL
+  const { w, h, cx } = FUNNEL
   return (
-    <Card title="Conversion Funnel" actions={<span className="text-xs text-slate-500">All time</span>}>
+    <Card
+      title="Conversion Funnel"
+      actions={<span className="text-xs text-slate-500">All time</span>}
+      // the card stretches to its row's height; the funnel sits in the middle of that
+      className="flex flex-col"
+      bodyClassName="flex flex-1 items-center justify-center"
+    >
       {loading && <Skeleton className="mx-auto h-64 w-5/6" />}
       {!loading && !steps && <p className="py-6 text-center text-xs text-slate-400">No Data Yet</p>}
       {!loading && steps && (
         <svg viewBox={`0 0 ${w} ${h}`} role="group" aria-label="Conversion funnel" className="mx-auto block h-auto w-full max-w-sm">
           {steps.map((step, i) => {
             const band = BANDS[i]
-            if (!band) return null
+            const fill = BAND_FILLS[i]
+            if (!band || !fill) return null
             const params = step.params
             const open = step.count > 0 && params ? () => onOpen(params) : undefined
-            const fill = step.color ?? BRAND
             const ink = textOn(fill)
             const figure = step.count.toLocaleString()
+            const last = i === BANDS.length - 1
             const mid = (band.y0 + band.y1) / 2
+            const aside = 2 * halfAt(mid) < INSIDE_LABEL_MIN_WIDTH
+            // the tip narrows to nothing, so its count and side label sit near its top
+            const anchorY = last ? band.y0 + 18 : mid
+            const edge = cx - halfAt(anchorY)
             const onKeyDown = open
               ? (e: KeyboardEvent<SVGGElement>) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -404,14 +412,14 @@ function FunnelCard({ steps, loading, onOpen }: { steps: FunnelStep[] | undefine
                 className={cn('outline-none', open && 'cursor-pointer hover:opacity-80 focus-visible:opacity-80')}
               >
                 {open && <title>{`Open ${step.label} leads`}</title>}
-                <polygon points={bandPoints(band, i === BANDS.length - 1)} fill={fill} stroke="#fff" strokeWidth={2} strokeLinejoin="round" />
-                {band.stem ? (
+                <polygon points={bandPoints(band, last)} fill={fill} stroke="#fff" strokeWidth={2} strokeLinejoin="round" />
+                {aside ? (
                   <>
-                    <line x1={cx - stemHalf - 12} y1={mid} x2={cx - stemHalf - 1} y2={mid} stroke="#94a3b8" strokeWidth={1} />
-                    <text x={cx - stemHalf - 16} y={mid + 4} textAnchor="end" fontSize={11} fill="#475569">
+                    <line x1={edge - 12} y1={anchorY} x2={edge - 1} y2={anchorY} stroke="#94a3b8" strokeWidth={1} />
+                    <text x={edge - 16} y={anchorY + 4} textAnchor="end" fontSize={11} fill="#475569">
                       {step.label}
                     </text>
-                    <text x={cx} y={mid + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill={ink}>
+                    <text x={cx} y={anchorY + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill={ink}>
                       {figure}
                     </text>
                   </>
@@ -597,7 +605,7 @@ export default function DashboardPage() {
     allStagesByCount(masters.data.stages, summary.byStage).map((s) => {
       // the "No stage" row has no id: it lists the leads whose stage is empty
       const params: ListParams = s._id ? { stage: s._id } : { filters: JSON.stringify([{ field: 'stage', op: 'empty' }]) }
-      return { id: s._id ?? 'none', name: s.name, count: s.count, color: stageColor(s), params }
+      return { id: s._id ?? 'none', name: s.name, count: s.count, color: stageColor(s) ?? NEUTRAL_STAGE_DOT, params }
     })
   // Total Leads, then each funnel stage with the count, colour and drill-down of its stage row
   const funnel: FunnelStep[] | undefined =
@@ -606,7 +614,7 @@ export default function DashboardPage() {
       { label: 'Total Leads', count: summary.totals.total, params: {} },
       ...FUNNEL_STAGES.map(({ label, names }) => {
         const row = stages.find((s) => names.some((n) => n.toLowerCase() === s.name.trim().toLowerCase()))
-        return { label, count: row?.count ?? 0, color: row?.color ?? STAGE_COLORS[names[0]], params: row?.params }
+        return { label, count: row?.count ?? 0, params: row?.params }
       }),
     ]
 
