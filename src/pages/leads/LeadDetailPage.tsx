@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   CalendarPlus,
-  Lightbulb,
   Mail,
   MessageCircle,
   MessageSquareText,
@@ -110,14 +109,9 @@ function OverviewTab({ lead, onEditCustom }: { lead: Lead; onEditCustom?: () => 
         <DetailRow label="Owner" value={lead.owner?.name ?? 'Unassigned'} />
         <DetailRow label="Assigned On" value={formatDateTime(lead.assignedAt)} />
         <DetailRow label="Re-enquiry Count" value={lead.reEnquiryCount ?? 0} />
-        <DetailRow label="Profile Completion" value={`${lead.profileCompletion ?? 0}%`} />
-        {/* Only from the new backend: before it, customFieldsCompletion held the discussion %, so both wait for discussionCompletion */}
-        {lead.discussionCompletion !== undefined && (
-          <>
-            <DetailRow label="Custom Fields Completion" value={`${lead.customFieldsCompletion ?? 0}%`} />
-            <DetailRow label="Discussion Completion" value={`${lead.discussionCompletion}%`} />
-          </>
-        )}
+        <DetailRow label="Student Profile Completion" value={`${lead.profileCompletion ?? 0}%`} />
+        {/* only from the new backend; the old one had no discussion % (it sent it as customFieldsCompletion) */}
+        {lead.discussionCompletion !== undefined && <DetailRow label="Counsellor Discussion Completion" value={`${lead.discussionCompletion}%`} />}
       </Card>
       <div className="space-y-4">
         <Card title="Recent Calls">
@@ -135,7 +129,7 @@ function OverviewTab({ lead, onEditCustom }: { lead: Lead; onEditCustom?: () => 
             </div>
           ))}
         </Card>
-        <Card title="SMS & Email">
+        <Card title="Recent Communications">
           {!messages?.data.length && <p className="text-xs text-slate-400">Nothing Sent Yet</p>}
           {messages?.data.slice(0, 5).map((m) => (
             <div key={m._id} className="flex items-start justify-between gap-2 border-b border-slate-50 py-1.5 text-xs last:border-0">
@@ -358,15 +352,6 @@ export default function LeadDetailPage() {
           </>
         )}
       </div>
-
-      {lead && subStageOf(lead)?.counsellorAction && (
-        <div className="-mt-2 mb-4 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <Lightbulb className="mt-0.5 h-4 w-4 shrink-0" />
-          <p>
-            <b>Counsellor action:</b> {subStageOf(lead)!.counsellorAction}
-          </p>
-        </div>
-      )}
 
       <Tabs
         tabs={[
