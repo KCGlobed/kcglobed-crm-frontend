@@ -12,8 +12,9 @@ import { Button } from '../../components/ui/Button'
 import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import { sanitizeHtml } from '../../lib/sanitize'
-import { DLT_VAR_MAX, fillDltVariables } from '../../lib/smsTemplate'
+import { DLT_VAR_MAX, LEAD_FIELD_LABELS, fillDltVariables, leadFieldOf, resolveDltVariables } from '../../lib/smsTemplate'
 import type { Lead, MessagePreview } from '../../types/models'
+import { DltVariableFields } from './DltVariableFields'
 import { ownerLabel, useAssignableOwners } from './leadSelection'
 
 /** GL-13 single assign / reassign: new owner (anyone who can own leads) + reason. */
@@ -85,8 +86,9 @@ export function AssignLeadModal({ lead, onClose }: { lead: Lead; onClose: () => 
 
 /**
  * GL-22 per-lead send: template → preview with real values → (email: edit) → send.
- * SMS templates may carry DLT {#var#} variables: the values are typed here, the preview fills
- * them live, and a review step shows the final text and number before the gateway is called.
+ * SMS templates may carry DLT {#var#} variables: each value is typed here or picked from the lead's
+ * fields (name, lead ID, counsellor …), the preview fills them live, and a review step shows the
+ * final text and number before the gateway is called.
  */
 export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; channel: 'sms' | 'email'; onClose: () => void }) {
   const { data: templates } = useListMessageTemplatesQuery({ channel, active: true })
@@ -100,7 +102,7 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [reviewing, setReviewing] = useState(false)
   const label = channel === 'sms' ? 'SMS' : 'Email'
-  const smsText = shown ? fillDltVariables(shown.body, variables) : ''
+  const smsText = shown ? fillDltVariables(shown.body, resolveDltVariables(variables, shown.leadValues)) : ''
 
   const choose = async (id: string) => {
     setTemplate(id)
@@ -128,9 +130,12 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
   /** SMS: check the typed values, then show the final text for confirmation. */
   const review = () => {
     const local: Record<string, string> = {}
+    const resolved = resolveDltVariables(variables, shown?.leadValues)
     variables.forEach((v, i) => {
-      if (!v.trim()) local[`variables.${i}`] = `Variable ${i + 1} is required`
-      else if (v.trim().length > DLT_VAR_MAX) local[`variables.${i}`] = `At most ${DLT_VAR_MAX} characters (DLT rule)`
+      const field = leadFieldOf(v)
+      if (field && !resolved[i]) local[`variables.${i}`] = `This lead has no ${LEAD_FIELD_LABELS[field] ?? field}`
+      else if (!v.trim()) local[`variables.${i}`] = `Variable ${i + 1} is required`
+      else if (!field && v.trim().length > DLT_VAR_MAX) local[`variables.${i}`] = `At most ${DLT_VAR_MAX} characters (DLT rule)`
     })
     if (Object.keys(local).length) return setErrors(local)
     setReviewing(true)
@@ -211,25 +216,8 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
             <AlertTriangle className="h-3.5 w-3.5" /> {shown.warning}
           </p>
         )}
-        {shown && channel === 'sms' && !reviewing && variables.length > 0 && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {variables.map((value, i) => (
-              <FormField
-                key={i}
-                label={`Variable ${i + 1}`}
-                required
-                error={errors[`variables.${i}`]}
-                hint={i === 0 ? `Fills the {#var#} markers in order · max ${DLT_VAR_MAX} characters each` : undefined}
-              >
-                <Input
-                  value={value}
-                  maxLength={DLT_VAR_MAX}
-                  aria-invalid={!!errors[`variables.${i}`]}
-                  onChange={(e) => setVariable(i, e.target.value)}
-                />
-              </FormField>
-            ))}
-          </div>
+        {shown && channel === 'sms' && !reviewing && (
+          <DltVariableFields variables={variables} errors={errors} onChange={setVariable} />
         )}
         {shown && channel === 'sms' && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">

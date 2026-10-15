@@ -17,6 +17,8 @@ export interface MessagingOptions {
   channels: { value: string; label: string }[]
   bulkWindow: string
   bulkMax: number
+  /** what a {#var#} value may name instead of typed text ("{first_name}"), incl. active custom lead fields */
+  leadFields: { value: string; label: string }[]
 }
 
 export interface CampaignBody {
@@ -25,6 +27,8 @@ export interface CampaignBody {
   name?: string
   scheduledAt?: string
   preview?: boolean
+  /** SMS: the {#var#} values typed for the template, in order — the same for every recipient */
+  variables?: string[]
   audience: { leadIds?: string[]; selectAll?: boolean; filters?: Record<string, unknown> }
 }
 
