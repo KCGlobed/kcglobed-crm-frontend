@@ -479,6 +479,8 @@ export interface ProfilePersonal {
 export interface ProfileGuardian {
   name: string
   relationship: string
+  /** free text when relationship is "Other" */
+  relationshipOther?: string
   mobile: string
   email?: string
 }
@@ -488,6 +490,8 @@ export interface ProfileSchooling {
   gradeType: string
   score: number
   medium: string
+  /** free text when medium is "Other" */
+  mediumOther?: string
 }
 
 export interface ProfileAcademic {
@@ -495,18 +499,31 @@ export interface ProfileAcademic {
   class12: ProfileSchooling
   ug: {
     qualification: string
+    /** free text when qualification is "Other" */
+    qualificationOther?: string
     status: string
     institution: string
     gradeType?: string
     score?: number
     yearOfPassing: number
     medium: string
+    mediumOther?: string
   }
   higherQualification: { has: boolean; details?: string }
 }
 
+export interface ProfileExperience {
+  organization: string
+  designation: string
+  functionalArea?: string
+  experienceYears?: number
+  experienceMonths?: number
+}
+
 export interface ProfileWork {
   employmentStatus: string
+  /** multiple organisations/roles; the flat fields below are the legacy single entry */
+  experiences?: ProfileExperience[]
   organization?: string
   designation?: string
   functionalArea?: string

@@ -1,12 +1,34 @@
-import { useForm, useWatch } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSaveLeadProfileStepMutation } from '../../../services/leadsApi'
+import { Button } from '../../../components/ui/Button'
 import { FormField, Input, Select } from '../../../components/ui/fields'
 import { EMPLOYMENT_STATUSES } from '../../../constants/profileOptions'
-import type { LeadProfile } from '../../../types/models'
-import { toNumber, workSchema, type WorkValues, showSaveError } from './profileSchemas'
+import type { LeadProfile, ProfileWork } from '../../../types/models'
+import { toNumber, workSchema, type ExperienceEntry, type WorkValues, showSaveError } from './profileSchemas'
 import { Section, PROFILE_STEP_FORM, PROFILE_STEP_SAVE } from './ProfileFields'
+
+const EMPTY_ENTRY: ExperienceEntry = { organization: '', designation: '', functionalArea: '' }
+
+/** Stored work → form values; an old single-organisation record becomes the first entry. */
+function toFormValues(work: ProfileWork | null): WorkValues | undefined {
+  if (!work) return undefined
+  const experiences =
+    work.experiences && work.experiences.length
+      ? work.experiences
+      : work.organization
+        ? [{
+            organization: work.organization,
+            designation: work.designation ?? '',
+            functionalArea: work.functionalArea,
+            experienceYears: work.experienceYears,
+            experienceMonths: work.experienceMonths,
+          }]
+        : []
+  return { work: { employmentStatus: work.employmentStatus as WorkValues['work']['employmentStatus'], experiences } }
+}
 
 export function WorkStep({
   leadId,
@@ -28,15 +50,18 @@ export function WorkStep({
     formState: { errors },
   } = useForm<WorkValues>({
     resolver: zodResolver(workSchema),
-    defaultValues: profile.work ? { work: profile.work as WorkValues['work'] } : undefined,
+    defaultValues: toFormValues(profile.work),
   })
+  const { fields, append, remove } = useFieldArray({ control, name: 'work.experiences' })
   const experienced = useWatch({ control, name: 'work.employmentStatus' }) === 'Experienced'
   const we = errors.work
 
   const onSubmit = async (values: WorkValues) => {
-    // Experience details only apply to an experienced candidate.
+    // Experience entries only apply to an experienced candidate (LM-18).
     const body =
-      values.work.employmentStatus === 'Experienced' ? values : { work: { employmentStatus: values.work.employmentStatus } }
+      values.work.employmentStatus === 'Experienced'
+        ? { work: { employmentStatus: values.work.employmentStatus, experiences: values.work.experiences } }
+        : { work: { employmentStatus: values.work.employmentStatus } }
     try {
       const res = await save({ id: leadId, step: 'work', body }).unwrap()
       toast.success(res.message)
@@ -48,7 +73,7 @@ export function WorkStep({
 
   return (
     <form id={PROFILE_STEP_FORM} onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-      <fieldset disabled={readOnly}>
+      <fieldset disabled={readOnly} className="space-y-4">
         <Section title="Work Experience">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <FormField label="Employment Status" required error={we?.employmentStatus?.message}>
@@ -61,49 +86,71 @@ export function WorkStep({
                 ))}
               </Select>
             </FormField>
-            {/* #30–#33 show only for Experienced */}
-            {experienced && <span className="hidden sm:block" />}
-            {experienced && (
-              <>
-                <FormField label="Organization Name" required error={we?.organization?.message}>
-                  <Input aria-invalid={!!we?.organization} {...register('work.organization')} />
-                </FormField>
-                <FormField label="Designation" required error={we?.designation?.message}>
-                  <Input aria-invalid={!!we?.designation} {...register('work.designation')} />
-                </FormField>
-                <FormField label="Functional Area" required error={we?.functionalArea?.message}>
-                  <Input aria-invalid={!!we?.functionalArea} {...register('work.functionalArea')} />
-                </FormField>
-                <FormField
-                  label="Experience (Years, Months)"
-                  required
-                  error={we?.experienceYears?.message ?? we?.experienceMonths?.message}
-                >
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={30}
-                      placeholder="YY"
-                      aria-label="Years"
-                      aria-invalid={!!we?.experienceYears}
-                      {...register('work.experienceYears', { setValueAs: toNumber })}
-                    />
-                    <span className="text-xs text-slate-400">/</span>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={11}
-                      placeholder="MM"
-                      aria-label="Months"
-                      aria-invalid={!!we?.experienceMonths}
-                      {...register('work.experienceMonths', { setValueAs: toNumber })}
-                    />
-                  </div>
-                </FormField>
-              </>
-            )}
           </div>
+
+          {/* #30–#33 show only for Experienced — one card per organisation/role */}
+          {experienced && (
+            <div className="mt-3 space-y-3">
+              {we?.experiences?.message && <p className="text-xs text-red-600">{we.experiences.message}</p>}
+              {fields.map((field, i) => {
+                const ee = we?.experiences?.[i]
+                return (
+                  <div key={field.id} className="relative rounded-lg border border-slate-200 p-3">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Experience {i + 1}</p>
+                      {!readOnly && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => remove(i)} title="Remove this experience">
+                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <FormField label="Organization Name" required error={ee?.organization?.message}>
+                        <Input maxLength={100} aria-invalid={!!ee?.organization} {...register(`work.experiences.${i}.organization`)} />
+                      </FormField>
+                      <FormField label="Designation" required error={ee?.designation?.message}>
+                        <Input maxLength={100} aria-invalid={!!ee?.designation} {...register(`work.experiences.${i}.designation`)} />
+                      </FormField>
+                      <FormField label="Functional Area" error={ee?.functionalArea?.message}>
+                        <Input maxLength={100} aria-invalid={!!ee?.functionalArea} {...register(`work.experiences.${i}.functionalArea`)} />
+                      </FormField>
+                      <FormField
+                        label="Experience (Years, Months)"
+                        error={ee?.experienceYears?.message ?? ee?.experienceMonths?.message}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            min={0}
+                            max={30}
+                            placeholder="YY"
+                            aria-label="Years"
+                            aria-invalid={!!ee?.experienceYears}
+                            {...register(`work.experiences.${i}.experienceYears`, { setValueAs: toNumber })}
+                          />
+                          <span className="text-xs text-slate-400">/</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={11}
+                            placeholder="MM"
+                            aria-label="Months"
+                            aria-invalid={!!ee?.experienceMonths}
+                            {...register(`work.experiences.${i}.experienceMonths`, { setValueAs: toNumber })}
+                          />
+                        </div>
+                      </FormField>
+                    </div>
+                  </div>
+                )
+              })}
+              {!readOnly && (
+                <Button type="button" variant="outline" size="sm" onClick={() => append(EMPTY_ENTRY)}>
+                  <Plus className="h-3.5 w-3.5" /> Add Experience
+                </Button>
+              )}
+            </div>
+          )}
         </Section>
       </fieldset>
     </form>

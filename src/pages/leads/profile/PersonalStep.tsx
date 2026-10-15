@@ -57,6 +57,7 @@ export function PersonalStep({
       guardian: {
         name: g.name ?? '',
         relationship: (g.relationship ?? '') as PersonalValues['guardian']['relationship'],
+        relationshipOther: g.relationshipOther ?? '',
         mobile: g.mobile ?? '',
         email: g.email ?? '',
       },
@@ -64,6 +65,7 @@ export function PersonalStep({
   })
   const age = ageFrom(useWatch({ control, name: 'personal.dob' }))
   const personalState = useWatch({ control, name: 'personal.state' }) as string | undefined
+  const relationshipIsOther = useWatch({ control, name: 'guardian.relationship' }) === 'Other'
   const pe = errors.personal
   const ge = errors.guardian
 
@@ -165,6 +167,11 @@ export function PersonalStep({
                 ))}
               </Select>
             </FormField>
+            {relationshipIsOther && (
+              <FormField label="Relationship (specify)" error={ge?.relationshipOther?.message}>
+                <Input maxLength={100} aria-invalid={!!ge?.relationshipOther} {...register('guardian.relationshipOther')} />
+              </FormField>
+            )}
             <FormField label="Parent/Guardian Mobile" required error={ge?.mobile?.message} hint="Must differ from the candidate's mobile">
               <Input type="tel" aria-invalid={!!ge?.mobile} {...mobileField(register('guardian.mobile'))} />
             </FormField>

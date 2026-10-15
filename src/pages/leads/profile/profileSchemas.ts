@@ -95,6 +95,7 @@ export const personalSchema = z
         .max(100)
         .regex(/^[A-Za-z ]+$/, 'Parent/guardian name can only contain letters'),
       relationship: pick(RELATIONSHIPS, 'a relationship'),
+      relationshipOther: z.string().trim().max(100, 'Relationship must be 100 characters or fewer').optional(),
       mobile: indianMobile('Parent/guardian mobile'),
       email: optionalEmail,
     }),
@@ -133,12 +134,14 @@ function checkScore(
 const year = (label: string) => z.number({ error: `${label} is required` })
 const optionalPick = <T extends readonly [string, ...string[]]>(values: T, label: string) =>
   z.preprocess(blankToUndefined, pick(values, label).optional())
+const mediumOther = z.string().trim().max(100, 'Medium must be 100 characters or fewer').optional()
 const school = (cls: string) =>
   z.object({
     yearOfPassing: year(`Class ${cls} year of passing`),
     gradeType: optionalPick(GRADE_TYPES, 'a grade type'),
     score: z.number().optional(),
     medium: pick(MEDIUMS, 'a medium'),
+    mediumOther,
   })
 
 export const academicSchema = z.object({
@@ -148,6 +151,7 @@ export const academicSchema = z.object({
       class12: school('12th'),
       ug: z.object({
         qualification: pick(UG_QUALIFICATIONS, 'a qualification'),
+        qualificationOther: z.string().trim().max(150, 'Qualification must be 150 characters or fewer').optional(),
         status: pick(QUALIFICATION_STATUSES, 'a status'),
         institution: z
           .string()
@@ -158,6 +162,7 @@ export const academicSchema = z.object({
         score: z.number().optional(),
         yearOfPassing: year('UG year of passing'),
         medium: pick(MEDIUMS, 'a medium'),
+        mediumOther,
       }),
       higherQualification: z.object({
         has: z.preprocess(toBoolean, z.boolean({ error: 'Select Yes or No' })),
@@ -195,27 +200,25 @@ export const academicSchema = z.object({
 export type AcademicInput = z.input<typeof academicSchema>
 export type AcademicValues = z.output<typeof academicSchema>
 
+/** One organisation/role — a student can add several. */
+const experienceEntry = z.object({
+  organization: z.string().trim().min(1, 'Organization name is required').max(100),
+  designation: z.string().trim().min(1, 'Designation is required').max(100),
+  functionalArea: z.string().trim().max(100).optional(),
+  experienceYears: z.number().int('Whole years only').min(0, 'Years must be 0–30').max(30, 'Years must be 0–30').optional(),
+  experienceMonths: z.number().int('Whole months only').min(0, 'Months must be 0–11').max(11, 'Months must be 0–11').optional(),
+})
+export type ExperienceEntry = z.infer<typeof experienceEntry>
+
 export const workSchema = z.object({
   work: z
     .object({
       employmentStatus: pick(EMPLOYMENT_STATUSES, 'an employment status'),
-      organization: z.string().trim().max(100).optional(),
-      designation: z.string().trim().max(100).optional(),
-      functionalArea: z.string().trim().max(100).optional(),
-      experienceYears: z.number().int('Whole years only').min(0, 'Years must be 0–30').max(30, 'Years must be 0–30').optional(),
-      experienceMonths: z.number().int('Whole months only').min(0, 'Months must be 0–11').max(11, 'Months must be 0–11').optional(),
+      experiences: z.array(experienceEntry).optional(),
     })
     .superRefine((v, ctx) => {
-      if (v.employmentStatus !== 'Experienced') return
-      const required = [
-        ['organization', 'Organization name is required'],
-        ['designation', 'Designation is required'],
-        ['functionalArea', 'Functional area is required'],
-        ['experienceYears', 'Years are required'],
-        ['experienceMonths', 'Months are required'],
-      ] as const
-      for (const [key, message] of required) {
-        if (v[key] === undefined || v[key] === '') ctx.addIssue({ code: 'custom', path: [key], message })
+      if (v.employmentStatus === 'Experienced' && !(v.experiences && v.experiences.length)) {
+        ctx.addIssue({ code: 'custom', path: ['experiences'], message: 'Add at least one work experience' })
       }
     }),
 })

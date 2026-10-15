@@ -91,12 +91,14 @@ function SchoolFields({
   register,
   errors,
   gradeType,
+  medium,
   years,
 }: {
   cls: '10' | '12'
   register: Register
   errors?: FieldErrors<AcademicInput['academic']['class10']>
   gradeType?: unknown
+  medium?: unknown
   years: number[]
 }) {
   const key = cls === '10' ? 'class10' : 'class12'
@@ -116,6 +118,11 @@ function SchoolFields({
       <FormField label={`Class ${cls}th Medium`} required error={errors?.medium?.message}>
         <OptionSelect options={MEDIUMS} placeholder="Select medium…" invalid={!!errors?.medium} {...register(`academic.${key}.medium`)} />
       </FormField>
+      {medium === 'Other' && (
+        <FormField label={`Class ${cls}th Medium (specify)`} error={errors?.mediumOther?.message}>
+          <Input maxLength={100} aria-invalid={!!errors?.mediumOther} {...register(`academic.${key}.mediumOther`)} />
+        </FormField>
+      )}
     </div>
   )
 }
@@ -152,7 +159,7 @@ export function AcademicStep({
         }
       : undefined,
   })
-  const [g10, g12, gUg, ugStatus, hasHigher] = useWatch({
+  const [g10, g12, gUg, ugStatus, hasHigher, m10, m12, mUg, ugQualification] = useWatch({
     control,
     name: [
       'academic.class10.gradeType',
@@ -160,6 +167,10 @@ export function AcademicStep({
       'academic.ug.gradeType',
       'academic.ug.status',
       'academic.higherQualification.has',
+      'academic.class10.medium',
+      'academic.class12.medium',
+      'academic.ug.medium',
+      'academic.ug.qualification',
     ],
   })
   const ae = errors.academic
@@ -182,10 +193,10 @@ export function AcademicStep({
     <form id={PROFILE_STEP_FORM} onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
       <fieldset disabled={readOnly} className="space-y-4">
         <Section title="Academic Information — Class 10th">
-          <SchoolFields cls="10" register={register} errors={ae?.class10} gradeType={g10} years={schoolYears} />
+          <SchoolFields cls="10" register={register} errors={ae?.class10} gradeType={g10} medium={m10} years={schoolYears} />
         </Section>
         <Section title="Academic Information — Class 12th">
-          <SchoolFields cls="12" register={register} errors={ae?.class12} gradeType={g12} years={schoolYears} />
+          <SchoolFields cls="12" register={register} errors={ae?.class12} gradeType={g12} medium={m12} years={schoolYears} />
         </Section>
         <Section title="Academic Information — Undergraduate">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -197,6 +208,11 @@ export function AcademicStep({
                 {...register('academic.ug.qualification')}
               />
             </FormField>
+            {ugQualification === 'Other' && (
+              <FormField label="Qualification (specify)" error={ug?.qualificationOther?.message}>
+                <Input maxLength={150} aria-invalid={!!ug?.qualificationOther} {...register('academic.ug.qualificationOther')} />
+              </FormField>
+            )}
             <FormField label="Qualification Status" required error={ug?.status?.message}>
               <OptionSelect
                 options={QUALIFICATION_STATUSES}
@@ -223,6 +239,11 @@ export function AcademicStep({
             <FormField label="Medium of Instruction" required error={ug?.medium?.message}>
               <OptionSelect options={MEDIUMS} placeholder="Select medium…" invalid={!!ug?.medium} {...register('academic.ug.medium')} />
             </FormField>
+            {mUg === 'Other' && (
+              <FormField label="Medium (specify)" error={ug?.mediumOther?.message}>
+                <Input maxLength={100} aria-invalid={!!ug?.mediumOther} {...register('academic.ug.mediumOther')} />
+              </FormField>
+            )}
           </div>
         </Section>
         <Section title="Academic Information — Higher Qualification">
