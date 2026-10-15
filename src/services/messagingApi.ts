@@ -17,6 +17,8 @@ export interface MessagingOptions {
   channels: { value: string; label: string }[]
   bulkWindow: string
   bulkMax: number
+  /** what a {#var#} value may name instead of typed text ("{first_name}"), incl. active custom lead fields */
+  leadFields: { value: string; label: string }[]
 }
 
 export interface CampaignBody {

@@ -831,6 +831,8 @@ export interface MessagePreview {
   /** lead placeholders filled; {#var#} markers stay until their values are sent along */
   body: string
   variableCount?: number
+  /** SMS: what a lead-field variable ("{first_name}") carries for this lead, for the live preview */
+  leadValues?: Record<string, string | null> | null
   optedOut: boolean
   warning?: string
 }

@@ -6,14 +6,15 @@ import { Button } from '../../components/ui/Button'
 import { FormField, Input, Select } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import { sanitizeHtml } from '../../lib/sanitize'
-import { DLT_VAR_MAX } from '../../lib/smsTemplate'
+import { DLT_VAR_MAX, leadFieldOf } from '../../lib/smsTemplate'
 import type { CampaignPreview } from '../../types/models'
+import { DltVariableFields } from './DltVariableFields'
 import { selectionBody, type LeadSelection } from './leadSelection'
 
 /**
- * GL-23 bulk SMS / email: template → (SMS: the DLT {#var#} values, typed once for every recipient) →
- * sample preview → send now or schedule (9 am – 9 pm only) → confirm screen with selected, excluded
- * and final counts.
+ * GL-23 bulk SMS / email: template → (SMS: each DLT {#var#} value is typed once for every recipient, or
+ * a lead field such as the first name that is filled per recipient) → sample preview → send now or
+ * schedule (9 am – 9 pm only) → confirm screen with selected, excluded and final counts.
  */
 export function BulkSendModal({
   channel,
@@ -65,6 +66,7 @@ export function BulkSendModal({
   const review = async () => {
     const local: Record<string, string> = {}
     variables.forEach((v, i) => {
+      if (leadFieldOf(v)) return // filled per recipient on the server
       if (!v.trim()) local[`variables.${i}`] = `Variable ${i + 1} is required`
       else if (v.trim().length > DLT_VAR_MAX) local[`variables.${i}`] = `At most ${DLT_VAR_MAX} characters (DLT rule)`
     })
@@ -158,26 +160,7 @@ export function BulkSendModal({
               ))}
             </Select>
           </FormField>
-          {variables.length > 0 && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {variables.map((value, i) => (
-                <FormField
-                  key={i}
-                  label={`Variable ${i + 1}`}
-                  required
-                  error={errors[`variables.${i}`]}
-                  hint={i === 0 ? `Fills the {#var#} markers in order, for every recipient · max ${DLT_VAR_MAX} characters each` : undefined}
-                >
-                  <Input
-                    value={value}
-                    maxLength={DLT_VAR_MAX}
-                    aria-invalid={!!errors[`variables.${i}`]}
-                    onChange={(e) => setVariable(i, e.target.value)}
-                  />
-                </FormField>
-              ))}
-            </div>
-          )}
+          <DltVariableFields variables={variables} errors={errors} onChange={setVariable} perRecipient />
           <div className="flex gap-4 text-sm">
             <label className="flex items-center gap-1.5">
               <input type="radio" checked={!schedule} onChange={() => setSchedule(false)} /> Send Now
