@@ -795,9 +795,14 @@ export interface MessageTemplate {
   senderId?: string
   /** SMS only: the DLT template type. Explicit (promotional category) goes on the gateway's promotional channel, 10 am – 9 pm */
   dltType?: 'implicit' | 'explicit'
+  /** WhatsApp only: the template as approved in WhatsApp Manager (name + language), its review status and category */
+  waTemplateName?: string
+  waLanguage?: string
+  waCategory?: string
+  waStatus?: string
   isActive: boolean
   placeholders: string[]
-  /** SMS only: how many {#var#} values are typed when sending (DLT variables) */
+  /** SMS / WhatsApp: how many values are typed or picked when sending ({#var#} markers or {{n}} parameters) */
   variableCount?: number
   createdAt: string
   updatedAt: string
@@ -821,6 +826,36 @@ export interface LeadMessage {
   sentAt?: string
   deliveredAt?: string
   createdAt: string
+  /** out = sent by the CRM (default); in = a WhatsApp reply from the lead */
+  direction?: 'in' | 'out'
+}
+
+/** One bubble of the lead's WhatsApp thread. */
+export interface WhatsAppChatMessage {
+  _id: string
+  direction: 'in' | 'out'
+  body: string
+  /** out: queued | sent | delivered | failed · in: received */
+  status: string
+  error?: string
+  template?: string
+  /** out: the user (or "Automation"); in: the lead's WhatsApp profile name */
+  sentBy?: string
+  sentAt: string
+  deliveredAt?: string
+  createdAt: string
+  providerMessageId?: string
+}
+
+export interface WhatsAppChat {
+  to: string | null
+  optedOut: boolean
+  /** until when Meta accepts a typed reply (24 h after the lead's last message); null = templates only */
+  windowOpenUntil?: string | null
+  canSendText: boolean
+  /** replies that were unread before this fetch (they are marked read by it) */
+  unread: number
+  messages: WhatsAppChatMessage[]
 }
 
 export interface MessagePreview {

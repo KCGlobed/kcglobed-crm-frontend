@@ -12,7 +12,7 @@ import { Button } from '../../components/ui/Button'
 import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import { sanitizeHtml } from '../../lib/sanitize'
-import { DLT_VAR_MAX, LEAD_FIELD_LABELS, fillDltVariables, leadFieldOf, resolveDltVariables } from '../../lib/smsTemplate'
+import { DLT_VAR_MAX, LEAD_FIELD_LABELS, fillTemplateVariables, leadFieldOf, resolveDltVariables } from '../../lib/smsTemplate'
 import type { Lead, MessagePreview } from '../../types/models'
 import { DltVariableFields } from './DltVariableFields'
 import { ownerLabel, useAssignableOwners } from './leadSelection'
@@ -86,11 +86,11 @@ export function AssignLeadModal({ lead, onClose }: { lead: Lead; onClose: () => 
 
 /**
  * GL-22 per-lead send: template → preview with real values → (email: edit) → send.
- * SMS templates may carry DLT {#var#} variables: each value is typed here or picked from the lead's
- * fields (name, lead ID, counsellor …), the preview fills them live, and a review step shows the
- * final text and number before the gateway is called.
+ * SMS and WhatsApp templates carry variables ({#var#} markers / {{n}} parameters): each value is typed
+ * here or picked from the lead's fields (name, lead ID, counsellor …), the preview fills them live,
+ * and a review step shows the final text and number before the gateway is called.
  */
-export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; channel: 'sms' | 'email'; onClose: () => void }) {
+export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; channel: 'sms' | 'email' | 'whatsapp'; onClose: () => void }) {
   const { data: templates } = useListMessageTemplatesQuery({ channel, active: true })
   const [preview, { isLoading: previewing }] = usePreviewLeadMessageMutation()
   const [send, { isLoading: sending }] = useSendLeadMessageMutation()
@@ -101,8 +101,9 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
   const [variables, setVariables] = useState<string[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [reviewing, setReviewing] = useState(false)
-  const label = channel === 'sms' ? 'SMS' : 'Email'
-  const smsText = shown ? fillDltVariables(shown.body, resolveDltVariables(variables, shown.leadValues)) : ''
+  const label = channel === 'sms' ? 'SMS' : channel === 'whatsapp' ? 'WhatsApp' : 'Email'
+  const templated = channel !== 'email' // SMS and WhatsApp: the approved text is fixed, values fill its markers
+  const smsText = shown ? fillTemplateVariables(shown.body, resolveDltVariables(variables, shown.leadValues), channel) : ''
 
   const choose = async (id: string) => {
     setTemplate(id)
@@ -150,7 +151,7 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
       }).unwrap()
       if (res.data.status === 'failed') {
         toast.error(res.data.error ?? `${label} failed`)
-        if (channel === 'sms') return setReviewing(false) // keep the typed values so the send can be corrected
+        if (templated) return setReviewing(false) // keep the typed values so the send can be corrected
       } else toast.success(`${label} ${res.data.status}`)
       onClose()
     } catch (err) {
@@ -167,18 +168,18 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
       onClose={onClose}
       size="lg"
       title={`Send ${label}`}
-      description={`To ${channel === 'sms' ? lead.mobile ?? 'no mobile' : lead.email ?? 'no email'}`}
+      description={`To ${channel === 'email' ? lead.email ?? 'no email' : lead.mobile ?? 'no mobile'}`}
       footer={
-        channel === 'sms' && reviewing ? (
+        templated && reviewing ? (
           <>
             <Button variant="outline" onClick={() => setReviewing(false)} disabled={sending}>
               Back
             </Button>
             <Button onClick={onSend} loading={sending} disabled={!shown || !shown.to}>
-              Confirm &amp; Send SMS
+              Confirm &amp; Send {label}
             </Button>
           </>
-        ) : channel === 'sms' ? (
+        ) : templated ? (
           <>
             <Button variant="outline" onClick={onClose}>
               Cancel
@@ -200,7 +201,17 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
       }
     >
       <div className="space-y-3">
-        <FormField label="Template" required hint={channel === 'sms' ? 'Only DLT-approved SMS templates can be sent' : undefined}>
+        <FormField
+          label="Template"
+          required
+          hint={
+            channel === 'sms'
+              ? 'Only DLT-approved SMS templates can be sent'
+              : channel === 'whatsapp'
+                ? 'Only templates approved in WhatsApp Manager can be sent'
+                : undefined
+          }
+        >
           <Select value={template} disabled={reviewing} onChange={(e) => choose(e.target.value)}>
             <option value="">Choose…</option>
             {templates?.data.map((t) => (
@@ -216,14 +227,17 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
             <AlertTriangle className="h-3.5 w-3.5" /> {shown.warning}
           </p>
         )}
-        {shown && channel === 'sms' && !reviewing && (
+        {shown && templated && !reviewing && (
           <DltVariableFields variables={variables} errors={errors} onChange={setVariable} />
         )}
-        {shown && channel === 'sms' && (
+        {shown && templated && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
             <p className="mb-1 text-[11px] text-slate-500">
-              {reviewing ? 'Final message' : 'Preview'} · To {lead.mobile ?? 'no mobile'} · DLT {shown.template.dltTemplateId} · Sender{' '}
-              {shown.template.senderId} · {smsText.length} chars
+              {reviewing ? 'Final message' : 'Preview'} · To {lead.mobile ?? 'no mobile'} ·{' '}
+              {channel === 'whatsapp'
+                ? `Template ${shown.template.waTemplateName ?? '?'} · ${shown.template.waLanguage ?? 'en'}`
+                : `DLT ${shown.template.dltTemplateId} · Sender ${shown.template.senderId}`}{' '}
+              · {smsText.length} chars
             </p>
             <p className="whitespace-pre-wrap text-sm text-slate-800">{smsText}</p>
           </div>
@@ -233,8 +247,10 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
             Explicit (promotional) DLT template: operators deliver it between 10 am and 9 pm only, and not to DND numbers without consent.
           </p>
         )}
-        {channel === 'sms' && reviewing && (
-          <p className="text-xs text-slate-500">Check the number and the text. Confirm &amp; Send hands it to the SMS gateway right away.</p>
+        {templated && reviewing && (
+          <p className="text-xs text-slate-500">
+            Check the number and the text. Confirm &amp; Send hands it to {channel === 'whatsapp' ? 'WhatsApp' : 'the SMS gateway'} right away.
+          </p>
         )}
         {shown && channel === 'email' && (
           <>

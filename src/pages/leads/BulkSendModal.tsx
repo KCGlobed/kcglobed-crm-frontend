@@ -21,7 +21,7 @@ export function BulkSendModal({
   selection,
   onClose,
 }: {
-  channel: 'sms' | 'email'
+  channel: 'sms' | 'email' | 'whatsapp'
   selection: LeadSelection
   onClose: () => void
 }) {
@@ -33,13 +33,14 @@ export function BulkSendModal({
   const [when, setWhen] = useState('')
   const [preview, setPreview] = useState<CampaignPreview | null>(null)
   const [create, { isLoading }] = useCreateCampaignMutation()
-  const label = channel === 'sms' ? 'SMS' : 'Email'
+  const label = channel === 'sms' ? 'SMS' : channel === 'whatsapp' ? 'WhatsApp' : 'Email'
+  const templated = channel !== 'email' // SMS and WhatsApp: the approved text is fixed, values fill its markers
 
-  /** Picking an SMS template opens one input per {#var#} marker; the values are the same for every recipient. */
+  /** Picking an SMS / WhatsApp template opens one input per variable; a typed value is the same for every recipient. */
   const choose = (id: string) => {
     setTemplate(id)
     setErrors({})
-    const count = channel === 'sms' ? (templates?.data.find((t) => t._id === id)?.variableCount ?? 0) : 0
+    const count = templated ? (templates?.data.find((t) => t._id === id)?.variableCount ?? 0) : 0
     setVariables(Array.from({ length: count }, () => ''))
   }
   const setVariable = (i: number, value: string) => {
@@ -52,7 +53,7 @@ export function BulkSendModal({
     template,
     preview: dryRun,
     audience: selectionBody(selection),
-    ...(channel === 'sms' ? { variables: variables.map((v) => v.trim()) } : {}),
+    ...(templated ? { variables: variables.map((v) => v.trim()) } : {}),
     ...(schedule && when ? { scheduledAt: new Date(when).toISOString() } : {}),
   })
 
@@ -80,7 +81,7 @@ export function BulkSendModal({
   const send = async () => {
     try {
       const res = await create(body(false)).unwrap()
-      toast.success(`${res.message} — the campaign report is under SMS & Email → Campaigns`)
+      toast.success(`${res.message} — the campaign report is under SMS, Email & WhatsApp → Bulk sends`)
       onClose()
     } catch (err) {
       fail(err)
@@ -122,7 +123,7 @@ export function BulkSendModal({
             {[
               ['Selected', preview.selected],
               ['Opted out', preview.excluded.optedOut],
-              [`No valid ${channel === 'sms' ? 'mobile' : 'email'}`, preview.excluded.invalid],
+              [`No valid ${channel === 'email' ? 'email' : 'mobile'}`, preview.excluded.invalid],
               ['Duplicate', preview.excluded.duplicate],
               ['Final', preview.final],
             ].map(([k, v]) => (
@@ -149,7 +150,11 @@ export function BulkSendModal({
         </div>
       ) : (
         <div className="space-y-4">
-          <FormField label={`${label} template`} required hint={channel === 'sms' ? 'Only DLT-approved templates are listed' : undefined}>
+          <FormField
+            label={`${label} template`}
+            required
+            hint={channel === 'sms' ? 'Only DLT-approved templates are listed' : channel === 'whatsapp' ? 'Only templates approved in WhatsApp Manager are listed' : undefined}
+          >
             <Select value={template} onChange={(e) => choose(e.target.value)}>
               <option value="">Choose…</option>
               {templates?.data.map((t) => (

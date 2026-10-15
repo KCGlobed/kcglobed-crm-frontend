@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Bookmark, CalendarRange, Download, Filter, Info, Mail, MessageSquareText, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
+import { Bookmark, CalendarRange, Download, Filter, Info, Mail, MessageCircle, MessageSquareText, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useDeleteSavedFilterMutation,
@@ -89,6 +89,10 @@ export default function LeadsListPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
   const admin = isAdminLike(user)
+  // bulk select for everyone who has a bulk action: assign needs leads.reassign, bulk SMS / email / WhatsApp needs the
+  // same send permission as a single send (a counsellor only ever sees and selects their own leads)
+  const canSendBulk = can(user, 'communications', 'create')
+  const canBulk = can(user, 'leads', 'reassign') || canSendBulk
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -98,7 +102,7 @@ export default function LeadsListPage() {
   const [filterName, setFilterName] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   const [allMatching, setAllMatching] = useState(false)
-  const [bulkAction, setBulkAction] = useState<'assign' | 'sms' | 'email' | null>(null)
+  const [bulkAction, setBulkAction] = useState<'assign' | 'sms' | 'email' | 'whatsapp' | null>(null)
 
   // the static lead columns plus one per active custom field (Masters → Custom fields)
   const { columns: leadColumns, keys: leadColumnKeys } = useLeadColumns()
@@ -221,7 +225,7 @@ export default function LeadsListPage() {
     ),
   }
   const columns = [
-    ...(admin ? [selectColumn] : []),
+    ...(canBulk ? [selectColumn] : []),
     ...columnPrefs.visibleKeys.map((key) => leadColumns.find((c) => c.key === key)!).filter(Boolean),
   ]
   const smart = params.get('smart')
@@ -509,7 +513,7 @@ export default function LeadsListPage() {
         </div>
       )}
 
-      {admin && (selected.length > 0 || allMatching) && (
+      {canBulk && (selected.length > 0 || allMatching) && (
         <div className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm shadow-sm">
           <b className="text-brand-800">{selection.count} selected</b>
           {!allMatching && allPageSelected && total > pageIds.length && (
@@ -523,13 +527,16 @@ export default function LeadsListPage() {
                 <UserPlus className="h-3.5 w-3.5" /> Assign
               </Button>
             )}
-            {can(user, 'communications', 'edit') && (
+            {canSendBulk && (
               <>
                 <Button size="sm" variant="outline" onClick={() => setBulkAction('sms')}>
                   <MessageSquareText className="h-3.5 w-3.5" /> Bulk SMS
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setBulkAction('email')}>
                   <Mail className="h-3.5 w-3.5" /> Bulk Email
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setBulkAction('whatsapp')}>
+                  <MessageCircle className="h-3.5 w-3.5" /> Bulk WhatsApp
                 </Button>
               </>
             )}
@@ -589,7 +596,7 @@ export default function LeadsListPage() {
         />
       )}
       {bulkAction === 'assign' && <BulkAssignModal selection={selection} onClose={() => setBulkAction(null)} onDone={() => { setBulkAction(null); clearSelection() }} />}
-      {(bulkAction === 'sms' || bulkAction === 'email') && (
+      {(bulkAction === 'sms' || bulkAction === 'email' || bulkAction === 'whatsapp') && (
         <BulkSendModal channel={bulkAction} selection={selection} onClose={() => setBulkAction(null)} />
       )}
       <Modal
