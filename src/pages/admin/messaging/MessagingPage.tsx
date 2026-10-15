@@ -67,6 +67,7 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
   const [body, setBody] = useState(template?.body ?? '')
   const [dlt, setDlt] = useState(template?.dltTemplateId ?? '')
   const [sender, setSender] = useState(template?.senderId ?? '')
+  const [dltType, setDltType] = useState<'implicit' | 'explicit'>(template?.dltType ?? 'implicit')
   const [active, setActive] = useState(template?.isActive ?? true)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -74,7 +75,7 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
     try {
       await save({
         id: template?._id,
-        body: { name, channel, body, isActive: active, ...(channel === 'sms' ? { dltTemplateId: dlt, senderId: sender } : { subject }) },
+        body: { name, channel, body, isActive: active, ...(channel === 'sms' ? { dltTemplateId: dlt, senderId: sender, dltType } : { subject }) },
       }).unwrap()
       toast.success('Template saved')
       onClose()
@@ -120,12 +121,23 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
           </FormField>
         </div>
         {channel === 'sms' ? (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <FormField label="DLT Template ID" required error={errors.dltTemplateId} hint="From the DLT portal (TRAI)">
               <Input value={dlt} onChange={(e) => setDlt(e.target.value.replace(/\D/g, ''))} />
             </FormField>
             <FormField label="Sender ID" required error={errors.senderId} hint="6-letter DLT header, e.g. GCCSCH">
               <Input value={sender} maxLength={6} onChange={(e) => setSender(e.target.value.toUpperCase())} />
+            </FormField>
+            <FormField
+              label="DLT Template Type"
+              required
+              error={errors.dltType}
+              hint={dltType === 'explicit' ? 'Promotional channel · delivered 10 am – 9 pm, not to DND numbers' : 'Service / OTP · any time, DND numbers too'}
+            >
+              <Select value={dltType} onChange={(e) => setDltType(e.target.value as 'implicit' | 'explicit')}>
+                <option value="implicit">Implicit</option>
+                <option value="explicit">Explicit</option>
+              </Select>
             </FormField>
           </div>
         ) : (
@@ -140,7 +152,15 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
               {`{${p}}`}
             </button>
           ))}
-          <span>· a missing value is removed, never sent raw</span>
+          {channel === 'sms' && (
+            <button type="button" onClick={() => setBody((b) => `${b}{#var#}`)} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-slate-700 hover:bg-brand-50">
+              {'{#var#}'}
+            </button>
+          )}
+          <span>
+            · a missing value is removed, never sent raw
+            {channel === 'sms' && ' · {#var#} is a DLT variable typed when sending (max 30 characters)'}
+          </span>
         </div>
         <FormField label={channel === 'sms' ? 'SMS text (must match the DLT-approved format)' : 'Email body'} required error={errors.body}>
           {channel === 'sms' ? (
