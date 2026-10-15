@@ -12,6 +12,7 @@ import { Button } from '../../components/ui/Button'
 import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import { sanitizeHtml } from '../../lib/sanitize'
+import { DLT_VAR_MAX, fillDltVariables } from '../../lib/smsTemplate'
 import type { Lead, MessagePreview } from '../../types/models'
 import { ownerLabel, useAssignableOwners } from './leadSelection'
 
@@ -82,7 +83,11 @@ export function AssignLeadModal({ lead, onClose }: { lead: Lead; onClose: () => 
   )
 }
 
-/** GL-22 per-lead send: template → preview with real values → (email: edit) → send. */
+/**
+ * GL-22 per-lead send: template → preview with real values → (email: edit) → send.
+ * SMS templates may carry DLT {#var#} variables: the values are typed here, the preview fills
+ * them live, and a review step shows the final text and number before the gateway is called.
+ */
 export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; channel: 'sms' | 'email'; onClose: () => void }) {
   const { data: templates } = useListMessageTemplatesQuery({ channel, active: true })
   const [preview, { isLoading: previewing }] = usePreviewLeadMessageMutation()
@@ -91,33 +96,63 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
   const [shown, setShown] = useState<MessagePreview | null>(null)
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
+  const [variables, setVariables] = useState<string[]>([])
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [reviewing, setReviewing] = useState(false)
   const label = channel === 'sms' ? 'SMS' : 'Email'
+  const smsText = shown ? fillDltVariables(shown.body, variables) : ''
 
   const choose = async (id: string) => {
     setTemplate(id)
     setShown(null)
+    setVariables([])
+    setErrors({})
+    setReviewing(false)
     if (!id) return
     try {
       const res = await preview({ id: lead._id, template: id }).unwrap()
       setShown(res.data)
       setSubject(res.data.subject ?? '')
       setBody(res.data.body)
+      setVariables(Array.from({ length: res.data.variableCount ?? 0 }, () => ''))
     } catch (err) {
       toast.error(parseApiError(err).message)
     }
   }
 
+  const setVariable = (i: number, value: string) => {
+    setVariables((vs) => vs.map((v, j) => (j === i ? value : v)))
+    setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== `variables.${i}`)))
+  }
+
+  /** SMS: check the typed values, then show the final text for confirmation. */
+  const review = () => {
+    const local: Record<string, string> = {}
+    variables.forEach((v, i) => {
+      if (!v.trim()) local[`variables.${i}`] = `Variable ${i + 1} is required`
+      else if (v.trim().length > DLT_VAR_MAX) local[`variables.${i}`] = `At most ${DLT_VAR_MAX} characters (DLT rule)`
+    })
+    if (Object.keys(local).length) return setErrors(local)
+    setReviewing(true)
+  }
+
   const onSend = async () => {
+    if (sending) return // a second click while the request is in flight must not send twice
     try {
       const res = await send({
         id: lead._id,
-        body: { template, channel, ...(channel === 'email' ? { subject, body } : {}) },
+        body: { template, channel, ...(channel === 'email' ? { subject, body } : { variables: variables.map((v) => v.trim()) }) },
       }).unwrap()
-      if (res.data.status === 'failed') toast.error(res.data.error ?? `${label} failed`)
-      else toast.success(`${label} ${res.data.status}`)
+      if (res.data.status === 'failed') {
+        toast.error(res.data.error ?? `${label} failed`)
+        if (channel === 'sms') return setReviewing(false) // keep the typed values so the send can be corrected
+      } else toast.success(`${label} ${res.data.status}`)
       onClose()
     } catch (err) {
-      toast.error(parseApiError(err).message)
+      const { message, errors: fe } = parseApiError(err)
+      setErrors(fe)
+      if (Object.keys(fe).length) setReviewing(false)
+      toast.error(message)
     }
   }
 
@@ -129,19 +164,39 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
       title={`Send ${label}`}
       description={`To ${channel === 'sms' ? lead.mobile ?? 'no mobile' : lead.email ?? 'no email'}`}
       footer={
-        <>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={onSend} loading={sending} disabled={!shown || !shown.to}>
-            Send {label}
-          </Button>
-        </>
+        channel === 'sms' && reviewing ? (
+          <>
+            <Button variant="outline" onClick={() => setReviewing(false)} disabled={sending}>
+              Back
+            </Button>
+            <Button onClick={onSend} loading={sending} disabled={!shown || !shown.to}>
+              Confirm &amp; Send SMS
+            </Button>
+          </>
+        ) : channel === 'sms' ? (
+          <>
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={review} disabled={!shown || !shown.to || previewing}>
+              Review
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={onSend} loading={sending} disabled={!shown || !shown.to}>
+              Send {label}
+            </Button>
+          </>
+        )
       }
     >
       <div className="space-y-3">
         <FormField label="Template" required hint={channel === 'sms' ? 'Only DLT-approved SMS templates can be sent' : undefined}>
-          <Select value={template} onChange={(e) => choose(e.target.value)}>
+          <Select value={template} disabled={reviewing} onChange={(e) => choose(e.target.value)}>
             <option value="">Choose…</option>
             {templates?.data.map((t) => (
               <option key={t._id} value={t._id}>
@@ -156,13 +211,42 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
             <AlertTriangle className="h-3.5 w-3.5" /> {shown.warning}
           </p>
         )}
+        {shown && channel === 'sms' && !reviewing && variables.length > 0 && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {variables.map((value, i) => (
+              <FormField
+                key={i}
+                label={`Variable ${i + 1}`}
+                required
+                error={errors[`variables.${i}`]}
+                hint={i === 0 ? `Fills the {#var#} markers in order · max ${DLT_VAR_MAX} characters each` : undefined}
+              >
+                <Input
+                  value={value}
+                  maxLength={DLT_VAR_MAX}
+                  aria-invalid={!!errors[`variables.${i}`]}
+                  onChange={(e) => setVariable(i, e.target.value)}
+                />
+              </FormField>
+            ))}
+          </div>
+        )}
         {shown && channel === 'sms' && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
             <p className="mb-1 text-[11px] text-slate-500">
-              Preview · DLT {shown.template.dltTemplateId} · Sender {shown.template.senderId} · {shown.body.length} chars
+              {reviewing ? 'Final message' : 'Preview'} · To {lead.mobile ?? 'no mobile'} · DLT {shown.template.dltTemplateId} · Sender{' '}
+              {shown.template.senderId} · {smsText.length} chars
             </p>
-            <p className="whitespace-pre-wrap text-sm text-slate-800">{shown.body}</p>
+            <p className="whitespace-pre-wrap text-sm text-slate-800">{smsText}</p>
           </div>
+        )}
+        {shown && channel === 'sms' && shown.template.dltType === 'explicit' && (
+          <p className="text-xs text-slate-500">
+            Explicit (promotional) DLT template: operators deliver it between 10 am and 9 pm only, and not to DND numbers without consent.
+          </p>
+        )}
+        {channel === 'sms' && reviewing && (
+          <p className="text-xs text-slate-500">Check the number and the text. Confirm &amp; Send hands it to the SMS gateway right away.</p>
         )}
         {shown && channel === 'email' && (
           <>

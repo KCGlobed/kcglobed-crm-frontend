@@ -194,6 +194,9 @@ function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCu
   )
 }
 
+/** A number we can message: 10 digits (or country-coded); a missing or masked number has fewer. */
+const hasUsableMobile = (mobile?: string | null) => (mobile ?? '').replace(/\D/g, '').length >= 10
+
 /** wa.me link for the lead's mobile (10-digit Indian numbers get the 91 prefix). */
 function whatsappLink(mobile?: string | null): string | null {
   const digits = (mobile ?? '').replace(/\D/g, '')
@@ -370,12 +373,15 @@ export default function LeadDetailPage() {
               </div>
               {canSend && (
                 <div className="flex flex-wrap items-center gap-2" data-testid="lead-messaging-actions">
-                  {/* SMS sending is switched off for now; a disabled button has no pointer events, so the tooltip sits on a wrapper */}
-                  <span title="SMS sending is switched off for now">
-                    <Button variant="outline" size="sm" disabled onClick={() => setModal('sms')}>
-                      <MessageSquareText className="h-3.5 w-3.5" /> Send SMS
-                    </Button>
-                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!hasUsableMobile(lead.mobile)}
+                    title={hasUsableMobile(lead.mobile) ? 'Send a DLT-approved SMS to this lead' : 'No valid mobile number'}
+                    onClick={() => setModal('sms')}
+                  >
+                    <MessageSquareText className="h-3.5 w-3.5" /> Send SMS
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setModal('email')}>
                     <Mail className="h-3.5 w-3.5" /> Send Email
                   </Button>

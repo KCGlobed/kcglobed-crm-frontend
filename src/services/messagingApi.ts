@@ -73,8 +73,8 @@ export const messagingApi = api.injectEndpoints({
       query: (id) => `/leads/${id}/messages`,
       providesTags: ['LeadMessages'],
     }),
-    previewLeadMessage: build.mutation<ApiResponse<MessagePreview>, { id: string; template: string }>({
-      query: ({ id, template }) => ({ url: `/leads/${id}/messages/preview`, method: 'POST', body: { template } }),
+    previewLeadMessage: build.mutation<ApiResponse<MessagePreview>, { id: string; template: string; variables?: string[] }>({
+      query: ({ id, template, variables }) => ({ url: `/leads/${id}/messages/preview`, method: 'POST', body: { template, variables } }),
     }),
     sendLeadMessage: build.mutation<ApiResponse<LeadMessage>, { id: string; body: Record<string, unknown> }>({
       query: ({ id, body }) => ({ url: `/leads/${id}/messages`, method: 'POST', body }),

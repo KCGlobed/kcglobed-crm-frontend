@@ -776,8 +776,12 @@ export interface MessageTemplate {
   body: string
   dltTemplateId?: string
   senderId?: string
+  /** SMS only: the DLT template type. Explicit (promotional category) goes on the gateway's promotional channel, 10 am – 9 pm */
+  dltType?: 'implicit' | 'explicit'
   isActive: boolean
   placeholders: string[]
+  /** SMS only: how many {#var#} values are typed when sending (DLT variables) */
+  variableCount?: number
   createdAt: string
   updatedAt: string
 }
@@ -793,6 +797,8 @@ export interface LeadMessage {
   error?: string
   /** console-sms / console-email only log the message, so their sent/delivered status is a stand-in */
   provider?: string
+  /** the gateway's id for the message (e.g. Webinfosys MessageId), for delivery reports */
+  providerMessageId?: string
   trigger?: string
   sentBy?: string
   sentAt?: string
@@ -805,7 +811,9 @@ export interface MessagePreview {
   template: MessageTemplate
   to: string | null
   subject?: string | null
+  /** lead placeholders filled; {#var#} markers stay until their values are sent along */
   body: string
+  variableCount?: number
   optedOut: boolean
   warning?: string
 }
