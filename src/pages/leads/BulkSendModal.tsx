@@ -6,12 +6,14 @@ import { Button } from '../../components/ui/Button'
 import { FormField, Input, Select } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import { sanitizeHtml } from '../../lib/sanitize'
+import { DLT_VAR_MAX } from '../../lib/smsTemplate'
 import type { CampaignPreview } from '../../types/models'
 import { selectionBody, type LeadSelection } from './leadSelection'
 
 /**
- * GL-23 bulk SMS / email: template → sample preview → send now or schedule
- * (9 am – 9 pm only) → confirm screen with selected, excluded and final counts.
+ * GL-23 bulk SMS / email: template → (SMS: the DLT {#var#} values, typed once for every recipient) →
+ * sample preview → send now or schedule (9 am – 9 pm only) → confirm screen with selected, excluded
+ * and final counts.
  */
 export function BulkSendModal({
   channel,
@@ -24,25 +26,53 @@ export function BulkSendModal({
 }) {
   const { data: templates } = useListMessageTemplatesQuery({ channel, active: true })
   const [template, setTemplate] = useState('')
+  const [variables, setVariables] = useState<string[]>([])
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [schedule, setSchedule] = useState(false)
   const [when, setWhen] = useState('')
   const [preview, setPreview] = useState<CampaignPreview | null>(null)
   const [create, { isLoading }] = useCreateCampaignMutation()
   const label = channel === 'sms' ? 'SMS' : 'Email'
 
+  /** Picking an SMS template opens one input per {#var#} marker; the values are the same for every recipient. */
+  const choose = (id: string) => {
+    setTemplate(id)
+    setErrors({})
+    const count = channel === 'sms' ? (templates?.data.find((t) => t._id === id)?.variableCount ?? 0) : 0
+    setVariables(Array.from({ length: count }, () => ''))
+  }
+  const setVariable = (i: number, value: string) => {
+    setVariables((vs) => vs.map((v, j) => (j === i ? value : v)))
+    setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== `variables.${i}`)))
+  }
+
   const body = (dryRun: boolean) => ({
     channel,
     template,
     preview: dryRun,
     audience: selectionBody(selection),
+    ...(channel === 'sms' ? { variables: variables.map((v) => v.trim()) } : {}),
     ...(schedule && when ? { scheduledAt: new Date(when).toISOString() } : {}),
   })
 
+  const fail = (err: unknown) => {
+    const { message, errors: fe } = parseApiError(err)
+    setErrors(fe)
+    if (Object.keys(fe).length) setPreview(null) // back to the form, where the field errors show
+    toast.error(message)
+  }
+
   const review = async () => {
+    const local: Record<string, string> = {}
+    variables.forEach((v, i) => {
+      if (!v.trim()) local[`variables.${i}`] = `Variable ${i + 1} is required`
+      else if (v.trim().length > DLT_VAR_MAX) local[`variables.${i}`] = `At most ${DLT_VAR_MAX} characters (DLT rule)`
+    })
+    if (Object.keys(local).length) return setErrors(local)
     try {
       setPreview((await create(body(true)).unwrap()).data)
     } catch (err) {
-      toast.error(parseApiError(err).message)
+      fail(err)
     }
   }
   const send = async () => {
@@ -51,7 +81,7 @@ export function BulkSendModal({
       toast.success(`${res.message} — the campaign report is under SMS & Email → Campaigns`)
       onClose()
     } catch (err) {
-      toast.error(parseApiError(err).message)
+      fail(err)
     }
   }
 
@@ -118,7 +148,7 @@ export function BulkSendModal({
       ) : (
         <div className="space-y-4">
           <FormField label={`${label} template`} required hint={channel === 'sms' ? 'Only DLT-approved templates are listed' : undefined}>
-            <Select value={template} onChange={(e) => setTemplate(e.target.value)}>
+            <Select value={template} onChange={(e) => choose(e.target.value)}>
               <option value="">Choose…</option>
               {templates?.data.map((t) => (
                 <option key={t._id} value={t._id}>
@@ -128,6 +158,26 @@ export function BulkSendModal({
               ))}
             </Select>
           </FormField>
+          {variables.length > 0 && (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {variables.map((value, i) => (
+                <FormField
+                  key={i}
+                  label={`Variable ${i + 1}`}
+                  required
+                  error={errors[`variables.${i}`]}
+                  hint={i === 0 ? `Fills the {#var#} markers in order, for every recipient · max ${DLT_VAR_MAX} characters each` : undefined}
+                >
+                  <Input
+                    value={value}
+                    maxLength={DLT_VAR_MAX}
+                    aria-invalid={!!errors[`variables.${i}`]}
+                    onChange={(e) => setVariable(i, e.target.value)}
+                  />
+                </FormField>
+              ))}
+            </div>
+          )}
           <div className="flex gap-4 text-sm">
             <label className="flex items-center gap-1.5">
               <input type="radio" checked={!schedule} onChange={() => setSchedule(false)} /> Send Now

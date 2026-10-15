@@ -25,6 +25,8 @@ export interface CampaignBody {
   name?: string
   scheduledAt?: string
   preview?: boolean
+  /** SMS: the {#var#} values typed for the template, in order — the same for every recipient */
+  variables?: string[]
   audience: { leadIds?: string[]; selectAll?: boolean; filters?: Record<string, unknown> }
 }
 
