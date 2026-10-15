@@ -516,6 +516,10 @@ export interface ProfileExperience {
   organization: string
   designation: string
   functionalArea?: string
+  /** YYYY-MM-DD; toDate empty means the current organisation */
+  fromDate?: string
+  toDate?: string
+  /** legacy duration fields from older records */
   experienceYears?: number
   experienceMonths?: number
 }

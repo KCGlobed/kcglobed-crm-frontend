@@ -7,26 +7,27 @@ import { Button } from '../../../components/ui/Button'
 import { FormField, Input, Select } from '../../../components/ui/fields'
 import { EMPLOYMENT_STATUSES } from '../../../constants/profileOptions'
 import type { LeadProfile, ProfileWork } from '../../../types/models'
-import { toNumber, workSchema, type ExperienceEntry, type WorkValues, showSaveError } from './profileSchemas'
+import { workSchema, type ExperienceEntry, type WorkValues, showSaveError } from './profileSchemas'
 import { Section, PROFILE_STEP_FORM, PROFILE_STEP_SAVE } from './ProfileFields'
 
-const EMPTY_ENTRY: ExperienceEntry = { organization: '', designation: '', functionalArea: '' }
+const EMPTY_ENTRY: ExperienceEntry = { organization: '', designation: '', functionalArea: '', fromDate: '', toDate: '' }
 
 /** Stored work → form values; an old single-organisation record becomes the first entry. */
 function toFormValues(work: ProfileWork | null): WorkValues | undefined {
   if (!work) return undefined
-  const experiences =
+  const stored =
     work.experiences && work.experiences.length
       ? work.experiences
       : work.organization
-        ? [{
-            organization: work.organization,
-            designation: work.designation ?? '',
-            functionalArea: work.functionalArea,
-            experienceYears: work.experienceYears,
-            experienceMonths: work.experienceMonths,
-          }]
+        ? [{ organization: work.organization, designation: work.designation ?? '', functionalArea: work.functionalArea }]
         : []
+  const experiences = stored.map((e) => ({
+    organization: e.organization ?? '',
+    designation: e.designation ?? '',
+    functionalArea: e.functionalArea ?? '',
+    fromDate: e.fromDate ?? '',
+    toDate: e.toDate ?? '',
+  }))
   return { work: { employmentStatus: work.employmentStatus as WorkValues['work']['employmentStatus'], experiences } }
 }
 
@@ -114,31 +115,11 @@ export function WorkStep({
                       <FormField label="Functional Area" error={ee?.functionalArea?.message}>
                         <Input maxLength={100} aria-invalid={!!ee?.functionalArea} {...register(`work.experiences.${i}.functionalArea`)} />
                       </FormField>
-                      <FormField
-                        label="Experience (Years, Months)"
-                        error={ee?.experienceYears?.message ?? ee?.experienceMonths?.message}
-                      >
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            min={0}
-                            max={30}
-                            placeholder="YY"
-                            aria-label="Years"
-                            aria-invalid={!!ee?.experienceYears}
-                            {...register(`work.experiences.${i}.experienceYears`, { setValueAs: toNumber })}
-                          />
-                          <span className="text-xs text-slate-400">/</span>
-                          <Input
-                            type="number"
-                            min={0}
-                            max={11}
-                            placeholder="MM"
-                            aria-label="Months"
-                            aria-invalid={!!ee?.experienceMonths}
-                            {...register(`work.experiences.${i}.experienceMonths`, { setValueAs: toNumber })}
-                          />
-                        </div>
+                      <FormField label="From" required error={ee?.fromDate?.message}>
+                        <Input type="date" aria-invalid={!!ee?.fromDate} {...register(`work.experiences.${i}.fromDate`)} />
+                      </FormField>
+                      <FormField label="To" hint="Leave empty if currently working here" error={ee?.toDate?.message}>
+                        <Input type="date" aria-invalid={!!ee?.toDate} {...register(`work.experiences.${i}.toDate`)} />
                       </FormField>
                     </div>
                   </div>
