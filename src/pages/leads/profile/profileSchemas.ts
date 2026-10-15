@@ -200,13 +200,13 @@ export const academicSchema = z.object({
 export type AcademicInput = z.input<typeof academicSchema>
 export type AcademicValues = z.output<typeof academicSchema>
 
-/** One organisation/role — a student can add several. */
+/** One organisation/role — a student can add several. The period is From/To dates (To empty = current). */
 const experienceEntry = z.object({
   organization: z.string().trim().min(1, 'Organization name is required').max(100),
   designation: z.string().trim().min(1, 'Designation is required').max(100),
   functionalArea: z.string().trim().max(100).optional(),
-  experienceYears: z.number().int('Whole years only').min(0, 'Years must be 0–30').max(30, 'Years must be 0–30').optional(),
-  experienceMonths: z.number().int('Whole months only').min(0, 'Months must be 0–11').max(11, 'Months must be 0–11').optional(),
+  fromDate: z.string().min(1, 'From date is required'),
+  toDate: z.string().optional(),
 })
 export type ExperienceEntry = z.infer<typeof experienceEntry>
 
@@ -217,9 +217,16 @@ export const workSchema = z.object({
       experiences: z.array(experienceEntry).optional(),
     })
     .superRefine((v, ctx) => {
-      if (v.employmentStatus === 'Experienced' && !(v.experiences && v.experiences.length)) {
+      if (v.employmentStatus !== 'Experienced') return
+      if (!(v.experiences && v.experiences.length)) {
         ctx.addIssue({ code: 'custom', path: ['experiences'], message: 'Add at least one work experience' })
+        return
       }
+      v.experiences.forEach((e, i) => {
+        if (e.fromDate && e.toDate && e.toDate < e.fromDate) {
+          ctx.addIssue({ code: 'custom', path: ['experiences', i, 'toDate'], message: 'Must be after the From date' })
+        }
+      })
     }),
 })
 export type WorkValues = z.infer<typeof workSchema>
