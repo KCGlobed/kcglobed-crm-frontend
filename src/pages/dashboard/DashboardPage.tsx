@@ -387,7 +387,7 @@ interface BarItem {
 const NEUTRAL_STAGE_DOT = '#94a3b8'
 
 /** Sources kept off the Lead Source Analytics card for now, by name (lower-case) — temporary, on request. */
-const HIDDEN_SOURCES = new Set(['direct'])
+const HIDDEN_SOURCES = new Set(['direct', 'no source'])
 
 /**
  * Every active master stage with its count from the summary's byStage rows (0 when the
@@ -664,8 +664,9 @@ export default function DashboardPage() {
   const { key, bounds, range } = period
   const allTime = !bounds
 
+  // the id-less row is "No source" (leads with the field empty); it is hidden for now along with the named ones
   const sourceRows: BarItem[] | undefined = summary?.bySource
-    .filter((s) => !HIDDEN_SOURCES.has(s.name.trim().toLowerCase()))
+    .filter((s) => s._id && !HIDDEN_SOURCES.has(s.name.trim().toLowerCase()))
     .map((s) => {
       // the "No source" row has no id: it lists the leads whose source is empty
       const params: ListParams = s._id ? { source: s._id } : { filters: JSON.stringify([{ field: 'source', op: 'empty' }]) }
