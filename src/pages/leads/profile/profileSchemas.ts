@@ -167,6 +167,7 @@ export const academicSchema = z.object({
       higherQualification: z.object({
         has: z.preprocess(toBoolean, z.boolean({ error: 'Select Yes or No' })),
         details: z.string().trim().max(150, 'Qualification details must be 150 characters or fewer').optional(),
+        institution: z.string().trim().max(150, 'Institution name must be 150 characters or fewer').optional(),
       }),
     })
     .superRefine((a, ctx) => {

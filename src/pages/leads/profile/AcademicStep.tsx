@@ -259,9 +259,14 @@ export function AcademicStep({
               />
             </FormField>
             {String(hasHigher) === 'true' && (
-              <FormField label="Qualification Details" required error={ae?.higherQualification?.details?.message}>
-                <Input maxLength={150} aria-invalid={!!ae?.higherQualification?.details} {...register('academic.higherQualification.details')} />
-              </FormField>
+              <>
+                <FormField label="Qualification Details" required error={ae?.higherQualification?.details?.message}>
+                  <Input maxLength={150} aria-invalid={!!ae?.higherQualification?.details} {...register('academic.higherQualification.details')} />
+                </FormField>
+                <FormField label="Institution Name" error={ae?.higherQualification?.institution?.message}>
+                  <Input maxLength={150} aria-invalid={!!ae?.higherQualification?.institution} {...register('academic.higherQualification.institution')} />
+                </FormField>
+              </>
             )}
           </div>
         </Section>
