@@ -6,6 +6,7 @@ import {
   EMPLOYMENT_STATUSES,
   GENDERS,
   GRADE_TYPES,
+  HIGHER_QUALIFICATIONS,
   INDIAN_STATES,
   MAX_AGE,
   MEDIUMS,
@@ -166,6 +167,7 @@ export const academicSchema = z.object({
       }),
       higherQualification: z.object({
         has: z.preprocess(toBoolean, z.boolean({ error: 'Select Yes or No' })),
+        qualification: optionalPick(HIGHER_QUALIFICATIONS, 'a qualification'),
         details: z.string().trim().max(150, 'Qualification details must be 150 characters or fewer').optional(),
         institution: z.string().trim().max(150, 'Institution name must be 150 characters or fewer').optional(),
       }),
@@ -193,8 +195,12 @@ export const academicSchema = z.object({
           message: a.ug.status === 'Pursuing' ? `Year cannot be after ${latest}` : 'A future year is allowed only while Pursuing',
         })
       }
-      if (a.higherQualification.has && !a.higherQualification.details) {
-        ctx.addIssue({ code: 'custom', path: ['higherQualification', 'details'], message: 'Enter the qualification details' })
+      if (a.higherQualification.has) {
+        if (!a.higherQualification.qualification) {
+          ctx.addIssue({ code: 'custom', path: ['higherQualification', 'qualification'], message: 'Select a qualification' })
+        } else if (a.higherQualification.qualification === 'Other' && !a.higherQualification.details) {
+          ctx.addIssue({ code: 'custom', path: ['higherQualification', 'details'], message: 'Enter the qualification details' })
+        }
       }
     }),
 })
