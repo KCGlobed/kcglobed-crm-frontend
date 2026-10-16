@@ -104,6 +104,8 @@ const crmApi = createApi({
     'LeadMessages',
     'WhatsAppChat',
     'MessageTemplates',
+    'SavedTexts',
+    'MessageAssets',
     'Automations',
     'Campaigns',
     'MetaIntegration',

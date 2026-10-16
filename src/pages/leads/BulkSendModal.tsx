@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { useCreateCampaignMutation, useListMessageTemplatesQuery } from '../../services/messagingApi'
+import { useCreateCampaignMutation, useListMessageTemplatesQuery, useMessagingOptionsQuery } from '../../services/messagingApi'
 import { Modal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
 import { FormField, Input, Select } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
-import { sanitizeHtml } from '../../lib/sanitize'
-import { DLT_VAR_MAX, leadFieldOf } from '../../lib/smsTemplate'
+import { EmailPreview } from '../../components/email/EmailPreview'
+import { AttachmentList } from '../../components/email/AttachmentList'
+import { DLT_VAR_MAX, LEAD_FIELD_LABELS, fillTemplateVariables, leadFieldOf } from '../../lib/smsTemplate'
 import type { CampaignPreview } from '../../types/models'
 import { DltVariableFields } from './DltVariableFields'
 import { selectionBody, type LeadSelection } from './leadSelection'
@@ -35,6 +36,14 @@ export function BulkSendModal({
   const [create, { isLoading }] = useCreateCampaignMutation()
   const label = channel === 'sms' ? 'SMS' : channel === 'whatsapp' ? 'WhatsApp' : 'Email'
   const templated = channel !== 'email' // SMS and WhatsApp: the approved text is fixed, values fill its markers
+  // live preview while the form is filled: typed / saved values as they are, lead fields as [Label] (filled per recipient)
+  const { data: options } = useMessagingOptionsQuery()
+  const chosen = templates?.data.find((t) => t._id === template)
+  const fieldLabel = (key: string) => options?.data.leadFields.find((f) => f.value === key)?.label ?? LEAD_FIELD_LABELS[key] ?? key
+  const prettyPlaceholders = (text: string) => text.replace(/\{(\w+)\}/g, (_m, key: string) => `[${fieldLabel(key)}]`)
+  const liveText = chosen
+    ? prettyPlaceholders(templated ? fillTemplateVariables(chosen.body, variables.map((v) => (leadFieldOf(v) ? `[${fieldLabel(leadFieldOf(v) as string)}]` : v)), channel) : chosen.body)
+    : ''
 
   /** Picking an SMS / WhatsApp template opens one input per variable; a typed value is the same for every recipient. */
   const choose = (id: string) => {
@@ -138,7 +147,7 @@ export function BulkSendModal({
               <p className="mb-1 text-[11px] font-semibold uppercase text-slate-500">Sample · to {preview.sample.to}</p>
               {preview.sample.subject && <p className="mb-1 text-sm font-medium text-slate-800">{preview.sample.subject}</p>}
               {channel === 'email' ? (
-                <div className="prose prose-sm text-sm text-slate-700" dangerouslySetInnerHTML={{ __html: sanitizeHtml(preview.sample.body) }} />
+                <EmailPreview html={preview.sample.body} height="16rem" />
               ) : (
                 <p className="whitespace-pre-wrap text-sm text-slate-700">{preview.sample.body}</p>
               )}
@@ -166,6 +175,25 @@ export function BulkSendModal({
             </Select>
           </FormField>
           <DltVariableFields variables={variables} errors={errors} onChange={setVariable} perRecipient />
+          {chosen && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <p className="mb-1 text-[11px] text-slate-500">
+                Preview ·{' '}
+                {channel === 'sms'
+                  ? `DLT ${chosen.dltTemplateId} · Sender ${chosen.senderId}`
+                  : channel === 'whatsapp'
+                    ? `Template ${chosen.waTemplateName ?? '?'} · ${chosen.waLanguage ?? 'en'}`
+                    : `Subject: ${prettyPlaceholders(chosen.subject ?? '')}`}{' '}
+                · [Lead fields] are filled for each recipient
+              </p>
+              {channel === 'email' && chosen.attachments?.length ? <AttachmentList attachments={chosen.attachments} readOnly className="mb-2" /> : null}
+              {channel === 'email' ? (
+                <EmailPreview html={liveText} height="16rem" />
+              ) : (
+                <p className="whitespace-pre-wrap text-sm text-slate-800">{liveText}</p>
+              )}
+            </div>
+          )}
           <div className="flex gap-4 text-sm">
             <label className="flex items-center gap-1.5">
               <input type="radio" checked={!schedule} onChange={() => setSchedule(false)} /> Send Now

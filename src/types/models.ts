@@ -937,6 +937,32 @@ export interface MessageTemplate {
   placeholders: string[]
   /** SMS / WhatsApp: how many values are typed or picked when sending ({#var#} markers or {{n}} parameters) */
   variableCount?: number
+  /** email: the files attached to every send of this template */
+  attachments?: MessageAsset[]
+  createdAt: string
+  updatedAt: string
+}
+
+/** An image uploaded for emailers (Communication → email designer); `url` is public, for mail clients. */
+export interface MessageAsset {
+  _id: string
+  name: string
+  url: string
+  contentType: string
+  size: number
+  /** image = placed in the email; file = an attachment */
+  kind?: 'image' | 'file'
+  uploadedBy?: string
+  createdAt: string
+}
+
+/** A saved value a template variable can be filled with (Communication → Texts: a short link, a date, a venue); sent as typed. */
+export interface SavedText {
+  _id: string
+  name: string
+  text: string
+  isActive: boolean
+  createdBy?: string
   createdAt: string
   updatedAt: string
 }
