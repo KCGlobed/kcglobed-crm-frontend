@@ -101,6 +101,11 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
   const [variables, setVariables] = useState<string[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [reviewing, setReviewing] = useState(false)
+  // Schedule: the message waits on the server (Activity Log → Scheduled) and goes out at this time
+  const [schedule, setSchedule] = useState(false)
+  const [when, setWhen] = useState('')
+  const scheduleReady = !schedule || !!when
+  const whenText = when ? new Date(when).toLocaleString() : ''
   const label = channel === 'sms' ? 'SMS' : channel === 'whatsapp' ? 'WhatsApp' : 'Email'
   const templated = channel !== 'email' // SMS and WhatsApp: the approved text is fixed, values fill its markers
   const smsText = shown ? fillTemplateVariables(shown.body, resolveDltVariables(variables, shown.leadValues), channel) : ''
@@ -147,12 +152,17 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
     try {
       const res = await send({
         id: lead._id,
-        body: { template, channel, ...(channel === 'email' ? { subject, body } : { variables: variables.map((v) => v.trim()) }) },
+        body: {
+          template,
+          channel,
+          ...(channel === 'email' ? { subject, body } : { variables: variables.map((v) => v.trim()) }),
+          ...(schedule && when ? { scheduledAt: new Date(when).toISOString() } : {}),
+        },
       }).unwrap()
       if (res.data.status === 'failed') {
         toast.error(res.data.error ?? `${label} failed`)
         if (templated) return setReviewing(false) // keep the typed values so the send can be corrected
-      } else toast.success(`${label} ${res.data.status}`)
+      } else toast.success(res.data.status === 'scheduled' ? `${label} scheduled for ${whenText}` : `${label} ${res.data.status}`)
       onClose()
     } catch (err) {
       const { message, errors: fe } = parseApiError(err)
@@ -175,8 +185,8 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
             <Button variant="outline" onClick={() => setReviewing(false)} disabled={sending}>
               Back
             </Button>
-            <Button onClick={onSend} loading={sending} disabled={!shown || !shown.to}>
-              Confirm &amp; Send {label}
+            <Button onClick={onSend} loading={sending} disabled={!shown || !shown.to || !scheduleReady}>
+              {schedule ? 'Confirm & Schedule' : `Confirm & Send ${label}`}
             </Button>
           </>
         ) : templated ? (
@@ -184,7 +194,7 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={review} disabled={!shown || !shown.to || previewing}>
+            <Button onClick={review} disabled={!shown || !shown.to || previewing || !scheduleReady}>
               Review
             </Button>
           </>
@@ -193,8 +203,8 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={onSend} loading={sending} disabled={!shown || !shown.to}>
-              Send {label}
+            <Button onClick={onSend} loading={sending} disabled={!shown || !shown.to || !scheduleReady}>
+              {schedule ? `Schedule ${label}` : `Send ${label}`}
             </Button>
           </>
         )
@@ -249,7 +259,9 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
         )}
         {templated && reviewing && (
           <p className="text-xs text-slate-500">
-            Check the number and the text. Confirm &amp; Send hands it to {channel === 'whatsapp' ? 'WhatsApp' : 'the SMS gateway'} right away.
+            {schedule
+              ? `Check the number and the text. Confirm & Schedule keeps it until ${whenText}; cancel it any time from Activity Log → Scheduled.`
+              : `Check the number and the text. Confirm & Send hands it to ${channel === 'whatsapp' ? 'WhatsApp' : 'the SMS gateway'} right away.`}
           </p>
         )}
         {shown && channel === 'email' && (
@@ -266,6 +278,31 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(shown.body) }}
               />
             </FormField>
+          </>
+        )}
+        {shown && !(templated && reviewing) && (
+          <>
+            <div className="flex gap-4 text-sm">
+              <label className="flex items-center gap-1.5">
+                <input type="radio" checked={!schedule} onChange={() => setSchedule(false)} /> Send Now
+              </label>
+              <label className="flex items-center gap-1.5">
+                <input type="radio" checked={schedule} onChange={() => setSchedule(true)} /> Schedule
+              </label>
+            </div>
+            {schedule && (
+              <FormField
+                label="Date & Time"
+                required
+                hint={
+                  channel === 'sms' && shown.template.dltType === 'explicit'
+                    ? 'Explicit DLT templates are delivered between 10 am and 9 pm only'
+                    : 'Goes out from the server at this time; cancel it any time from Activity Log → Scheduled'
+                }
+              >
+                <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+              </FormField>
+            )}
           </>
         )}
       </div>

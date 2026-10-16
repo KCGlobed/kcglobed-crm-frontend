@@ -1,5 +1,14 @@
 import { api } from './api'
-import type { ApiResponse, DashboardSummary, Notification, Pagination, PushDevice, PushStatus } from '../types/models'
+import type {
+  ApiListResponse,
+  ApiResponse,
+  DashboardSummary,
+  Notification,
+  NotificationLogRow,
+  Pagination,
+  PushDevice,
+  PushStatus,
+} from '../types/models'
 
 interface NotificationList {
   items: Notification[]
@@ -21,6 +30,14 @@ export const miscApi = api.injectEndpoints({
         params: { page, page_size: 15, ...(unread ? { unread: 'true' } : {}) },
         // the bell's poll is not user activity — it must not keep an idle session alive (GL-05)
         headers: { 'X-Background': '1' },
+      }),
+      providesTags: ['Notifications'],
+    }),
+    /** Activity Log → Notifications: every alert the CRM raised, who got it, read or not, and its push outcome (admins). */
+    notificationLog: build.query<ApiListResponse<NotificationLogRow>, Record<string, unknown>>({
+      query: (params) => ({
+        url: '/notifications/log',
+        params: Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')),
       }),
       providesTags: ['Notifications'],
     }),
@@ -51,6 +68,7 @@ export const miscApi = api.injectEndpoints({
 export const {
   useDashboardSummaryQuery,
   useListNotificationsQuery,
+  useNotificationLogQuery,
   useMarkNotificationReadMutation,
   useMarkAllNotificationsReadMutation,
   usePushStatusQuery,

@@ -1,14 +1,17 @@
 import { api } from './api'
 import type {
+  ApiListResponse,
   ApiResponse,
   AutomationRuleRow,
   CampaignPreview,
+  CampaignRecipient,
   CampaignRow,
   LeadMessage,
   MessagePreview,
   MessageTemplate,
   MetaEventRow,
   MetaFormMappingRow,
+  ScheduledSend,
   WhatsAppChat,
   WhatsAppChatMessage,
 } from '../types/models'
@@ -69,6 +72,17 @@ export const messagingApi = api.injectEndpoints({
       query: (id) => `/messaging/campaigns/${id}`,
       providesTags: ['Campaigns'],
     }),
+    /** Who a bulk send went to, one row per recipient with the live status (the Activity Log drill-down). */
+    campaignRecipients: build.query<
+      ApiListResponse<CampaignRecipient>,
+      { id: string; page?: number; page_size?: number; status?: string; search?: string }
+    >({
+      query: ({ id, ...params }) => ({
+        url: `/messaging/campaigns/${id}/recipients`,
+        params: Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== '')),
+      }),
+      providesTags: ['Campaigns'],
+    }),
     createCampaign: build.mutation<ApiResponse<CampaignPreview>, CampaignBody>({
       query: (body) => ({ url: '/messaging/campaigns', method: 'POST', body }),
       invalidatesTags: (_r, error, { preview }) => (error || preview ? [] : ['Campaigns', 'Notifications']),
@@ -89,10 +103,31 @@ export const messagingApi = api.injectEndpoints({
     previewLeadMessage: build.mutation<ApiResponse<MessagePreview>, { id: string; template: string; variables?: string[] }>({
       query: ({ id, template, variables }) => ({ url: `/leads/${id}/messages/preview`, method: 'POST', body: { template, variables } }),
     }),
+    /** Sends now, or with `scheduledAt` in the body puts the message on the clock (status scheduled). */
     sendLeadMessage: build.mutation<ApiResponse<LeadMessage>, { id: string; body: Record<string, unknown> }>({
       query: ({ id, body }) => ({ url: `/leads/${id}/messages`, method: 'POST', body }),
       invalidatesTags: (_r, error, { id }) =>
-        error ? [] : ['LeadMessages', { type: 'LeadTimeline', id }, { type: 'Lead', id }, { type: 'WhatsAppChat', id }],
+        error ? [] : ['LeadMessages', 'Campaigns', { type: 'LeadTimeline', id }, { type: 'Lead', id }, { type: 'WhatsAppChat', id }],
+    }),
+    /** Activity Log → Scheduled: bulk sends and single messages waiting for their time, in one list. */
+    scheduledSends: build.query<ApiListResponse<ScheduledSend>, Record<string, unknown>>({
+      query: (params) => ({
+        url: '/messaging/scheduled',
+        params: Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== '')),
+      }),
+      providesTags: ['Campaigns'],
+    }),
+    cancelScheduledMessage: build.mutation<ApiResponse<LeadMessage>, string>({
+      query: (id) => ({ url: `/messaging/messages/${id}/cancel`, method: 'POST' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['Campaigns', 'LeadMessages', 'LeadTimeline']),
+    }),
+    sendScheduledMessageNow: build.mutation<ApiResponse<LeadMessage>, string>({
+      query: (id) => ({ url: `/messaging/messages/${id}/send-now`, method: 'POST' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['Campaigns', 'LeadMessages', 'LeadTimeline']),
+    }),
+    sendCampaignNow: build.mutation<ApiResponse<CampaignRow>, string>({
+      query: (id) => ({ url: `/messaging/campaigns/${id}/send-now`, method: 'POST' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['Campaigns']),
     }),
     /** The lead's WhatsApp thread, both directions; fetching it marks the lead's replies as read. */
     whatsAppChat: build.query<ApiResponse<WhatsAppChat>, string>({
@@ -140,6 +175,7 @@ export const {
   useUpdateAutomationMutation,
   useListCampaignsQuery,
   useGetCampaignQuery,
+  useCampaignRecipientsQuery,
   useCreateCampaignMutation,
   useCancelCampaignMutation,
   useSyncWhatsAppTemplatesMutation,
@@ -148,6 +184,10 @@ export const {
   useLeadMessagesQuery,
   usePreviewLeadMessageMutation,
   useSendLeadMessageMutation,
+  useScheduledSendsQuery,
+  useCancelScheduledMessageMutation,
+  useSendScheduledMessageNowMutation,
+  useSendCampaignNowMutation,
   useMetaFormsQuery,
   useSaveMetaFormMutation,
   useMetaEventsQuery,

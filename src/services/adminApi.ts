@@ -2,6 +2,7 @@ import { api } from './api'
 import type {
   ApiListResponse,
   ApiResponse,
+  AuditLogDetail,
   AuditLogEntry,
   PermissionTemplate,
   Team,
@@ -139,6 +140,11 @@ export const adminApi = api.injectEndpoints({
       query: (params) => ({ url: '/audit-logs', params: cleanParams(params) }),
       providesTags: [{ type: 'AuditLogs', id: 'LIST' }],
     }),
+    /** One entry with what it points at today: the message (live status + history) or the bulk send (report). */
+    getAuditLog: build.query<ApiResponse<AuditLogDetail>, string>({
+      query: (id) => `/audit-logs/${id}`,
+      providesTags: (_r, _e, id) => [{ type: 'AuditLogs', id }],
+    }),
   }),
 })
 
@@ -167,4 +173,5 @@ export const {
   useUpdateTemplateMutation,
   useDeleteTemplateMutation,
   useListAuditLogsQuery,
+  useGetAuditLogQuery,
 } = adminApi

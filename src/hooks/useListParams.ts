@@ -43,6 +43,17 @@ export function useListParams(
     setParams(next, { replace: true })
   }
 
+  /** several keys in one URL update (a date range), so one never overwrites the other; back to page 1 */
+  const setFilters = (values: Record<string, string | number | undefined>) => {
+    const next = new URLSearchParams(params)
+    for (const [key, value] of Object.entries(values)) {
+      if (value === undefined || value === '') next.delete(key)
+      else next.set(key, String(value))
+    }
+    next.set('page', '1')
+    setParams(next, { replace: true })
+  }
+
   const onSort = (key: string) => {
     const next = new URLSearchParams(params)
     if (query.sort_by === key) next.set('sort_order', query.sort_order === 'asc' ? 'desc' : 'asc')
@@ -53,5 +64,5 @@ export function useListParams(
     setParams(next, { replace: true })
   }
 
-  return { query, setParam, onSort }
+  return { query, setParam, setFilters, onSort }
 }

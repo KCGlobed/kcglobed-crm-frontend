@@ -81,7 +81,7 @@ export function BulkSendModal({
   const send = async () => {
     try {
       const res = await create(body(false)).unwrap()
-      toast.success(`${res.message} — the campaign report is under SMS, Email & WhatsApp → Bulk sends`)
+      toast.success(`${res.message} — the campaign report is under Communication → Bulk sends`)
       onClose()
     } catch (err) {
       fail(err)
