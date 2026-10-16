@@ -24,6 +24,7 @@ const TeamDetailPage = lazy(() => import('../pages/admin/teams/TeamDetailPage'))
 const MastersPage = lazy(() => import('../pages/admin/MastersPage'))
 const AuditLogPage = lazy(() => import('../pages/admin/AuditLogPage'))
 const ProfilePage = lazy(() => import('../pages/ProfilePage'))
+const NotificationsPage = lazy(() => import('../pages/NotificationsPage'))
 
 function PageLoader() {
   return (
@@ -93,6 +94,7 @@ export default function AppRoutes() {
         <Route path="admin/round-robin" element={<RequirePermission module="round_robin"><Lazy><RoundRobinPage /></Lazy></RequirePermission>} />
         <Route path="admin/audit" element={<RequirePermission module="audit"><Lazy><AuditLogPage /></Lazy></RequirePermission>} />
         <Route path="profile" element={<Lazy><ProfilePage /></Lazy>} />
+        <Route path="notifications" element={<Lazy><NotificationsPage /></Lazy>} />
         <Route path="forbidden" element={<Forbidden />} />
         <Route path="*" element={<NotFound />} />
       </Route>

@@ -3,24 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { useCurrentUser } from '../../app/hooks'
 import { can } from '../../constants/permissions'
 import {
-  AlarmClock,
-  ArrowRightLeft,
   Bell,
   BellRing,
-  CalendarClock,
   CheckCheck,
-  Download,
-  Hourglass,
   Mail,
-  Inbox,
-  Languages,
-  PlugZap,
-  Repeat,
-  Send,
-  Sparkles,
-  UserPlus,
   X,
-  MessageCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -31,7 +18,7 @@ import {
   useSubscribePushMutation,
   useUnsubscribePushMutation,
 } from '../../services/miscApi'
-import { authorizedDownload } from '../../lib/download'
+import { NOTIFICATION_ICONS, useOpenNotification } from './notifications'
 import {
   currentPushToken,
   forgetPushToken,
@@ -57,41 +44,6 @@ const EMAIL_TYPE_LABELS: Record<string, string> = {
   task_overdue: 'follow-up overdue',
 }
 const emailTypeLabel = (key: string) => EMAIL_TYPE_LABELS[key] ?? key.replace(/_/g, ' ')
-
-const NOTIFICATION_ICONS: Record<string, { icon: typeof Bell; className: string }> = {
-  lead_assigned: { icon: UserPlus, className: 'bg-brand-50 text-brand-600' },
-  lead_reassigned: { icon: ArrowRightLeft, className: 'bg-amber-50 text-amber-700' },
-  task_due: { icon: CalendarClock, className: 'bg-amber-50 text-amber-700' },
-  task_overdue: { icon: AlarmClock, className: 'bg-red-50 text-red-600' },
-  re_enquiry: { icon: Repeat, className: 'bg-sky-50 text-sky-700' },
-  unassigned_pool: { icon: Inbox, className: 'bg-amber-50 text-amber-700' },
-  untouched: { icon: Hourglass, className: 'bg-amber-50 text-amber-700' },
-  language_barrier: { icon: Languages, className: 'bg-pink-50 text-pink-600' },
-  bulk_done: { icon: Send, className: 'bg-emerald-50 text-emerald-700' },
-  whatsapp_reply: { icon: MessageCircle, className: 'bg-emerald-50 text-emerald-700' },
-  export_ready: { icon: Download, className: 'bg-emerald-50 text-emerald-700' },
-  integration_error: { icon: PlugZap, className: 'bg-red-50 text-red-600' },
-  system: { icon: Sparkles, className: 'bg-slate-100 text-slate-500' },
-}
-
-/** Where a click on a notification goes: the lead, a filtered list, or a file. */
-function useOpenNotification() {
-  const navigate = useNavigate()
-  return useCallback(
-    (n: CrmNotification) => {
-      if (n.data?.leadId) navigate(`/app/leads/${n.data.leadId}`)
-      else if (n.data?.smart) navigate(`/app/leads?smart=${n.data.smart}`)
-      else if (n.data?.url)
-        authorizedDownload(n.data.url, 'leads-export.xlsx').catch(() => toast.error('This download link has expired'))
-      else if (n.data?.errorFile)
-        authorizedDownload(`/leads/import/errors/${n.data.errorFile}`, 'upload-errors.xlsx').catch(() =>
-          toast.error('Error file not found')
-        )
-      else if (n.type === 'integration_error') navigate('/app/admin/integrations')
-    },
-    [navigate]
-  )
-}
 
 /**
  * New notifications since the page loaded (GL-30), picked up by the poll. Each
@@ -170,7 +122,7 @@ export function NotificationsBell() {
       }
       await subscribePush({ token, platform: 'web' }).unwrap()
       setPushToken(token)
-      toast.success('Push notifications are on for this browser')
+      toast.success('Push notifications are turned on for this browser')
     } catch (err) {
       toast.error(parseApiError(err).message)
     } finally {
@@ -186,7 +138,7 @@ export function NotificationsBell() {
       const token = await forgetPushToken()
       setPushToken(null)
       if (token) await unsubscribePush({ token }).unwrap()
-      toast('Push notifications are off for this browser')
+      toast('Push notifications are turned off for this browser')
     } catch (err) {
       toast.error(parseApiError(err).message)
     } finally {
@@ -198,8 +150,8 @@ export function NotificationsBell() {
   useFreshNotifications(data?.data.items, openNotification, markReadById, pushOn && pushStatus?.data.provider === 'fcm', pushEnabled)
   const [markAll] = useMarkAllNotificationsReadMutation()
   const navigate = useNavigate()
-  // the Activity Log's Notifications tab lists every alert for every user (admins only)
-  const canViewLog = can(useCurrentUser(), 'audit')
+  // "View All": admins get the Activity Log's Notifications tab (every user's alerts); everyone else their own full list
+  const viewAllPath = can(useCurrentUser(), 'audit') ? '/app/admin/audit?tab=notifications' : '/app/notifications'
   const unread = data?.data.unreadCount ?? 0
   const items = data?.data.items ?? []
   // Email copies (lead assigned, untouched, follow-up overdue) go to the user's own address, browser open or not.
@@ -243,18 +195,16 @@ export function NotificationsBell() {
                 Notifications {unread > 0 && <span className="ml-1 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] text-red-600">{unread} new</span>}
               </p>
               <div className="flex shrink-0 items-center gap-3">
-                {canViewLog && (
-                  <button
-                    type="button"
-                    className="whitespace-nowrap text-[11px] font-medium text-brand-600 hover:underline"
-                    onClick={() => {
-                      setOpen(false)
-                      navigate('/app/admin/audit?tab=notifications')
-                    }}
-                  >
-                    View All
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="whitespace-nowrap text-[11px] font-medium text-brand-600 hover:underline"
+                  onClick={() => {
+                    setOpen(false)
+                    navigate(viewAllPath)
+                  }}
+                >
+                  View All
+                </button>
                 {unread > 0 && (
                   <button type="button" className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-medium text-brand-600 hover:underline" onClick={() => markAll()}>
                     <CheckCheck className="h-3 w-3" /> Mark All Read

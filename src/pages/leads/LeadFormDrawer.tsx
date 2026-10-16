@@ -52,7 +52,8 @@ interface Props {
 
 export function LeadFormDrawer({ open, onClose, lead }: Props) {
   const isEdit = !!lead
-  // an email, once on the lead, is shown but not editable here
+  // a mobile or email, once on the lead, is shown but not editable here; an empty one can still be filled in
+  const mobileLocked = isEdit && !!lead?.mobile
   const emailLocked = isEdit && !!lead?.email
   const user = useCurrentUser()
   const { data: masters } = useMasterBootstrapQuery()
@@ -190,8 +191,14 @@ export function LeadFormDrawer({ open, onClose, lead }: Props) {
             <Input {...register('lastName')} />
           </FormField>
           {!hiddenFields.has('mobile') && (
-            <FormField label="Mobile" error={errors.mobile?.message} required>
-              <Input aria-invalid={!!errors.mobile} placeholder="98XXXXXXXX" {...mobileField(register('mobile'))} />
+            <FormField label="Mobile" error={errors.mobile?.message} required hint={mobileLocked ? "Can't be changed once set" : undefined}>
+              <Input
+                aria-invalid={!!errors.mobile}
+                placeholder="98XXXXXXXX"
+                readOnly={mobileLocked}
+                className={mobileLocked ? READ_ONLY_FIELD : undefined}
+                {...mobileField(register('mobile'))}
+              />
             </FormField>
           )}
           {!hiddenFields.has('email') && (
