@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react'
-import { Bold, Image, Link2, List, Plus, RefreshCw } from 'lucide-react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Mail, Plus, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useCancelCampaignMutation,
@@ -20,46 +21,11 @@ import { Drawer } from '../../../components/ui/Drawer'
 import { Modal } from '../../../components/ui/Modal'
 import { EmptyState, Skeleton } from '../../../components/ui/feedback'
 import { formatDateTime, parseApiError } from '../../../lib/utils'
-import { sanitizeHtml } from '../../../lib/sanitize'
 import type { CampaignRow, MessageTemplate } from '../../../types/models'
-
-/** Minimal rich-text editor for email templates: bold, links, bullet lists, logo image (GL-21). */
-function RichText({ value, onChange }: { value: string; onChange: (html: string) => void }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const exec = (cmd: string, arg?: string) => {
-    ref.current?.focus()
-    document.execCommand(cmd, false, arg)
-    onChange(ref.current?.innerHTML ?? '')
-  }
-  return (
-    <div className="rounded-lg border border-slate-300">
-      <div className="flex gap-1 border-b border-slate-200 bg-slate-50 px-2 py-1">
-        <Button type="button" variant="ghost" size="sm" onClick={() => exec('bold')} title="Bold">
-          <Bold className="h-3.5 w-3.5" />
-        </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => exec('insertUnorderedList')} title="Bullet list">
-          <List className="h-3.5 w-3.5" />
-        </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => { const url = prompt('Link URL'); if (url) exec('createLink', url) }} title="Link">
-          <Link2 className="h-3.5 w-3.5" />
-        </Button>
-        <Button type="button" variant="ghost" size="sm" onClick={() => { const url = prompt('Logo image URL (https://…)'); if (url) exec('insertImage', url) }} title="Logo image">
-          <Image className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        className="min-h-40 p-3 text-sm text-slate-800 focus:outline-none [&_ul]:list-disc [&_ul]:pl-5 [&_a]:text-brand-600 [&_a]:underline"
-        onInput={(e) => onChange(e.currentTarget.innerHTML)}
-        dangerouslySetInnerHTML={{ __html: sanitizeHtml(value) }}
-      />
-    </div>
-  )
-}
+import { TextsTab } from './TextsTab'
 
 function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onClose: () => void }) {
+  const navigate = useNavigate()
   const { data: options } = useMessagingOptionsQuery()
   const [save, { isLoading }] = useSaveMessageTemplateMutation()
   const [channel, setChannel] = useState<'sms' | 'email' | 'whatsapp'>(template?.channel ?? 'sms')
@@ -207,7 +173,14 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
           ) : channel === 'whatsapp' ? (
             <Textarea rows={6} maxLength={1024} value={body} onChange={(e) => setBody(e.target.value)} />
           ) : (
-            <RichText key={template?._id ?? 'new'} value={body} onChange={setBody} />
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+              Emails are built in the email designer: visual editor or pasted HTML, images, call-to-action buttons and a live desktop / phone preview.
+              <div className="mt-3">
+                <Button size="sm" variant="outline" onClick={() => navigate(template ? `/app/admin/messaging/email/${template._id}` : '/app/admin/messaging/email/new')}>
+                  <Mail className="h-3.5 w-3.5" /> Open the email designer
+                </Button>
+              </div>
+            </div>
           )}
         </FormField>
         {channel !== 'email' && <p className="text-right text-[11px] text-slate-400">{body.length} characters</p>}
@@ -220,6 +193,7 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
 }
 
 function TemplatesTab() {
+  const navigate = useNavigate()
   const { data, isLoading } = useListMessageTemplatesQuery({})
   const { data: options } = useMessagingOptionsQuery()
   const [sync, { isLoading: syncing }] = useSyncWhatsAppTemplatesMutation()
@@ -228,7 +202,9 @@ function TemplatesTab() {
     try {
       const res = await sync().unwrap()
       const c = res.data
-      toast.success(`WhatsApp templates synced: ${c.created} new, ${c.updated} updated, ${c.approved} approved${c.skipped ? `, ${c.skipped} skipped (no text body)` : ''}`)
+      toast.success(
+        `WhatsApp templates synced: ${c.created} new, ${c.updated} updated, ${c.approved} approved${c.removed ? `, ${c.removed} removed (not in the connected account)` : ''}${c.skipped ? `, ${c.skipped} skipped (no text body)` : ''}`
+      )
     } catch (err) {
       toast.error(parseApiError(err).message)
     }
@@ -241,6 +217,9 @@ function TemplatesTab() {
             <RefreshCw className="h-3.5 w-3.5" /> Sync from WhatsApp
           </Button>
         )}
+        <Button size="sm" variant="outline" onClick={() => navigate('/app/admin/messaging/email/new')} title="Email designer: visual editor, HTML, images, preview">
+          <Mail className="h-3.5 w-3.5" /> New email
+        </Button>
         <Button size="sm" onClick={() => setEditing('new')}>
           <Plus className="h-3.5 w-3.5" /> New template
         </Button>
@@ -263,7 +242,7 @@ function TemplatesTab() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {data.data.map((t) => (
-                <tr key={t._id} className="cursor-pointer hover:bg-slate-50" onClick={() => setEditing(t)}>
+                <tr key={t._id} className="cursor-pointer hover:bg-slate-50" onClick={() => (t.channel === 'email' ? navigate(`/app/admin/messaging/email/${t._id}`) : setEditing(t))}>
                   <td className="px-4 py-2 font-medium text-slate-800">{t.name}</td>
                   <td className="px-4 py-2">
                     <Badge tone={t.channel === 'sms' ? 'blue' : t.channel === 'whatsapp' ? 'green' : 'violet'}>{t.channel.toUpperCase()}</Badge>
@@ -452,18 +431,19 @@ export default function MessagingPage() {
   const [tab, setTab] = useState('templates')
   return (
     <>
-      <PageHeader title="SMS, Email & WhatsApp" description="Templates, trigger-based automations and bulk-send reports. WhatsApp templates come from WhatsApp Manager via Sync." />
+      <PageHeader title="SMS, Email & WhatsApp" description="Templates, saved texts for template variables, trigger-based automations and bulk-send reports. WhatsApp templates come from WhatsApp Manager via Sync." />
       <Tabs
         tabs={[
           { key: 'templates', label: 'Templates' },
           { key: 'automations', label: 'Automations' },
           { key: 'campaigns', label: 'Bulk sends' },
+          { key: 'texts', label: 'Texts' },
         ]}
         active={tab}
         onChange={setTab}
       />
       <div className="mt-4">
-        {tab === 'templates' ? <TemplatesTab /> : tab === 'automations' ? <AutomationsTab /> : <CampaignsTab />}
+        {tab === 'templates' ? <TemplatesTab /> : tab === 'automations' ? <AutomationsTab /> : tab === 'texts' ? <TextsTab /> : <CampaignsTab />}
       </div>
     </>
   )

@@ -11,9 +11,11 @@ import { Modal } from '../../components/ui/Modal'
 import { Button } from '../../components/ui/Button'
 import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
-import { sanitizeHtml } from '../../lib/sanitize'
+import { EmailEditor } from '../../components/email/EmailEditor'
+import { EmailPreview } from '../../components/email/EmailPreview'
+import { AttachmentList } from '../../components/email/AttachmentList'
 import { DLT_VAR_MAX, LEAD_FIELD_LABELS, fillTemplateVariables, leadFieldOf, resolveDltVariables } from '../../lib/smsTemplate'
-import type { Lead, MessagePreview } from '../../types/models'
+import type { Lead, MessageAsset, MessagePreview } from '../../types/models'
 import { DltVariableFields } from './DltVariableFields'
 import { ownerLabel, useAssignableOwners } from './leadSelection'
 
@@ -98,6 +100,8 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
   const [shown, setShown] = useState<MessagePreview | null>(null)
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
+  const [previewingBody, setPreviewingBody] = useState(false) // email: show the rendered email instead of the editor
+  const [attachments, setAttachments] = useState<MessageAsset[]>([]) // email: the template's files, changeable per send
   const [variables, setVariables] = useState<string[]>([])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [reviewing, setReviewing] = useState(false)
@@ -122,6 +126,7 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
       setShown(res.data)
       setSubject(res.data.subject ?? '')
       setBody(res.data.body)
+      setAttachments(res.data.template.attachments ?? [])
       setVariables(Array.from({ length: res.data.variableCount ?? 0 }, () => ''))
     } catch (err) {
       toast.error(parseApiError(err).message)
@@ -155,7 +160,7 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
         body: {
           template,
           channel,
-          ...(channel === 'email' ? { subject, body } : { variables: variables.map((v) => v.trim()) }),
+          ...(channel === 'email' ? { subject, body, attachments: attachments.map((a) => a._id) } : { variables: variables.map((v) => v.trim()) }),
           ...(schedule && when ? { scheduledAt: new Date(when).toISOString() } : {}),
         },
       }).unwrap()
@@ -176,7 +181,7 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
     <Modal
       open
       onClose={onClose}
-      size="lg"
+      size={channel === 'email' ? 'xl' : 'lg'}
       title={`Send ${label}`}
       description={`To ${channel === 'email' ? lead.email ?? 'no email' : lead.mobile ?? 'no mobile'}`}
       footer={
@@ -238,7 +243,7 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
           </p>
         )}
         {shown && templated && !reviewing && (
-          <DltVariableFields variables={variables} errors={errors} onChange={setVariable} />
+          <DltVariableFields variables={variables} errors={errors} onChange={setVariable} customText={channel !== 'sms'} />
         )}
         {shown && templated && (
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
@@ -265,20 +270,38 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
           </p>
         )}
         {shown && channel === 'email' && (
-          <>
-            <FormField label="Subject">
-              <Input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} />
-            </FormField>
-            <FormField label="Message (You Can Edit Before Sending)">
-              <div
-                className="min-h-40 rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-100"
-                contentEditable
-                suppressContentEditableWarning
-                onBlur={(e) => setBody(sanitizeHtml(e.currentTarget.innerHTML))}
-                dangerouslySetInnerHTML={{ __html: sanitizeHtml(shown.body) }}
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <div className="flex items-center gap-3 border-b border-slate-200 px-3 py-1.5 text-sm">
+              <span className="w-16 shrink-0 text-slate-500">To</span>
+              <span className="truncate text-slate-800">
+                {[lead.firstName, lead.lastName].filter(Boolean).join(' ')} &lt;{lead.email ?? 'no email'}&gt;
+              </span>
+            </div>
+            <div className="flex items-center gap-3 border-b border-slate-200 px-3 py-1.5 text-sm">
+              <span className="w-16 shrink-0 text-slate-500">Subject</span>
+              <input
+                className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm text-slate-800 focus:outline-none focus:ring-0"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                maxLength={200}
+                aria-label="Subject"
               />
-            </FormField>
-          </>
+            </div>
+            <div className="border-b border-slate-200 px-3 py-1">
+              <AttachmentList attachments={attachments} onChange={setAttachments} />
+            </div>
+            {previewingBody ? (
+              <EmailPreview html={body} height="24rem" className="rounded-none border-0" />
+            ) : (
+              <EmailEditor frameless value={body} onChange={setBody} placeholders={shown.template.placeholders ?? []} height="24rem" />
+            )}
+            <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] text-slate-500">
+              <span>{previewingBody ? 'As the lead will see it.' : 'Edit the text, add images or a button; placeholders are already filled for this lead.'}</span>
+              <button type="button" className="font-medium text-brand-600 hover:underline" onClick={() => setPreviewingBody((v) => !v)}>
+                {previewingBody ? 'Back to editing' : 'Preview'}
+              </button>
+            </div>
+          </div>
         )}
         {shown && !(templated && reviewing) && (
           <>

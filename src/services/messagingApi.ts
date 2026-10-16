@@ -7,9 +7,11 @@ import type {
   CampaignRecipient,
   CampaignRow,
   LeadMessage,
+  MessageAsset,
   MessagePreview,
   MessageTemplate,
   MetaEventRow,
+  SavedText,
   MetaFormMappingRow,
   ScheduledSend,
   WhatsAppChat,
@@ -56,6 +58,40 @@ export const messagingApi = api.injectEndpoints({
       query: ({ id, body }) => ({ url: id ? `/messaging/templates/${id}` : '/messaging/templates', method: id ? 'PUT' : 'POST', body }),
       invalidatesTags: (_r, error) => (error ? [] : ['MessageTemplates', 'Automations']),
     }),
+    /** Saved texts for template variables (Communication → Texts); active=true is what the send dialogs offer. */
+    listSavedTexts: build.query<ApiResponse<SavedText[]>, { active?: boolean } | void>({
+      query: (arg) => ({ url: '/messaging/texts', params: arg && arg.active ? { active: 'true' } : {} }),
+      providesTags: ['SavedTexts'],
+    }),
+    saveSavedText: build.mutation<ApiResponse<SavedText>, { id?: string; body: { name: string; text: string; isActive: boolean } }>({
+      query: ({ id, body }) => ({ url: id ? `/messaging/texts/${id}` : '/messaging/texts', method: id ? 'PUT' : 'POST', body }),
+      invalidatesTags: (_r, error) => (error ? [] : ['SavedTexts']),
+    }),
+    deleteSavedText: build.mutation<ApiResponse<{ _id: string }>, string>({
+      query: (id) => ({ url: `/messaging/texts/${id}`, method: 'DELETE' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['SavedTexts']),
+    }),
+    /** Images for emailers: uploaded into the CRM, served publicly so mail clients can load them. */
+    listMessageAssets: build.query<ApiResponse<MessageAsset[]>, void>({
+      query: () => '/messaging/assets',
+      providesTags: ['MessageAssets'],
+    }),
+    uploadMessageAsset: build.mutation<ApiResponse<MessageAsset>, FormData>({
+      query: (body) => ({ url: '/messaging/assets', method: 'POST', body }),
+      invalidatesTags: (_r, error) => (error ? [] : ['MessageAssets']),
+    }),
+    deleteMessageAsset: build.mutation<ApiResponse<{ _id: string }>, string>({
+      query: (id) => ({ url: `/messaging/assets/${id}`, method: 'DELETE' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['MessageAssets']),
+    }),
+    /** Files attached to emails (PDF, Office, images), uploaded into the CRM. */
+    uploadMessageAttachment: build.mutation<ApiResponse<MessageAsset>, FormData>({
+      query: (body) => ({ url: '/messaging/attachments', method: 'POST', body }),
+    }),
+    /** The email designer's draft to the signed-in user's own inbox. */
+    sendTestEmail: build.mutation<ApiResponse<{ to: string; status: string; provider?: string }>, { subject: string; body: string; attachments?: string[] }>({
+      query: (body) => ({ url: '/messaging/templates/test-email', method: 'POST', body }),
+    }),
     listAutomations: build.query<ApiResponse<AutomationRuleRow[]>, void>({
       query: () => '/messaging/automations',
       providesTags: ['Automations'],
@@ -92,7 +128,7 @@ export const messagingApi = api.injectEndpoints({
       invalidatesTags: ['Campaigns'],
     }),
     /** Pulls the templates approved in WhatsApp Manager into the Templates tab. */
-    syncWhatsAppTemplates: build.mutation<ApiResponse<{ total: number; created: number; updated: number; approved: number; skipped: number }>, void>({
+    syncWhatsAppTemplates: build.mutation<ApiResponse<{ total: number; created: number; updated: number; approved: number; skipped: number; removed: number }>, void>({
       query: () => ({ url: '/messaging/whatsapp/sync-templates', method: 'POST' }),
       invalidatesTags: (_r, error) => (error ? [] : ['MessageTemplates', 'Automations']),
     }),
@@ -171,6 +207,14 @@ export const {
   useMessagingOptionsQuery,
   useListMessageTemplatesQuery,
   useSaveMessageTemplateMutation,
+  useListSavedTextsQuery,
+  useSaveSavedTextMutation,
+  useDeleteSavedTextMutation,
+  useListMessageAssetsQuery,
+  useUploadMessageAssetMutation,
+  useDeleteMessageAssetMutation,
+  useUploadMessageAttachmentMutation,
+  useSendTestEmailMutation,
   useListAutomationsQuery,
   useUpdateAutomationMutation,
   useListCampaignsQuery,
