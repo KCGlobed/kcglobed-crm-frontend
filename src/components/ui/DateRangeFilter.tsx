@@ -18,6 +18,8 @@ interface DateRangeFilterProps {
   /** the button text while no range is set */
   label?: string
   heading?: string
+  /** which edge of the button the panel hangs from; `right` keeps it on screen when the button sits at the right edge */
+  align?: 'left' | 'right'
   className?: string
 }
 
@@ -26,7 +28,7 @@ interface DateRangeFilterProps {
  * start / end date, the usual presets (today, last 7 / 30 days, this month) and Clear / Done.
  * The button shows the range while one is set.
  */
-export function DateRangeFilter({ from = '', to = '', onChange, label = 'Created Date', heading = 'Created Between', className }: DateRangeFilterProps) {
+export function DateRangeFilter({ from = '', to = '', onChange, label = 'Created Date', heading = 'Created Between', align = 'left', className }: DateRangeFilterProps) {
   const [open, setOpen] = useState(false)
   const active = Boolean(from || to)
   const presets = [
@@ -44,7 +46,12 @@ export function DateRangeFilter({ from = '', to = '', onChange, label = 'Created
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 top-full z-50 mt-1.5 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+          <div
+            className={cn(
+              'absolute top-full z-50 mt-1.5 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-4 shadow-xl',
+              align === 'right' ? 'right-0' : 'left-0'
+            )}
+          >
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{heading}</p>
             <div className="grid grid-cols-2 gap-3">
               <label className="block">

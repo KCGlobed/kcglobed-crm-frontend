@@ -1,16 +1,17 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useEffect, useState, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CalendarCheck, ChevronRight, CircleDashed, Coffee, GraduationCap, Inbox, PhoneCall, PhoneOff, Receipt, ThumbsDown, ThumbsUp, Timer, UserCheck, Users, type LucideIcon } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useDashboardSummaryQuery } from '../../services/miscApi'
-import { useListLeadsQuery, type LeadListParams } from '../../services/leadsApi'
+import { leadsApi, useListLeadsQuery, type LeadListParams } from '../../services/leadsApi'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
 import { Card, PageHeader } from '../../components/ui/misc'
+import { DateRangeFilter } from '../../components/ui/DateRangeFilter'
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/feedback'
 import { StageBadge } from '../../components/ui/Badge'
-import { STAGE_COLORS, stageColor, textOn } from '../../lib/stageColors'
+import { STAGE_COLORS, stageColor } from '../../lib/stageColors'
 import { KpiCard } from '../../components/ui/KpiCard'
-import { useCurrentUser } from '../../app/hooks'
+import { useAppDispatch, useCurrentUser } from '../../app/hooks'
 import { isCounsellor } from '../../lib/roles'
 import { cn, fullName, timeAgo } from '../../lib/utils'
 import type { DashboardRecentLead, DashboardStatusTile, DashboardSummary, Stage } from '../../types/models'
@@ -32,7 +33,7 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
   )
 }
 
-type PeriodKey = 'overall' | 'thisWeek' | 'today'
+type PeriodKey = 'overall' | 'thisWeek' | 'today' | 'custom'
 
 /** Pipeline cards: each shows the count of the stage of that name from the summary's `byStage` rows. */
 const PIPELINE_CARDS: { label: string; icon: LucideIcon }[] = [
@@ -48,12 +49,17 @@ const PERIODS: { key: PeriodKey; label: string }[] = [
 
 /** A period's local YYYY-MM-DD bounds (inclusive), as the lead list's created-date params. */
 type DateBounds = { created_from: string; created_to: string }
+/** The dates typed into the "Custom" picker; empty until chosen. */
+type CustomRange = { from: string; to: string }
+const NO_CUSTOM: CustomRange = { from: '', to: '' }
 
 /**
- * The bounds of a period: the week / day bounds the backend used for its figures.
- * None for all time, or until the summary has arrived.
+ * The bounds of a period: the dates of the custom range once both are chosen, or the
+ * week / day bounds the backend used for its figures. None for all time, or until the
+ * summary has arrived.
  */
-function periodBounds(summary: DashboardSummary | undefined, key: PeriodKey): DateBounds | undefined {
+function periodBounds(summary: DashboardSummary | undefined, key: PeriodKey, custom: CustomRange): DateBounds | undefined {
+  if (key === 'custom') return custom.from && custom.to ? { created_from: custom.from, created_to: custom.to } : undefined
   const period = summary?.[key]
   return period?.from && period.to ? { created_from: period.from, created_to: period.to } : undefined
 }
@@ -78,13 +84,70 @@ function useLeadCount(params?: LeadListParams): { count?: number; loading: boole
   return { count: currentData?.pagination.total_results, loading: isFetching && currentData === undefined }
 }
 
-/** A section's title with the period pills, and the chosen period's dates, on the right. */
-function PeriodSectionHeader({ title, value, onChange, hint }: { title: string; value: PeriodKey; onChange: (key: PeriodKey) => void; hint?: string }) {
+/**
+ * The lead counts of several list queries at once (one-row pages, as useLeadCount),
+ * in the order given; undefined while they load or when nothing is asked. The
+ * requests go through the API cache, so a row already counted by a card is not
+ * fetched again.
+ */
+function useLeadCounts(paramsList: LeadListParams[] | undefined): number[] | undefined {
+  const dispatch = useAppDispatch()
+  const key = paramsList ? JSON.stringify(paramsList) : ''
+  const [state, setState] = useState<{ key: string; counts: number[] }>()
+  useEffect(() => {
+    if (!paramsList || !key) return
+    let live = true
+    const requests = paramsList.map((p) => dispatch(leadsApi.endpoints.listLeads.initiate({ ...p, page_size: 1 })))
+    Promise.all(requests.map((r) => r.unwrap()))
+      .then((pages) => live && setState({ key, counts: pages.map((page) => page.pagination.total_results) }))
+      .catch(() => live && setState({ key, counts: paramsList.map(() => 0) }))
+    return () => {
+      live = false
+      requests.forEach((r) => r.unsubscribe())
+    }
+    // `key` stands in for paramsList, which is a fresh array on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, dispatch])
+  return state?.key === key ? state.counts : undefined
+}
+
+/**
+ * Chart rows for the chosen period: the summary's own rows for all time; otherwise
+ * each row counted off the list within the bounds, its drill-down bounded the same
+ * way, re-sorted highest first. Undefined while the counts load.
+ */
+function usePeriodRows(rows: BarItem[] | undefined, bounds?: DateBounds): BarItem[] | undefined {
+  const counts = useLeadCounts(bounds && rows ? rows.map((r) => ({ ...r.params, ...bounds })) : undefined)
+  if (!bounds) return rows
+  if (!rows || !counts) return undefined
+  return rows
+    .map((r, i) => ({ ...r, count: counts[i] ?? 0, params: r.params && { ...r.params, ...bounds } }))
+    .sort((a, b) => b.count - a.count)
+}
+
+/** A section's title with the custom date picker, the period pills and the chosen period's dates on the right. */
+function PeriodSectionHeader({
+  title,
+  value,
+  onChange,
+  custom,
+  onCustomChange,
+  hint,
+}: {
+  title: string
+  value: PeriodKey
+  onChange: (key: PeriodKey) => void
+  custom: CustomRange
+  onCustomChange: (from: string, to: string) => void
+  hint?: string
+}) {
   return (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
       <h2 className="text-lg font-semibold tracking-tight text-slate-900">{title}</h2>
       <div className="flex flex-wrap items-center gap-2">
         {hint && <p className="text-xs text-slate-500">{hint}</p>}
+        {/* any range the pills don't offer; its button shows the dates while one is set */}
+        <DateRangeFilter label="Custom Date" heading="Created Between" align="right" from={custom.from} to={custom.to} onChange={onCustomChange} />
         <div role="group" aria-label="Period" className="flex gap-1">
           {PERIODS.map((p) => (
             <button
@@ -115,52 +178,73 @@ function PeriodSectionHeader({ title, value, onChange, hint }: { title: string; 
  */
 function usePeriod(summary?: DashboardSummary) {
   const [key, setKey] = useState<PeriodKey>('overall')
-  const bounds = periodBounds(summary, key)
+  const [custom, setCustomRange] = useState<CustomRange>(NO_CUSTOM)
+  // a pill drops the custom range; a complete custom range takes over from the pills, and clearing it goes back to all time
+  const choose = (next: PeriodKey) => {
+    setKey(next)
+    setCustomRange(NO_CUSTOM)
+  }
+  const setCustom = (from: string, to: string) => {
+    setCustomRange({ from, to })
+    setKey(from && to ? 'custom' : key === 'custom' ? 'overall' : key)
+  }
+  const bounds = periodBounds(summary, key, custom)
   const range: ListParams = bounds ?? {}
-  return { key, setKey, bounds, range, period: summary?.[key], hint: boundsHint(bounds) }
+  // the summary has figures for its own periods only; a custom range is counted off the list by the sections
+  const period = key === 'custom' ? undefined : summary?.[key]
+  return { key, setKey: choose, custom, setCustom, bounds, range, period, hint: boundsHint(bounds) }
 }
+/** The page's period switch state, shared by every section. */
+type PeriodState = ReturnType<typeof usePeriod>
 
 /**
- * One switch, three cards: Total / Assigned / Unassigned for the chosen period
- * (all time, this week or today). Each card opens the list with the backend's
- * own date bounds, so it shows exactly the leads that were counted; a zero
+ * One switch, three cards: Total / Assigned / Unassigned for the chosen period.
+ * All time, this week and today come from the summary; a custom range, which
+ * the summary lacks, is counted off the list. Each card opens the list with the
+ * period's bounds, so it shows exactly the leads that were counted; a zero
  * card has nothing to open and stays inert.
  */
-function LeadsSection({ summary, loading, onOpen }: { summary?: DashboardSummary; loading: boolean; onOpen: (params: ListParams) => void }) {
-  const { key, setKey, range, period, hint } = usePeriod(summary)
-  const tile = (value: number | undefined, extra: ListParams) => (value && period ? () => onOpen({ ...range, ...extra }) : undefined)
+function LeadsSection({ period: state, loading, onOpen }: { period: PeriodState; loading: boolean; onOpen: (params: ListParams) => void }) {
+  const { key, setKey, custom, setCustom, bounds, range, period, hint } = state
+  const counted = key === 'custom' ? bounds : undefined
+  const total = useLeadCount(counted)
+  const assigned = useLeadCount(counted && { ...counted, assigned: 'true' })
+  const unassigned = useLeadCount(counted && { ...counted, unassigned: 'true' })
+  const figures = period ?? { total: total.count, assigned: assigned.count, unassigned: unassigned.count }
+  const busy = loading || total.loading || assigned.loading || unassigned.loading
+  const tile = (value: number | undefined, extra: ListParams) => (value ? () => onOpen({ ...range, ...extra }) : undefined)
 
   return (
     <section aria-label="Leads">
-      <PeriodSectionHeader title="Leads" value={key} onChange={setKey} hint={hint} />
+      <PeriodSectionHeader title="Leads" value={key} onChange={setKey} custom={custom} onCustomChange={setCustom} hint={hint} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
         <KpiCard
           label="Total Leads"
-          value={period?.total}
+          value={figures.total}
           hint={key === 'overall' ? 'All time' : 'Created in this period'}
           icon={Users}
-          loading={loading}
-          onClick={tile(period?.total, {})}
+          loading={busy}
+          onClick={tile(figures.total, {})}
         />
         <KpiCard
           label="Assigned Leads"
-          value={period?.assigned}
-          progress={share(period?.assigned, period?.total)}
+          value={figures.assigned}
+          progress={share(figures.assigned, figures.total)}
           hint="Have a counsellor"
           icon={UserCheck}
           accent="green"
-          loading={loading}
-          onClick={tile(period?.assigned, { assigned: 'true' })}
+          loading={busy}
+          onClick={tile(figures.assigned, { assigned: 'true' })}
         />
         <KpiCard
           label="Unassigned Leads"
-          value={period?.unassigned}
-          progress={share(period?.unassigned, period?.total)}
+          value={figures.unassigned}
+          progress={share(figures.unassigned, figures.total)}
           hint="Waiting for an owner"
           icon={Inbox}
           accent="amber"
-          loading={loading}
-          onClick={tile(period?.unassigned, { unassigned: 'true' })}
+          loading={busy}
+          onClick={tile(figures.unassigned, { unassigned: 'true' })}
         />
       </div>
     </section>
@@ -244,9 +328,11 @@ function CounsellorStageCard({
  * Leads section, then today's calling activity. Replaces the admin's Leads / Lead
  * Status / Pipeline cards.
  */
-function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSummary; loading: boolean; onOpen: (params: ListParams) => void }) {
-  const { key, setKey, bounds, range, period, hint } = usePeriod(summary)
-  const total = period?.total
+function CounsellorCards({ summary, period: state, loading, onOpen }: { summary?: DashboardSummary; period: PeriodState; loading: boolean; onOpen: (params: ListParams) => void }) {
+  const { key, setKey, custom, setCustom, bounds, range, period, hint } = state
+  // the summary has no figure for a custom range: count it off the list
+  const counted = useLeadCount(key === 'custom' ? bounds : undefined)
+  const total = period ? period.total : counted.count
   const activity = summary?.activityToday
   return (
     <>
@@ -255,7 +341,9 @@ function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSumm
           title="My Leads"
           value={key}
           onChange={setKey}
-          hint={key === 'overall' ? 'Assigned to you, all time' : hint && `Assigned to you, created ${hint}`}
+          custom={custom}
+          onCustomChange={setCustom}
+          hint={hint}
         />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
           <KpiCard
@@ -263,7 +351,7 @@ function CounsellorCards({ summary, loading, onOpen }: { summary?: DashboardSumm
             value={total}
             hint={key === 'overall' ? 'All time' : 'Created in this period'}
             icon={Users}
-            loading={loading}
+            loading={loading || counted.loading}
             onClick={total ? () => onOpen(range) : undefined}
           />
           {MY_LEADS_STAGES.map((s) => (
@@ -297,6 +385,9 @@ interface BarItem {
 
 /** The dot for a stage with neither a palette nor a usable Masters colour (e.g. Untouched), so every row has one. */
 const NEUTRAL_STAGE_DOT = '#94a3b8'
+
+/** Sources kept off the Lead Source Analytics card for now, by name (lower-case) — temporary, on request. */
+const HIDDEN_SOURCES = new Set(['direct'])
 
 /**
  * Every active master stage with its count from the summary's byStage rows (0 when the
@@ -333,10 +424,11 @@ interface FunnelStep {
 }
 
 /**
- * The funnel's drawing: an inverted triangle in a 380 × 290 box, 300 wide at the top
- * and pointed at the bottom, cut into five bands of equal height with a 2px gap.
+ * The funnel's drawing: an inverted triangle in a 400 × 290 box, 224 wide at the top
+ * and pointed at the bottom, cut into five bands of equal height with a 2px gap. The
+ * space left of it holds the bands' names.
  */
-const FUNNEL = { w: 380, h: 290, cx: 200, halfTop: 150 }
+const FUNNEL = { w: 400, h: 290, cx: 282, halfTop: 112 }
 const halfAt = (y: number) => FUNNEL.halfTop * (1 - y / FUNNEL.h)
 /** each band's top and bottom; the last runs to the tip */
 const BANDS: { y0: number; y1: number }[] = [
@@ -346,10 +438,13 @@ const BANDS: { y0: number; y1: number }[] = [
   { y0: 174, y1: 230 },
   { y0: 232, y1: 290 },
 ]
-/** the bands' fills, top to bottom: the brand purple, lightest at the top and deepest at the tip */
-const BAND_FILLS = ['#d5c8eb', '#b6a1db', '#8c6cc3', '#5f3d9e', '#3d1f73']
-/** a band narrower than this at its middle carries its name beside the funnel instead of inside */
-const INSIDE_LABEL_MIN_WIDTH = 120
+/** the bands' fills, top to bottom: the brand purple, lighter at the top and deepest at the tip, all dark enough for white counts */
+const BAND_FILLS = ['#7f5fbb', '#6a48aa', '#5f3d9e', '#4b2d87', '#3d1f73']
+/** where every band's name ends (right-aligned), left of the funnel */
+const LABEL_X = 142
+/** the bands' text: names beside the funnel in near-black, counts inside in white */
+const LABEL_INK = '#0F172A'
+const COUNT_INK = '#FFFFFF'
 
 function bandPoints({ y0, y1 }: (typeof BANDS)[number], last: boolean): string {
   const { cx, h } = FUNNEL
@@ -361,16 +456,17 @@ function bandPoints({ y0, y1 }: (typeof BANDS)[number], last: boolean): string {
 
 /**
  * Conversion funnel: an inverted triangle, one band per step from Total Leads at the
- * wide top down to Enrolled at the tip, shaded from light to deep purple on the way
- * down, each showing its count (the summary's figure, or 0). The narrow lower bands
- * carry their names beside the funnel. A band with leads opens their list.
+ * wide top down to Enrolled at the tip, shaded from lighter to deep purple on the way
+ * down. Every band's name sits beside the funnel in black, joined to it by a thin
+ * line; its count (the summary's figure, or 0) sits inside in white. A band with
+ * leads opens their list.
  */
-function FunnelCard({ steps, loading, onOpen }: { steps: FunnelStep[] | undefined; loading: boolean; onOpen: (params: ListParams) => void }) {
+function FunnelCard({ steps, hint, loading, onOpen }: { steps: FunnelStep[] | undefined; hint?: string; loading: boolean; onOpen: (params: ListParams) => void }) {
   const { w, h, cx } = FUNNEL
   return (
     <Card
       title="Conversion Funnel"
-      actions={<span className="text-xs text-slate-500">All time</span>}
+      actions={hint && <span className="text-xs text-slate-500">{hint}</span>}
       // the card stretches to its row's height; the funnel sits in the middle of that
       className="flex flex-col"
       bodyClassName="flex flex-1 items-center justify-center"
@@ -385,11 +481,9 @@ function FunnelCard({ steps, loading, onOpen }: { steps: FunnelStep[] | undefine
             if (!band || !fill) return null
             const params = step.params
             const open = step.count > 0 && params ? () => onOpen(params) : undefined
-            const ink = textOn(fill)
             const figure = step.count.toLocaleString()
             const last = i === BANDS.length - 1
             const mid = (band.y0 + band.y1) / 2
-            const aside = 2 * halfAt(mid) < INSIDE_LABEL_MIN_WIDTH
             // the tip narrows to nothing, so its count and side label sit near its top
             const anchorY = last ? band.y0 + 18 : mid
             const edge = cx - halfAt(anchorY)
@@ -413,26 +507,14 @@ function FunnelCard({ steps, loading, onOpen }: { steps: FunnelStep[] | undefine
               >
                 {open && <title>{`Open ${step.label} leads`}</title>}
                 <polygon points={bandPoints(band, last)} fill={fill} stroke="#fff" strokeWidth={2} strokeLinejoin="round" />
-                {aside ? (
-                  <>
-                    <line x1={edge - 12} y1={anchorY} x2={edge - 1} y2={anchorY} stroke="#94a3b8" strokeWidth={1} />
-                    <text x={edge - 16} y={anchorY + 4} textAnchor="end" fontSize={11} fill="#475569">
-                      {step.label}
-                    </text>
-                    <text x={cx} y={anchorY + 4} textAnchor="middle" fontSize={11} fontWeight={600} fill={ink}>
-                      {figure}
-                    </text>
-                  </>
-                ) : (
-                  <>
-                    <text x={cx} y={mid - 3} textAnchor="middle" fontSize={12} fontWeight={600} fill={ink}>
-                      {step.label}
-                    </text>
-                    <text x={cx} y={mid + 12} textAnchor="middle" fontSize={11} fill={ink} fillOpacity={0.9}>
-                      {figure}
-                    </text>
-                  </>
-                )}
+                <line x1={LABEL_X + 6} y1={anchorY} x2={edge - 2} y2={anchorY} stroke="#94a3b8" strokeWidth={1} />
+                <text x={LABEL_X} y={anchorY + 4} textAnchor="end" fontSize={12} fontWeight={500} fill={LABEL_INK}>
+                  {step.label}
+                </text>
+                {/* a halo in the band's colour keeps a wide count readable where it spills past the narrow tip */}
+                <text x={cx} y={anchorY + 4} textAnchor="middle" fontSize={12} fontWeight={700} fill={COUNT_INK} stroke={fill} strokeWidth={3} paintOrder="stroke">
+                  {figure}
+                </text>
               </g>
             )
           })}
@@ -573,6 +655,38 @@ export default function DashboardPage() {
   const { data, isLoading, isError, error, refetch } = useDashboardSummaryQuery()
   // Stage Distribution lists every master stage, so it needs the Masters too
   const { data: masters, isLoading: mastersLoading } = useMasterBootstrapQuery()
+  const summary = data?.data
+
+  // One period for the whole page: the switch sits in the Leads / My Leads section, but every
+  // card and chart follows it. The summary carries all-time rows only (plus week and day
+  // totals), so for any other period each row is counted off the list.
+  const period = usePeriod(summary)
+  const { key, bounds, range } = period
+  const allTime = !bounds
+
+  const sourceRows: BarItem[] | undefined = summary?.bySource
+    .filter((s) => !HIDDEN_SOURCES.has(s.name.trim().toLowerCase()))
+    .map((s) => {
+      // the "No source" row has no id: it lists the leads whose source is empty
+      const params: ListParams = s._id ? { source: s._id } : { filters: JSON.stringify([{ field: 'source', op: 'empty' }]) }
+      return { id: s._id ?? 'none', name: s.name, count: s.count, params }
+    })
+  const ownerRows: BarItem[] | undefined = counsellor ? undefined : summary?.byOwner.map((o) => ({ id: o._id, name: o.name, count: o.count, params: { owner: o._id } }))
+  const stageRows: BarItem[] | undefined =
+    summary &&
+    masters &&
+    allStagesByCount(masters.data.stages, summary.byStage).map((s) => {
+      // the "No stage" row has no id: it lists the leads whose stage is empty
+      const params: ListParams = s._id ? { stage: s._id } : { filters: JSON.stringify([{ field: 'stage', op: 'empty' }]) }
+      return { id: s._id ?? 'none', name: s.name, count: s.count, color: stageColor(s) ?? NEUTRAL_STAGE_DOT, params }
+    })
+  const stages = usePeriodRows(stageRows, bounds)
+  const sources = usePeriodRows(counsellor ? undefined : sourceRows, bounds)
+  const owners = usePeriodRows(ownerRows, bounds)
+  // the period's lead total: the summary's figure, or for a custom range the same count the Leads cards make (shared through the cache)
+  const customTotal = useLeadCount(key === 'custom' ? bounds : undefined)
+  const total = allTime ? summary?.totals.total : key === 'custom' ? customTotal.count : period.period?.total
+  const rowsLoading = isLoading || mastersLoading || (!allTime && (!stages || (!counsellor && (!sources || !owners))))
 
   if (isError) {
     return (
@@ -585,38 +699,26 @@ export default function DashboardPage() {
     )
   }
 
-  const summary = data?.data
   // `from=dashboard` tells the list it is a dashboard drill-down, so it offers a way back
   const open = (params: ListParams) => navigate(`/app/leads?${new URLSearchParams({ ...params, from: 'dashboard' }).toString()}`)
   const openLead = (id: string) => navigate(`/app/leads/${id}`)
   const viewAllLeads = () => navigate('/app/leads')
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
 
-  const sources: BarItem[] | undefined = summary?.bySource.map((s) => {
-    // the "No source" row has no id: it lists the leads whose source is empty
-    const params: ListParams = s._id ? { source: s._id } : { filters: JSON.stringify([{ field: 'source', op: 'empty' }]) }
-    return { id: s._id ?? 'none', name: s.name, count: s.count, params }
-  })
-  const owners: BarItem[] | undefined = counsellor ? undefined : summary?.byOwner.map((o) => ({ id: o._id, name: o.name, count: o.count, params: { owner: o._id } }))
-  // every master stage, zero-lead ones included, highest first (the summary only has rows for stages holding leads)
-  const stages: BarItem[] | undefined =
-    summary &&
-    masters &&
-    allStagesByCount(masters.data.stages, summary.byStage).map((s) => {
-      // the "No stage" row has no id: it lists the leads whose stage is empty
-      const params: ListParams = s._id ? { stage: s._id } : { filters: JSON.stringify([{ field: 'stage', op: 'empty' }]) }
-      return { id: s._id ?? 'none', name: s.name, count: s.count, color: stageColor(s) ?? NEUTRAL_STAGE_DOT, params }
-    })
-  // Total Leads, then each funnel stage with the count, colour and drill-down of its stage row
+  /** The period's row for the stage of this name, from the (possibly counted) stage rows. */
+  const stageOf = (name: string) => stages?.find((s) => s.name.trim().toLowerCase() === name.trim().toLowerCase())
+  // Total Leads, then each funnel stage with the count and drill-down of its stage row
   const funnel: FunnelStep[] | undefined =
-    summary &&
-    stages && [
-      { label: 'Total Leads', count: summary.totals.total, params: {} },
-      ...FUNNEL_STAGES.map(({ label, names }) => {
-        const row = stages.find((s) => names.some((n) => n.toLowerCase() === s.name.trim().toLowerCase()))
-        return { label, count: row?.count ?? 0, params: row?.params }
-      }),
-    ]
+    stages && total !== undefined
+      ? [
+          { label: 'Total Leads', count: total, params: range },
+          ...FUNNEL_STAGES.map(({ label, names }) => {
+            const row = names.map(stageOf).find(Boolean)
+            return { label, count: row?.count ?? 0, params: row?.params }
+          }),
+        ]
+      : undefined
+  const chartHint = allTime ? 'Highest volume first' : period.hint
 
   return (
     <>
@@ -634,29 +736,31 @@ export default function DashboardPage() {
       </section>
 
       {counsellor ? (
-        <CounsellorCards summary={summary} loading={isLoading} onOpen={open} />
+        <CounsellorCards summary={summary} period={period} loading={isLoading} onOpen={open} />
       ) : (
         <>
-          <LeadsSection summary={summary} loading={isLoading} onOpen={open} />
+          <LeadsSection period={period} loading={isLoading} onOpen={open} />
 
           <section className="mt-5" aria-label="Lead Status">
-            <SectionHeading title="Lead Status" hint="By stage, all time" />
+            <SectionHeading title="Lead Status" />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-              {STATUS_TILES.map(({ key, label, icon, accent }) => {
-                const tile = summary?.leadStatus.find((t) => t.key === key)
-                const stageId = tile?.stageId
+              {STATUS_TILES.map(({ key: tileKey, label, icon, accent }) => {
+                // the summary names the stage behind each tile (it may be renamed in Masters); the count comes from the period's stage rows
+                const name = summary?.leadStatus.find((t) => t.key === tileKey)?.name ?? label
+                const row = stageOf(name)
+                const params = row?.params
                 return (
                   <KpiCard
-                    key={key}
-                    label={tile?.name ?? label}
-                    value={tile?.count}
-                    progress={share(tile?.count, summary?.totals.total)}
+                    key={tileKey}
+                    label={row?.name ?? name}
+                    value={row?.count}
+                    progress={share(row?.count, total)}
                     hint="Leads on this stage"
                     icon={icon}
                     accent={accent}
-                    color={STAGE_COLORS[tile?.name ?? label]}
-                    loading={isLoading}
-                    onClick={tile?.count && stageId ? () => open({ stage: stageId }) : undefined}
+                    color={STAGE_COLORS[name]}
+                    loading={rowsLoading}
+                    onClick={row?.count && params ? () => open(params) : undefined}
                   />
                 )
               })}
@@ -664,22 +768,22 @@ export default function DashboardPage() {
           </section>
 
           <section className="mt-5" aria-label="Pipeline">
-            <SectionHeading title="Pipeline" hint="By stage, all time" />
+            <SectionHeading title="Pipeline" />
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
               {PIPELINE_CARDS.map(({ label, icon }) => {
-                const stage = stageRow(summary, label)
-                const stageId = stage?._id
+                const row = stageOf(label)
+                const params = row?.params
                 return (
                   <KpiCard
                     key={label}
-                    label={stage?.name ?? label}
-                    value={stage?.count}
-                    progress={share(stage?.count, summary?.totals.total)}
+                    label={row?.name ?? label}
+                    value={row?.count}
+                    progress={share(row?.count, total)}
                     hint="Leads on this stage"
                     icon={icon}
                     color={STAGE_COLORS[label]}
-                    loading={isLoading}
-                    onClick={stage?.count && stageId ? () => open({ stage: stageId }) : undefined}
+                    loading={rowsLoading}
+                    onClick={row?.count && params ? () => open(params) : undefined}
                   />
                 )
               })}
@@ -688,16 +792,24 @@ export default function DashboardPage() {
         </>
       )}
 
-      {/* A counsellor only ever sees their own leads, so "Leads by Counsellor" is dropped and the
-          Conversion Funnel takes its slot; an admin keeps all three charts. Both get Recent Leads in a full-width row below. */}
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        <DistributionCard title="Lead Source Analytics" hint="Highest volume first" items={sources} loading={isLoading} onOpen={open} />
-        {!counsellor && <DistributionCard title="Leads by Counsellor" hint="Highest volume first" items={owners} loading={isLoading} onOpen={open} />}
-        <DistributionCard title="Stage Distribution" hint="Highest volume first" items={stages} loading={isLoading || mastersLoading} onOpen={open} />
-        {counsellor && <FunnelCard steps={funnel} loading={isLoading || mastersLoading} onOpen={open} />}
+      {/* A counsellor only ever sees their own leads: no source or by-counsellor charts, just Stage
+          Distribution and the Conversion Funnel side by side, with Recent Leads full width below.
+          An admin keeps the three charts and gets the funnel next to Recent Leads. */}
+      <div className={cn('mt-5 grid gap-4', counsellor ? 'lg:grid-cols-2' : 'lg:grid-cols-3')}>
+        {!counsellor && <DistributionCard title="Lead Source Analytics" hint={chartHint} items={sources} loading={rowsLoading} onOpen={open} />}
+        {!counsellor && <DistributionCard title="Leads by Counsellor" hint={chartHint} items={owners} loading={rowsLoading} onOpen={open} />}
+        <DistributionCard title="Stage Distribution" hint={chartHint} items={stages} loading={rowsLoading} onOpen={open} />
+        {counsellor && <FunnelCard steps={funnel} hint={allTime ? 'All time' : period.hint} loading={rowsLoading} onOpen={open} />}
       </div>
 
-      <RecentLeadsCard className="mt-4" leads={summary?.recentLeads} loading={isLoading} onOpenLead={openLead} onViewAll={viewAllLeads} />
+      {counsellor ? (
+        <RecentLeadsCard className="mt-4" leads={summary?.recentLeads} loading={isLoading} onOpenLead={openLead} onViewAll={viewAllLeads} />
+      ) : (
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <RecentLeadsCard leads={summary?.recentLeads} loading={isLoading} onOpenLead={openLead} onViewAll={viewAllLeads} />
+          <FunnelCard steps={funnel} hint={allTime ? 'All time' : period.hint} loading={rowsLoading} onOpen={open} />
+        </div>
+      )}
     </>
   )
 }

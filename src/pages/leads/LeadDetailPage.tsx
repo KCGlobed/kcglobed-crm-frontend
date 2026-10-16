@@ -406,9 +406,6 @@ export default function LeadDetailPage() {
                   >
                     <MessageCircle className="h-3.5 w-3.5" /> Send WhatsApp
                   </Button>
-                  <Button variant="ghost" size="sm" title="Open the WhatsApp chat with this lead" onClick={() => setTab('whatsapp')}>
-                    Open chat
-                  </Button>
                 </div>
               )}
             </div>
@@ -432,7 +429,7 @@ export default function LeadDetailPage() {
           { key: 'profile', label: 'Student Profile' },
           { key: 'discussion', label: 'Counsellor Discussion' },
           { key: 'timeline', label: 'Timeline' },
-          { key: 'whatsapp', label: 'WhatsApp' },
+          { key: 'whatsapp', label: 'WhatsApp History' },
           ...(can(user, 'tasks', 'view')
             ? [{ key: 'followups', label: `Follow-ups${followUpCount !== undefined ? ` (${followUpCount})` : ''}` }]
             : []),

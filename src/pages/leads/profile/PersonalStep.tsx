@@ -31,7 +31,8 @@ export function PersonalStep({
   const [save] = useSaveLeadProfileStepMutation({ fixedCacheKey: PROFILE_STEP_SAVE })
   const p = profile.personal ?? {}
   const g = profile.guardian ?? {}
-  // the candidate's email, once on the lead, is shown but not editable here
+  // the candidate's mobile and email, once on the lead, are shown but not editable here; an empty one can still be filled in
+  const mobileLocked = !!p.mobile
   const emailLocked = !!p.email
   const {
     register,
@@ -99,8 +100,14 @@ export function PersonalStep({
                 {...register('personal.email')}
               />
             </FormField>
-            <FormField label="Mobile Number" required error={pe?.mobile?.message} hint="10 digits">
-              <Input type="tel" aria-invalid={!!pe?.mobile} {...mobileField(register('personal.mobile'))} />
+            <FormField label="Mobile Number" required error={pe?.mobile?.message} hint={mobileLocked ? "Can't be changed once set" : '10 digits'}>
+              <Input
+                type="tel"
+                aria-invalid={!!pe?.mobile}
+                readOnly={mobileLocked}
+                className={mobileLocked ? READ_ONLY_FIELD : undefined}
+                {...mobileField(register('personal.mobile'))}
+              />
             </FormField>
             <FormField label="Date of Birth" required error={pe?.dob?.message}>
               <Input
