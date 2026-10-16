@@ -102,18 +102,26 @@ function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCu
             value={[lead.optedOut?.sms ? 'SMS' : null, lead.optedOut?.email ? 'Email' : null].filter(Boolean).join(', ') || 'No'}
           /> */}
         </Card>
-        {infoDefs.length > 0 && (
-          <Card title="Additional Lead Information">
-            {infoDefs.map((def) => (
-              <DetailRow key={def.key} label={def.label} value={formatCustomValue(lead.customFields?.[def.key], def)} />
-            ))}
-            {onEditCustom && (
-              <Button variant="outline" size="sm" className="mt-2" onClick={onEditCustom}>
-                <Pencil className="h-3.5 w-3.5" /> Edit additional information
-              </Button>
-            )}
-          </Card>
-        )}
+        {(() => {
+          // only the custom fields that actually hold a value; empty defs stay hidden
+          const filled = infoDefs
+            .map((def) => ({ def, value: formatCustomValue(lead.customFields?.[def.key], def) }))
+            .filter(({ value }) => value !== null && value !== undefined && value !== '')
+          if (!filled.length && !onEditCustom) return null
+          return (
+            <Card title="Additional Lead Information">
+              {filled.map(({ def, value }) => (
+                <DetailRow key={def.key} label={def.label} value={value} />
+              ))}
+              {!filled.length && <p className="text-xs text-slate-400">No Additional Information Yet</p>}
+              {onEditCustom && (
+                <Button variant="outline" size="sm" className="mt-2" onClick={onEditCustom}>
+                  <Pencil className="h-3.5 w-3.5" /> Edit additional information
+                </Button>
+              )}
+            </Card>
+          )
+        })()}
         {/* Notes section beside the lead information: the remark captured with the lead first, then the latest notes (newest first) */}
         <Card title="Notes">
           {remarks.map(({ def, text }) => (
