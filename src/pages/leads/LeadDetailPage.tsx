@@ -49,10 +49,12 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
   return (
     <div className="flex justify-between gap-4 py-1.5 text-xs">
       <span className="shrink-0 text-slate-400">{label}</span>
-      <span className="text-right font-medium text-slate-700">{value ?? '—'}</span>
+      <span className="min-w-0 break-all text-right font-medium text-slate-700">{value || '—'}</span>
     </div>
   )
 }
+
+const TRACK_LABELS: Record<string, string> = { ads: 'Ads', partner: 'Partner', other: 'Other' }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -137,6 +139,7 @@ function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCu
           )}
         </Card>
       </div>
+      <div className="space-y-4">
       <Card title="System Fields">
         <DetailRow label="Lead ID" value={lead.leadNo} />
         <DetailRow label="Created On" value={formatDateTime(lead.createdAt)} />
@@ -156,6 +159,21 @@ function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCu
         {/* only from the new backend; the old one had no discussion % (it sent it as customFieldsCompletion) */}
         {lead.discussionCompletion !== undefined && <DetailRow label="Counsellor Discussion Completion" value={`${lead.discussionCompletion}%`} />}
       </Card>
+      {/* Everything the capture API records about where the lead came from (utm block + referral block + track) */}
+      <Card title="Source & Tracking">
+        <DetailRow label="UTM Source" value={lead.utm?.source} />
+        <DetailRow label="UTM Medium" value={lead.utm?.medium} />
+        <DetailRow label="UTM Campaign" value={lead.utm?.campaign} />
+        <DetailRow label="UTM Term" value={lead.utm?.term} />
+        <DetailRow label="UTM Content" value={lead.utm?.content} />
+        <DetailRow label="Landing Page" value={lead.utm?.landingPage} />
+        <DetailRow label="Referrer" value={lead.utm?.referrer} />
+        {lead.referral?.code && <DetailRow label="Referral Code" value={lead.referral.code} />}
+        {lead.referral?.partnerName && <DetailRow label="Partner Name" value={lead.referral.partnerName} />}
+        {lead.referral?.partnerLink && <DetailRow label="Partner Link" value={lead.referral.partnerLink} />}
+        <DetailRow label="Track" value={TRACK_LABELS[lead.track] ?? lead.track} />
+      </Card>
+      </div>
       <div className="space-y-4">
         <Card title="Recent Calls">
           {!calls?.data.length && <p className="text-xs text-slate-400">No Calls Logged Yet</p>}

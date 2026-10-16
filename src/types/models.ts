@@ -265,6 +265,7 @@ export interface Lead {
     term?: string
     content?: string
     landingPage?: string
+    referrer?: string
   }
   referral?: { code?: string; partnerName?: string; partnerLink?: string }
   track: 'ads' | 'partner' | 'other'
