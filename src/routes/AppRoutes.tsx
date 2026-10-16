@@ -24,6 +24,7 @@ const TeamsPage = lazy(() => import('../pages/admin/teams/TeamsPage'))
 const TeamDetailPage = lazy(() => import('../pages/admin/teams/TeamDetailPage'))
 const MastersPage = lazy(() => import('../pages/admin/MastersPage'))
 const AuditLogPage = lazy(() => import('../pages/admin/AuditLogPage'))
+const AttendancePage = lazy(() => import('../pages/admin/AttendancePage'))
 const ProfilePage = lazy(() => import('../pages/ProfilePage'))
 const NotificationsPage = lazy(() => import('../pages/NotificationsPage'))
 
@@ -95,6 +96,7 @@ export default function AppRoutes() {
         <Route path="admin/messaging/email/:id" element={<RequirePermission module="communications" action="edit"><Lazy><EmailDesignerPage /></Lazy></RequirePermission>} />
         <Route path="admin/round-robin" element={<RequirePermission module="round_robin"><Lazy><RoundRobinPage /></Lazy></RequirePermission>} />
         <Route path="admin/audit" element={<RequirePermission module="audit"><Lazy><AuditLogPage /></Lazy></RequirePermission>} />
+        <Route path="admin/attendance" element={<RequirePermission module="attendance"><Lazy><AttendancePage /></Lazy></RequirePermission>} />
         <Route path="profile" element={<Lazy><ProfilePage /></Lazy>} />
         <Route path="notifications" element={<Lazy><NotificationsPage /></Lazy>} />
         <Route path="forbidden" element={<Forbidden />} />

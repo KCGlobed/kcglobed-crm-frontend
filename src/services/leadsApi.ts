@@ -4,6 +4,7 @@ import type {
   ApiResponse,
   BulkAssignResult,
   CallLog,
+  CallProofFile,
   DiscussionData,
   DispositionStage,
   DocumentSlot,
@@ -227,8 +228,18 @@ export const leadsApi = api.injectEndpoints({
     }),
     uploadLeadDocument: build.mutation<ApiResponse<LeadDocumentFile>, { id: string; body: FormData }>({
       query: ({ id, body }) => ({ url: `/leads/${id}/documents`, method: 'POST', body }),
+      // the lead too: its profile-completion ring changes
       invalidatesTags: (_r, error, { id }) =>
-        error ? [] : [{ type: 'LeadDocuments', id }, { type: 'LeadProfile', id }, { type: 'LeadTimeline', id }],
+        error ? [] : [{ type: 'LeadDocuments', id }, { type: 'LeadProfile', id }, { type: 'LeadTimeline', id }, { type: 'Lead', id }],
+    }),
+    deleteLeadDocument: build.mutation<ApiResponse<LeadDocumentFile>, { id: string; documentId: string }>({
+      query: ({ id, documentId }) => ({ url: `/leads/${id}/documents/${documentId}`, method: 'DELETE' }),
+      invalidatesTags: (_r, error, { id }) =>
+        error ? [] : [{ type: 'LeadDocuments', id }, { type: 'LeadProfile', id }, { type: 'LeadTimeline', id }, { type: 'Lead', id }],
+    }),
+    // Log Call drawer: a call screenshot / recording, uploaded before the call is saved
+    uploadCallProof: build.mutation<ApiResponse<CallProofFile>, FormData>({
+      query: (body) => ({ url: '/calls/proofs', method: 'POST', body }),
     }),
     profileOptions: build.query<ApiResponse<{ states: string[]; citiesByState: Record<string, string[]> }>, void>({
       query: () => '/leads/profile-options',
@@ -334,6 +345,8 @@ export const {
   useSaveLeadDiscussionMutation,
   useLeadDocumentsQuery,
   useUploadLeadDocumentMutation,
+  useDeleteLeadDocumentMutation,
+  useUploadCallProofMutation,
   useProfileOptionsQuery,
   useImportPreviewMutation,
   useCreateImportCustomFieldMutation,

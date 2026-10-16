@@ -5,6 +5,7 @@ import { NAV_SECTIONS } from '../../constants/navigation'
 import { can } from '../../constants/permissions'
 import { GlobalSearch } from '../GlobalSearch'
 import { NotificationsBell } from './NotificationsBell'
+import { HeaderTimers } from './HeaderTimers'
 import { ProfileMenu } from './ProfileMenu'
 import logoMark from '../../assets/logo-gcc-mark.png'
 
@@ -57,6 +58,7 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
       )}
       <div className="flex min-w-0 flex-1 justify-center">{can(user, 'leads') && <GlobalSearch />}</div>
       <div className="flex items-center gap-1">
+        <HeaderTimers />
         <NotificationsBell />
         <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
         <ProfileMenu />

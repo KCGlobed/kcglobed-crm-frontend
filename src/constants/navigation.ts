@@ -1,6 +1,7 @@
 import {
   CalendarClock,
   ClipboardList,
+  Clock3,
   MessageSquareText,
   LayoutDashboard,
   Settings2,
@@ -38,6 +39,7 @@ export const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
       { label: 'Round Robin', path: '/app/admin/round-robin', module: 'round_robin', icon: Shuffle },
       { label: 'Masters', path: '/app/admin/masters', module: 'masters', icon: Settings2 },
       { label: 'Activity Log', path: '/app/admin/audit', module: 'audit', icon: ShieldCheck },
+      { label: 'Attendance', path: '/app/admin/attendance', module: 'attendance', icon: Clock3 },
     ],
   },
 ]

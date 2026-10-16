@@ -19,6 +19,7 @@ export const MODULES: { key: ModuleKey; label: string; slice1: boolean }[] = [
   { key: 'teams', label: 'Teams', slice1: true },
   { key: 'masters', label: 'Masters', slice1: true },
   { key: 'audit', label: 'Audit Log', slice1: true },
+  { key: 'attendance', label: 'Attendance', slice1: true },
 ]
 
 export const ACTIONS: { key: ActionKey; label: string }[] = [
