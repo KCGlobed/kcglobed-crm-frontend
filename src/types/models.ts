@@ -637,7 +637,7 @@ export interface ProfileAcademic {
     medium: string
     mediumOther?: string
   }
-  higherQualification: { has: boolean; details?: string }
+  higherQualification: { has: boolean; qualification?: string; details?: string; institution?: string }
 }
 
 export interface ProfileExperience {

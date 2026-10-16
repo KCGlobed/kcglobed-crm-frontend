@@ -5,6 +5,7 @@ import { useSaveLeadProfileStepMutation } from '../../../services/leadsApi'
 import { FormField, Input, Select } from '../../../components/ui/fields'
 import {
   GRADE_TYPES,
+  HIGHER_QUALIFICATIONS,
   MEDIUMS,
   MIN_PASSING_YEAR,
   QUALIFICATION_STATUSES,
@@ -153,13 +154,24 @@ export function AcademicStep({
       ? {
           academic: {
             ...(a as AcademicInput['academic']),
-            // radios match on string values
-            higherQualification: { ...a.higherQualification, has: String(a.higherQualification.has) },
+            higherQualification: {
+              ...a.higherQualification,
+              // radios match on string values
+              has: String(a.higherQualification.has),
+              // old records kept the picked value in `details` — lift it into the dropdown
+              qualification:
+                a.higherQualification.qualification ??
+                ((HIGHER_QUALIFICATIONS as readonly string[]).includes(a.higherQualification.details ?? '')
+                  ? (a.higherQualification.details as (typeof HIGHER_QUALIFICATIONS)[number])
+                  : a.higherQualification.details
+                    ? 'Other'
+                    : undefined),
+            },
           },
         }
       : undefined,
   })
-  const [g10, g12, gUg, ugStatus, hasHigher, m10, m12, mUg, ugQualification] = useWatch({
+  const [g10, g12, gUg, ugStatus, hasHigher, m10, m12, mUg, ugQualification, higherQualification] = useWatch({
     control,
     name: [
       'academic.class10.gradeType',
@@ -171,6 +183,7 @@ export function AcademicStep({
       'academic.class12.medium',
       'academic.ug.medium',
       'academic.ug.qualification',
+      'academic.higherQualification.qualification',
     ],
   })
   const ae = errors.academic
@@ -259,9 +272,24 @@ export function AcademicStep({
               />
             </FormField>
             {String(hasHigher) === 'true' && (
-              <FormField label="Qualification Details" required error={ae?.higherQualification?.details?.message}>
-                <Input maxLength={150} aria-invalid={!!ae?.higherQualification?.details} {...register('academic.higherQualification.details')} />
-              </FormField>
+              <>
+                <FormField label="Select Qualification" required error={ae?.higherQualification?.qualification?.message}>
+                  <OptionSelect
+                    options={HIGHER_QUALIFICATIONS}
+                    placeholder="Select qualification…"
+                    invalid={!!ae?.higherQualification?.qualification}
+                    {...register('academic.higherQualification.qualification')}
+                  />
+                </FormField>
+                {higherQualification === 'Other' && (
+                  <FormField label="Qualification (specify)" required error={ae?.higherQualification?.details?.message}>
+                    <Input maxLength={150} aria-invalid={!!ae?.higherQualification?.details} {...register('academic.higherQualification.details')} />
+                  </FormField>
+                )}
+                <FormField label="Institution Name" error={ae?.higherQualification?.institution?.message}>
+                  <Input maxLength={150} aria-invalid={!!ae?.higherQualification?.institution} {...register('academic.higherQualification.institution')} />
+                </FormField>
+              </>
             )}
           </div>
         </Section>
