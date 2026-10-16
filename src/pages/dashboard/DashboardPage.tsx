@@ -14,6 +14,7 @@ import { KpiCard } from '../../components/ui/KpiCard'
 import { useAppDispatch, useCurrentUser } from '../../app/hooks'
 import { isCounsellor } from '../../lib/roles'
 import { cn, fullName, timeAgo } from '../../lib/utils'
+import { formatHms } from '../../lib/durations'
 import type { DashboardRecentLead, DashboardStatusTile, DashboardSummary, Stage } from '../../types/models'
 
 /** Query params of the lead list (`/app/leads?…`) a metric drills down to. */
@@ -261,11 +262,6 @@ const STATUS_TILES: { key: DashboardStatusTile['key']; label: string; icon: Luci
 const stageRow = (summary: DashboardSummary | undefined, name: string) =>
   summary?.byStage.find((s) => s.name.trim().toLowerCase() === name.toLowerCase())
 
-/** Seconds as "2h 15m" / "45m" / "0m". */
-const duration = (seconds = 0) => {
-  const mins = Math.round(seconds / 60)
-  return mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins}m`
-}
 
 /** The counsellor's stage cards, in display order. */
 const MY_LEADS_STAGES: { name: string; icon: LucideIcon; accent?: 'amber' }[] = [
@@ -365,8 +361,8 @@ function CounsellorCards({ summary, period: state, loading, onOpen }: { summary?
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
           {/* straight from the summary's activityToday; 0 until the backend sends it */}
           <KpiCard label="Total Calls Today" value={activity?.calls ?? 0} progress={activity?.calls ? 100 : 0} hint="Calls placed" icon={PhoneCall} accent="cyan" loading={loading} />
-          <KpiCard label="Total Talk time Today" value={duration(activity?.talktimeSeconds)} progress={activity?.talktimeSeconds ? 100 : 0} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
-          <KpiCard label="Total Break Time Today" value={duration(activity?.breakSeconds)} progress={activity?.breakSeconds ? 100 : 0} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
+          <KpiCard label="Total Talk time Today" value={formatHms(activity?.talktimeSeconds)} progress={activity?.talktimeSeconds ? 100 : 0} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
+          <KpiCard label="Total Break Time Today" value={formatHms(activity?.breakSeconds)} progress={activity?.breakSeconds ? 100 : 0} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
         </div>
       </section>
     </>

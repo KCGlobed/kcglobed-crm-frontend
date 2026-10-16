@@ -120,7 +120,13 @@ export default function LeadsListPage() {
     return q
   }, [params])
 
-  const { data, isLoading, isFetching, isError, error, refetch } = useListLeadsQuery(query)
+  // refreshed every 30 s (and on returning to the tab): the filters live in the URL, so each refresh re-runs the same
+  // query, and selection / open panels are local state that a refresh doesn't touch
+  const { data, currentData, isLoading, isFetching, isError, error, refetch } = useListLeadsQuery(query, {
+    pollingInterval: 30_000,
+    skipPollingIfUnfocused: true,
+    refetchOnFocus: true,
+  })
   const { data: meta } = useFilterFieldsQuery()
   const { data: masters } = useMasterBootstrapQuery()
   const currentStage = masters?.data.stages.find((s) => s._id === params.get('stage'))
@@ -268,7 +274,7 @@ export default function LeadsListPage() {
     <>
       <PageHeader
         title="Leads"
-        description={data ? `${total} leads ${admin ? 'in the CRM' : 'assigned to you'}` : undefined}
+        description={data ? `${total} leads ${admin ? 'in the CRM' : 'assigned to you'} · auto-refreshes every 30 s` : undefined}
         actions={
           <>
             {can(user, 'leads', 'export') && (
@@ -477,7 +483,8 @@ export default function LeadsListPage() {
         columns={columns}
         rows={data?.data}
         rowKey={(l) => l._id}
-        loading={isLoading || isFetching}
+        // skeletons only while the rows for these filters aren't loaded yet: a background refresh keeps the table
+        loading={isLoading || (isFetching && !currentData)}
         error={isError}
         errorMessage={isError ? parseApiError(error).message : undefined}
         onRetry={refetch}

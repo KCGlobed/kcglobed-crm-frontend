@@ -17,6 +17,7 @@ export type ModuleKey =
   | 'teams'
   | 'masters'
   | 'audit'
+  | 'attendance'
 
 export type ActionKey =
   | 'view'
@@ -850,7 +851,33 @@ export interface CallLog {
   subStage?: string
   note?: string
   source: string
+  /** proof of the call: the screenshot of the call time (required since call proofs), the recording (optional) */
+  screenshot?: CallProofFile | null
+  recording?: CallProofFile | null
   createdAt: string
+}
+
+/** A call screenshot or recording (POST /calls/proofs, then sent with the call; GET /calls/:id/proofs/:proofId). */
+export interface CallProofFile {
+  _id: string
+  kind: 'screenshot' | 'recording'
+  fileName: string
+  contentType: string
+  size: number
+}
+
+/** Attendance → Call Proofs: one logged call with its proofs. */
+export interface AttendanceCallRow {
+  _id: string
+  createdAt: string
+  user: { _id: string; name: string }
+  lead: { _id: string; name: string; leadNo: string }
+  durationSeconds?: number | null
+  status: string
+  stage?: string | null
+  subStage?: string | null
+  screenshot: CallProofFile | null
+  recording: CallProofFile | null
 }
 
 export interface FieldChangeEntry {
@@ -898,6 +925,9 @@ export interface LeadDocumentFile {
   isCurrent: boolean
   uploadedBy?: string | null
   uploadedAt: string
+  /** deleted from the profile: kept in the history, the file is still there */
+  deletedAt?: string | null
+  deletedBy?: string | null
 }
 
 export interface DocumentSlot {
@@ -1189,7 +1219,8 @@ export interface DashboardSummary {
   byOwner: { _id: string; name: string; count: number }[]
   /** the eight newest leads in scope */
   recentLeads: DashboardRecentLead[]
-  /** the signed-in counsellor's calling activity today; absent until the backend tracks it (the cards then show 0) */
+  /** the signed-in employee's day: calls they logged, the sum of those calls' durations, and their completed breaks
+   * (absent for Super Admin) */
   activityToday?: {
     calls?: number
     talktimeSeconds?: number
@@ -1250,4 +1281,76 @@ export interface RoundRobinStatus {
   lastAssigned: Ref | null
   /** leads waiting (nobody online / outside window) */
   unassignedPoolCount: number
+}
+
+/* ------------------------------------------------------------------ Punch Break & Attendance */
+
+export type BreakType = 'tea' | 'lunch' | 'bio' | 'other'
+/** active: running · completed: ended by the employee · incomplete: still open when its day ended, left out of every total */
+export type BreakStatus = 'active' | 'completed' | 'incomplete'
+
+export interface BreakEntry {
+  _id: string
+  type: BreakType
+  /** "Lunch Break" */
+  label: string
+  /** the reason given for an "other" break */
+  note?: string
+  /** IST date the break started on (YYYY-MM-DD) */
+  day: string
+  startedAt: string
+  endedAt?: string
+  durationSeconds?: number
+  status: BreakStatus
+  endedBy?: 'user' | 'system'
+  /** running breaks only: seconds since the start, when the server answered */
+  elapsedSeconds?: number
+  /** the break log only */
+  user?: { _id: string; name: string }
+}
+
+export interface BreaksToday {
+  day: string
+  active: BreakEntry | null
+  /** today's breaks, newest first */
+  breaks: BreakEntry[]
+  /** completed seconds per type */
+  byType: Record<BreakType, number>
+  /** completed breaks only */
+  totalSeconds: number
+}
+
+/** The top bar for the signed-in employee: today's logged-in time plus the Punch Break state. */
+export interface AttendanceToday extends BreaksToday {
+  firstLoginAt: string | null
+  /** signed-in time today as of the response; keeps running while `live` */
+  loggedInSeconds: number
+  live: boolean
+}
+
+/** One employee on one IST day of the Attendance report. */
+export interface AttendanceRow {
+  date: string
+  user: { _id: string; name: string; roleLabel: string }
+  /** online: signed in right now (today) · absent: a working day without a sign-in */
+  status: 'present' | 'absent' | 'online'
+  /** first sign-in of the day */
+  loginAt?: string
+  /** sign-out of the day's last session */
+  logoutAt?: string
+  /** signed-in time that day: the sessions added up (overlaps counted once), the same figure as the employee's
+   * logged-in timer; running while online; counted up to the last activity when the logout is missing.
+   * null when there was no sign-in */
+  loginSeconds: number | null
+  /** the day's last session never signed out: flagged, never guessed */
+  logoutMissing: boolean
+  /** when logoutMissing: the last time that session was used */
+  lastSeenAt?: string
+  sessions: number
+  calls: number
+  talktimeSeconds: number
+  breaks: Record<BreakType, number>
+  breakSeconds: number
+  activeBreak: { type: BreakType; label: string; note?: string; startedAt: string } | null
+  incompleteBreaks: number
 }

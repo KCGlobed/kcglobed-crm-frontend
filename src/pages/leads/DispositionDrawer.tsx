@@ -8,12 +8,16 @@ import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import type { Lead } from '../../types/models'
 import { taskTypeLabel, toLocalInput } from '../tasks/taskMeta'
+import { CallProofField, type ProofValue } from './CallProofField'
 
 /**
  * "Log Call / Update" (GL-16..20, GL-40): stage + disposition, a mandatory
  * future follow-up for every open stage, a reason for closing stages, an
- * optional note and call duration. Counsellor Discussion and Call Result are
- * intentionally not part of this form — the discussion lives in its own tab.
+ * optional note and, for a call, its duration (mandatory: talk time is summed
+ * from it; 00:00:00 for a call that didn't connect), a screenshot of the call
+ * time (mandatory, so the duration can be checked) and the recording
+ * (optional). Counsellor Discussion and
+ * Call Result are intentionally not part of this form — the discussion lives in its own tab.
  */
 export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: 'call' | 'update'; onClose: () => void }) {
   const { data } = useDispositionOptionsQuery()
@@ -32,13 +36,34 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
   const [minutes, setMinutes] = useState('')
   const [seconds, setSeconds] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
+  // proof of the call, uploaded as soon as it is picked (or pasted)
+  const [screenshot, setScreenshot] = useState<ProofValue | null>(null)
+  const [recording, setRecording] = useState<ProofValue | null>(null)
+  const [shotBusy, setShotBusy] = useState(false)
+  const [recBusy, setRecBusy] = useState(false)
+  const [pasted, setPasted] = useState<File | null>(null)
+  const proofMissing = mode === 'call' && (!screenshot || shotBusy || recBusy)
 
   const stage = stages.find((s) => s._id === stageId)
   const subStagePick = stage?.subStages.find((s) => s._id === subStage)
 
+  // the call's duration: required, whole numbers, minutes and seconds 0–59, at most 6 hours
+  const durationEntered = [hours, minutes, seconds].some((v) => v.trim() !== '')
+  const part = (value: string, max: number) => (value.trim() === '' ? 0 : /^\d+$/.test(value.trim()) && Number(value) <= max ? Number(value) : NaN)
+  const duration = part(hours, 6) * 3600 + part(minutes, 59) * 60 + part(seconds, 59)
+  const durationProblem =
+    mode !== 'call'
+      ? undefined
+      : !durationEntered
+        ? 'Enter the call duration'
+        : Number.isNaN(duration)
+          ? 'Use whole numbers: hours up to 6, minutes and seconds 0–59'
+          : duration > 6 * 3600
+            ? 'A call can be at most 6 hours'
+            : undefined
+
   const onSave = async () => {
-    const duration =
-      hours || minutes || seconds ? Number(hours || 0) * 3600 + Number(minutes || 0) * 60 + Number(seconds || 0) : undefined
+    if (durationProblem) return
     const body: Record<string, unknown> = {
       stage: stageId,
       subStage: subStage || null,
@@ -48,7 +73,9 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
       ...(stage?.requiresFollowUp
         ? { followUpAt: followUpAt ? new Date(followUpAt).toISOString() : null, followUpType, followUpNote: followUpNote || undefined }
         : {}),
-      ...(mode === 'call' ? { call: { status: callStatus, durationSeconds: duration ?? null } } : {}),
+      ...(mode === 'call'
+        ? { call: { status: callStatus, durationSeconds: duration, screenshotId: screenshot?.id, recordingId: recording?.id ?? null } }
+        : {}),
     }
     try {
       await save({ id: lead._id, body }).unwrap()
@@ -72,17 +99,31 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={onSave} loading={isLoading} disabled={!stageId}>
+          <Button onClick={onSave} loading={isLoading} disabled={!stageId || !!durationProblem || proofMissing}>
             Save Disposition
           </Button>
         </>
       }
     >
-      <div>
+      <div
+        onPaste={(e) => {
+          // a screenshot pasted anywhere in the drawer becomes the call screenshot
+          const image = Array.from(e.clipboardData.files).find((f) => f.type.startsWith('image/'))
+          if (image && mode === 'call') {
+            e.preventDefault()
+            setPasted(new File([image], image.name || 'call-screenshot.png', { type: image.type }))
+          }
+        }}
+      >
         <div className="space-y-3">
           {mode === 'call' && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <FormField label="Call Duration (Optional)">
+              <FormField
+                label="Call Duration"
+                required
+                error={errors['call.durationSeconds'] ?? (durationEntered ? durationProblem : undefined)}
+                hint={durationEntered ? undefined : 'hh : mm : ss · enter 0 for a call that did not connect'}
+              >
                 <div className="flex items-center gap-1">
                   <Input className="!w-16" type="number" min={0} placeholder="hh" value={hours} onChange={(e) => setHours(e.target.value)} />
                   <span className="text-slate-400">:</span>
@@ -91,6 +132,18 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
                   <Input className="!w-16" type="number" min={0} max={59} placeholder="ss" value={seconds} onChange={(e) => setSeconds(e.target.value)} />
                 </div>
               </FormField>
+              <div className="mt-3 space-y-3 border-t border-slate-200 pt-3">
+                <CallProofField
+                  kind="screenshot"
+                  required
+                  value={screenshot}
+                  onChange={setScreenshot}
+                  onBusy={setShotBusy}
+                  pasted={pasted}
+                  error={errors['call.screenshotId']}
+                />
+                <CallProofField kind="recording" value={recording} onChange={setRecording} onBusy={setRecBusy} error={errors['call.recordingId']} />
+              </div>
             </div>
           )}
           <FormField label="Stage" required error={errors.stage}>
