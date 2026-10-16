@@ -111,7 +111,9 @@ export default function LeadsListPage() {
     const q: LeadListParams = {
       page: Number(params.get('page')) || 1,
       page_size: Number(params.get('page_size')) || 25,
-      sort_by: params.get('sort_by') ?? 'createdAt',
+      // enquiredAt = last enquiry (re-enquiry bumps it) falling back to created —
+      // so a duplicate enquiry floats its lead back to the top of the list
+      sort_by: params.get('sort_by') ?? 'enquiredAt',
       sort_order: (params.get('sort_order') as 'asc' | 'desc') ?? 'desc',
     }
     params.forEach((value, key) => {
