@@ -265,6 +265,7 @@ export interface Lead {
     term?: string
     content?: string
     landingPage?: string
+    referrer?: string
   }
   referral?: { code?: string; partnerName?: string; partnerLink?: string }
   track: 'ads' | 'partner' | 'other'
@@ -431,6 +432,20 @@ export interface Notification {
   createdAt: string
 }
 
+/** One row of the Activity Log's Notifications tab: an alert with its recipient and how its push went. */
+export interface NotificationLogRow extends Notification {
+  user: { _id: string; name: string; email?: string }
+  push?: {
+    attempts: number
+    sent: number
+    failed: number
+    provider: string
+    status: string
+    error?: string
+    lastAt: string
+  } | null
+}
+
 export interface AuditLogEntry {
   _id: string
   actor?: (Ref & { email?: string }) | null
@@ -439,9 +454,123 @@ export interface AuditLogEntry {
   module: string
   entityType?: string
   entityId?: string
+  /** one readable line ("SMS · Registration → Asha Rao (GCCSCH-…, 9876543210) · delivered"); communications entries carry it */
+  summary?: string
   before?: unknown
   after?: unknown
   ip?: string
+  userAgent?: string
+  createdAt: string
+}
+
+/** The lead a message went to, as the Activity Log keeps it (the entry outlives the lead). */
+export interface AuditLeadRef {
+  _id: string
+  leadNo: string
+  name: string
+  mobile?: string
+  email?: string
+  /** the lead's counsellor at the time */
+  owner?: string
+}
+
+export interface AuditTemplateRef {
+  _id: string
+  name: string
+  channel: string
+  dltTemplateId?: string
+  senderId?: string
+  dltType?: string
+  waTemplateName?: string
+  waLanguage?: string
+  waCategory?: string
+}
+
+/** `after` of a message_send / message_sent / message_delivered / message_failed / message_received entry. */
+export interface MessageAuditSnapshot {
+  messageId: string
+  channel: string
+  channelLabel?: string
+  direction?: 'in' | 'out'
+  status: string
+  error?: string
+  to?: string
+  subject?: string
+  body?: string
+  /** the {#var#} / {{n}} values as typed or picked for this send */
+  variables?: string[]
+  lead?: AuditLeadRef
+  template?: AuditTemplateRef | null
+  campaign?: { _id: string; name: string } | null
+  trigger?: string
+  sentBy?: string
+  provider?: string
+  providerMessageId?: string
+  sentAt?: string
+  deliveredAt?: string
+  createdAt?: string
+  /** on a delivery-report entry: what the provider reported */
+  reportedStatus?: string
+  reportedError?: string
+}
+
+/** `after` of a bulk_send / bulk_send_done / bulk_send_cancel entry. */
+export interface CampaignAuditSnapshot {
+  campaignId: string
+  name: string
+  channel: string
+  channelLabel?: string
+  template?: AuditTemplateRef | null
+  status: string
+  scheduledAt?: string
+  startedAt?: string
+  finishedAt?: string
+  recipients?: number
+  selected?: number
+  excluded?: { optedOut: number; invalid: number; duplicate: number }
+  variables?: string[]
+  filters?: Record<string, unknown>
+  createdBy?: string
+  report?: CampaignRow['report']
+  sent?: number
+  failed?: number
+}
+
+export interface AuditMessageHistoryItem {
+  _id: string
+  action: string
+  actorName: string
+  createdAt: string
+  status?: string
+  error?: string
+}
+
+/** What an Activity Log entry points at today (GET /audit-logs/:id). */
+export type AuditLogDetails =
+  | {
+      kind: 'message'
+      message: LeadMessage & { lead?: AuditLeadRef; templateDetail?: AuditTemplateRef | null; campaign?: { _id: string; name: string } | null; readAt?: string }
+      history: AuditMessageHistoryItem[]
+    }
+  | { kind: 'campaign'; campaign: CampaignRow }
+
+export interface AuditLogDetail extends AuditLogEntry {
+  details?: AuditLogDetails | null
+}
+
+/** One recipient of a bulk send with the live status (GET /messaging/campaigns/:id/recipients). */
+export interface CampaignRecipient {
+  _id: string
+  lead: AuditLeadRef
+  to?: string
+  status: string
+  error?: string
+  subject?: string
+  body: string
+  provider?: string
+  providerMessageId?: string
+  sentAt?: string
+  deliveredAt?: string
   createdAt: string
 }
 
@@ -509,7 +638,7 @@ export interface ProfileAcademic {
     medium: string
     mediumOther?: string
   }
-  higherQualification: { has: boolean; details?: string }
+  higherQualification: { has: boolean; qualification?: string; details?: string; institution?: string }
 }
 
 export interface ProfileExperience {
@@ -799,9 +928,14 @@ export interface MessageTemplate {
   senderId?: string
   /** SMS only: the DLT template type. Explicit (promotional category) goes on the gateway's promotional channel, 10 am – 9 pm */
   dltType?: 'implicit' | 'explicit'
+  /** WhatsApp only: the template as approved in WhatsApp Manager (name + language), its review status and category */
+  waTemplateName?: string
+  waLanguage?: string
+  waCategory?: string
+  waStatus?: string
   isActive: boolean
   placeholders: string[]
-  /** SMS only: how many {#var#} values are typed when sending (DLT variables) */
+  /** SMS / WhatsApp: how many values are typed or picked when sending ({#var#} markers or {{n}} parameters) */
   variableCount?: number
   createdAt: string
   updatedAt: string
@@ -825,6 +959,65 @@ export interface LeadMessage {
   sentAt?: string
   deliveredAt?: string
   createdAt: string
+  /** out = sent by the CRM (default); in = a WhatsApp reply from the lead */
+  direction?: 'in' | 'out'
+  /** a single send scheduled for later (status scheduled until then; kept after it goes out) */
+  scheduledAt?: string
+  /** the {#var#} / {{n}} values it is rendered with */
+  variables?: string[]
+}
+
+/** One row of the Activity Log's Scheduled tab: a bulk send or a single message waiting for its time. */
+export interface ScheduledSend {
+  kind: 'bulk' | 'single'
+  _id: string
+  channel: string
+  template?: string
+  scheduledAt: string
+  status: string
+  scheduledBy?: string
+  scheduledById?: string
+  createdAt: string
+  variables?: string[]
+  /** bulk */
+  name?: string
+  recipients?: number
+  excluded?: { optedOut: number; invalid: number; duplicate: number }
+  startedAt?: string
+  /** single */
+  lead?: AuditLeadRef
+  to?: string
+  subject?: string
+  body?: string
+  error?: string
+}
+
+/** One bubble of the lead's WhatsApp thread. */
+export interface WhatsAppChatMessage {
+  _id: string
+  direction: 'in' | 'out'
+  body: string
+  /** out: queued | sent | delivered | failed · in: received */
+  status: string
+  error?: string
+  template?: string
+  /** out: the user (or "Automation"); in: the lead's WhatsApp profile name */
+  sentBy?: string
+  sentAt: string
+  deliveredAt?: string
+  createdAt: string
+  providerMessageId?: string
+}
+
+export interface WhatsAppChat {
+  to: string | null
+  optedOut: boolean
+  /** until when Meta accepts a typed reply (24 h after the lead's last message); null = templates only */
+  windowOpenUntil?: string | null
+  canSendText: boolean
+  /** replies that were unread before this fetch (they are marked read by it) */
+  unread: number
+  messages: WhatsAppChatMessage[]
 }
 
 export interface MessagePreview {

@@ -40,6 +40,7 @@ import { CustomInformation } from './CustomInformation'
 import { DispositionDrawer } from './DispositionDrawer'
 import { ChangeStageModal } from './ChangeStageModal'
 import { AddNoteModal, AssignLeadModal, SendMessageModal } from './LeadActionModals'
+import { WhatsAppChat } from './WhatsAppChat'
 import { FollowUpFormModal } from '../tasks/FollowUpFormModal'
 import { subStageOf } from '../../lib/stages'
 import type { CustomFieldDef, Lead, LeadMessage } from '../../types/models'
@@ -48,10 +49,12 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
   return (
     <div className="flex justify-between gap-4 py-1.5 text-xs">
       <span className="shrink-0 text-slate-400">{label}</span>
-      <span className="text-right font-medium text-slate-700">{value ?? '—'}</span>
+      <span className="min-w-0 break-all text-right font-medium text-slate-700">{value || '—'}</span>
     </div>
   )
 }
+
+const TRACK_LABELS: Record<string, string> = { ads: 'Ads', partner: 'Partner', other: 'Other' }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -136,6 +139,7 @@ function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCu
           )}
         </Card>
       </div>
+      <div className="space-y-4">
       <Card title="System Fields">
         <DetailRow label="Lead ID" value={lead.leadNo} />
         <DetailRow label="Created On" value={formatDateTime(lead.createdAt)} />
@@ -155,6 +159,21 @@ function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCu
         {/* only from the new backend; the old one had no discussion % (it sent it as customFieldsCompletion) */}
         {lead.discussionCompletion !== undefined && <DetailRow label="Counsellor Discussion Completion" value={`${lead.discussionCompletion}%`} />}
       </Card>
+      {/* Everything the capture API records about where the lead came from (utm block + referral block + track) */}
+      <Card title="Source & Tracking">
+        <DetailRow label="UTM Source" value={lead.utm?.source} />
+        <DetailRow label="UTM Medium" value={lead.utm?.medium} />
+        <DetailRow label="UTM Campaign" value={lead.utm?.campaign} />
+        <DetailRow label="UTM Term" value={lead.utm?.term} />
+        <DetailRow label="UTM Content" value={lead.utm?.content} />
+        <DetailRow label="Landing Page" value={lead.utm?.landingPage} />
+        <DetailRow label="Referrer" value={lead.utm?.referrer} />
+        {lead.referral?.code && <DetailRow label="Referral Code" value={lead.referral.code} />}
+        {lead.referral?.partnerName && <DetailRow label="Partner Name" value={lead.referral.partnerName} />}
+        {lead.referral?.partnerLink && <DetailRow label="Partner Link" value={lead.referral.partnerLink} />}
+        <DetailRow label="Track" value={TRACK_LABELS[lead.track] ?? lead.track} />
+      </Card>
+      </div>
       <div className="space-y-4">
         <Card title="Recent Calls">
           {!calls?.data.length && <p className="text-xs text-slate-400">No Calls Logged Yet</p>}
@@ -197,13 +216,6 @@ function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCu
 /** A number we can message: 10 digits (or country-coded); a missing or masked number has fewer. */
 const hasUsableMobile = (mobile?: string | null) => (mobile ?? '').replace(/\D/g, '').length >= 10
 
-/** wa.me link for the lead's mobile (10-digit Indian numbers get the 91 prefix). */
-function whatsappLink(mobile?: string | null): string | null {
-  const digits = (mobile ?? '').replace(/\D/g, '')
-  if (digits.length < 10) return null // missing or masked number
-  return `https://wa.me/${digits.length === 10 ? `91${digits}` : digits}`
-}
-
 function HeaderFact({ label, children, danger }: { label: string; children: React.ReactNode; danger?: boolean }) {
   return (
     <div className="min-w-0">
@@ -219,7 +231,7 @@ export default function LeadDetailPage() {
   const user = useCurrentUser()
   const admin = isAdminLike(user)
   const [tab, setTab] = useState('overview')
-  const [modal, setModal] = useState<'edit' | 'assign' | 'delete' | 'call' | 'update' | 'stage' | 'followup' | 'note' | 'sms' | 'email' | null>(null)
+  const [modal, setModal] = useState<'edit' | 'assign' | 'delete' | 'call' | 'update' | 'stage' | 'followup' | 'note' | 'sms' | 'email' | 'whatsapp' | null>(null)
 
   const { data, isLoading, isError, error, refetch } = useGetLeadQuery(id, { skip: !id })
   const [deleteLead, { isLoading: deleting }] = useDeleteLeadMutation()
@@ -388,14 +400,14 @@ export default function LeadDetailPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={!whatsappLink(lead.mobile)}
-                    title={whatsappLink(lead.mobile) ? 'Open a WhatsApp chat with this lead' : 'No valid mobile number'}
-                    onClick={() => {
-                      const url = whatsappLink(lead.mobile)
-                      if (url) window.open(url, '_blank', 'noopener')
-                    }}
+                    disabled={!hasUsableMobile(lead.mobile)}
+                    title={hasUsableMobile(lead.mobile) ? 'Send an approved WhatsApp template to this lead' : 'No valid mobile number'}
+                    onClick={() => setModal('whatsapp')}
                   >
                     <MessageCircle className="h-3.5 w-3.5" /> Send WhatsApp
+                  </Button>
+                  <Button variant="ghost" size="sm" title="Open the WhatsApp chat with this lead" onClick={() => setTab('whatsapp')}>
+                    Open chat
                   </Button>
                 </div>
               )}
@@ -420,6 +432,7 @@ export default function LeadDetailPage() {
           { key: 'profile', label: 'Student Profile' },
           { key: 'discussion', label: 'Counsellor Discussion' },
           { key: 'timeline', label: 'Timeline' },
+          { key: 'whatsapp', label: 'WhatsApp' },
           ...(can(user, 'tasks', 'view')
             ? [{ key: 'followups', label: `Follow-ups${followUpCount !== undefined ? ` (${followUpCount})` : ''}` }]
             : []),
@@ -446,6 +459,8 @@ export default function LeadDetailPage() {
           <LeadFollowUps leadId={lead._id} />
         ) : tab === 'timeline' ? (
           <LeadTimeline leadId={lead._id} />
+        ) : tab === 'whatsapp' ? (
+          <WhatsAppChat lead={lead} canSend={canSend} />
         ) : tab === 'history' ? (
           <LeadHistory leadId={lead._id} />
         ) : (
@@ -459,7 +474,7 @@ export default function LeadDetailPage() {
       {lead && modal === 'followup' && <FollowUpFormModal leadId={lead._id} ownerId={lead.owner?._id} onClose={close} />}
       {lead && modal === 'assign' && <AssignLeadModal lead={lead} onClose={close} />}
       {lead && modal === 'note' && <AddNoteModal lead={lead} onClose={close} />}
-      {lead && (modal === 'sms' || modal === 'email') && <SendMessageModal lead={lead} channel={modal} onClose={close} />}
+      {lead && (modal === 'sms' || modal === 'email' || modal === 'whatsapp') && <SendMessageModal lead={lead} channel={modal} onClose={close} />}
 
       <ConfirmDialog
         open={modal === 'delete'}

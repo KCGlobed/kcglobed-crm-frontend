@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useCurrentUser } from '../../app/hooks'
+import { can } from '../../constants/permissions'
 import {
   AlarmClock,
   ArrowRightLeft,
@@ -18,6 +20,7 @@ import {
   Sparkles,
   UserPlus,
   X,
+  MessageCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -65,6 +68,7 @@ const NOTIFICATION_ICONS: Record<string, { icon: typeof Bell; className: string 
   untouched: { icon: Hourglass, className: 'bg-amber-50 text-amber-700' },
   language_barrier: { icon: Languages, className: 'bg-pink-50 text-pink-600' },
   bulk_done: { icon: Send, className: 'bg-emerald-50 text-emerald-700' },
+  whatsapp_reply: { icon: MessageCircle, className: 'bg-emerald-50 text-emerald-700' },
   export_ready: { icon: Download, className: 'bg-emerald-50 text-emerald-700' },
   integration_error: { icon: PlugZap, className: 'bg-red-50 text-red-600' },
   system: { icon: Sparkles, className: 'bg-slate-100 text-slate-500' },
@@ -193,6 +197,9 @@ export function NotificationsBell() {
   const markReadById = useCallback((id: string) => void markRead(id), [markRead])
   useFreshNotifications(data?.data.items, openNotification, markReadById, pushOn && pushStatus?.data.provider === 'fcm', pushEnabled)
   const [markAll] = useMarkAllNotificationsReadMutation()
+  const navigate = useNavigate()
+  // the Activity Log's Notifications tab lists every alert for every user (admins only)
+  const canViewLog = can(useCurrentUser(), 'audit')
   const unread = data?.data.unreadCount ?? 0
   const items = data?.data.items ?? []
   // Email copies (lead assigned, untouched, follow-up overdue) go to the user's own address, browser open or not.
@@ -236,6 +243,18 @@ export function NotificationsBell() {
                 Notifications {unread > 0 && <span className="ml-1 rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] text-red-600">{unread} new</span>}
               </p>
               <div className="flex shrink-0 items-center gap-3">
+                {canViewLog && (
+                  <button
+                    type="button"
+                    className="whitespace-nowrap text-[11px] font-medium text-brand-600 hover:underline"
+                    onClick={() => {
+                      setOpen(false)
+                      navigate('/app/admin/audit?tab=notifications')
+                    }}
+                  >
+                    View All
+                  </button>
+                )}
                 {unread > 0 && (
                   <button type="button" className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-medium text-brand-600 hover:underline" onClick={() => markAll()}>
                     <CheckCheck className="h-3 w-3" /> Mark All Read

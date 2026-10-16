@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Bold, Image, Link2, List, Plus } from 'lucide-react'
+import { Bold, Image, Link2, List, Plus, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useCancelCampaignMutation,
@@ -9,6 +9,7 @@ import {
   useListMessageTemplatesQuery,
   useMessagingOptionsQuery,
   useSaveMessageTemplateMutation,
+  useSyncWhatsAppTemplatesMutation,
   useUpdateAutomationMutation,
 } from '../../../services/messagingApi'
 import { PageHeader, Tabs } from '../../../components/ui/misc'
@@ -61,13 +62,15 @@ function RichText({ value, onChange }: { value: string; onChange: (html: string)
 function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onClose: () => void }) {
   const { data: options } = useMessagingOptionsQuery()
   const [save, { isLoading }] = useSaveMessageTemplateMutation()
-  const [channel, setChannel] = useState<'sms' | 'email'>((template?.channel as 'sms' | 'email') ?? 'sms')
+  const [channel, setChannel] = useState<'sms' | 'email' | 'whatsapp'>(template?.channel ?? 'sms')
   const [name, setName] = useState(template?.name ?? '')
   const [subject, setSubject] = useState(template?.subject ?? '')
   const [body, setBody] = useState(template?.body ?? '')
   const [dlt, setDlt] = useState(template?.dltTemplateId ?? '')
   const [sender, setSender] = useState(template?.senderId ?? '')
   const [dltType, setDltType] = useState<'implicit' | 'explicit'>(template?.dltType ?? 'implicit')
+  const [waName, setWaName] = useState(template?.waTemplateName ?? '')
+  const [waLang, setWaLang] = useState(template?.waLanguage ?? 'en')
   const [active, setActive] = useState(template?.isActive ?? true)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -75,7 +78,17 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
     try {
       await save({
         id: template?._id,
-        body: { name, channel, body, isActive: active, ...(channel === 'sms' ? { dltTemplateId: dlt, senderId: sender, dltType } : { subject }) },
+        body: {
+          name,
+          channel,
+          body,
+          isActive: active,
+          ...(channel === 'sms'
+            ? { dltTemplateId: dlt, senderId: sender, dltType }
+            : channel === 'whatsapp'
+              ? { waTemplateName: waName, waLanguage: waLang }
+              : { subject }),
+        },
       }).unwrap()
       toast.success('Template saved')
       onClose()
@@ -111,12 +124,10 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
             <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
           </FormField>
           <FormField label="Channel" required error={errors.channel}>
-            <Select value={channel} disabled={!!template} onChange={(e) => setChannel(e.target.value as 'sms' | 'email')}>
+            <Select value={channel} disabled={!!template} onChange={(e) => setChannel(e.target.value as 'sms' | 'email' | 'whatsapp')}>
               <option value="sms">SMS</option>
               <option value="email">Email</option>
-              <option value="whatsapp" disabled>
-                WhatsApp (after vendor onboarding)
-              </option>
+              <option value="whatsapp">WhatsApp</option>
             </Select>
           </FormField>
         </div>
@@ -140,6 +151,20 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
               </Select>
             </FormField>
           </div>
+        ) : channel === 'whatsapp' ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <FormField label="WhatsApp template name" required error={errors.waTemplateName} hint="Exactly as in WhatsApp Manager, e.g. repostregistration">
+              <Input value={waName} onChange={(e) => setWaName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} maxLength={120} />
+            </FormField>
+            <FormField label="Language" required error={errors.waLanguage} hint="Template language code, e.g. en, en_US, hi">
+              <Input value={waLang} onChange={(e) => setWaLang(e.target.value.trim())} maxLength={15} />
+            </FormField>
+            <FormField label="WhatsApp review" hint={template?.waStatus ? `${template.waCategory ?? ''} · from the last sync` : 'Use "Sync from WhatsApp" to pull approved templates'}>
+              <div className="pt-1.5">
+                <Badge tone={template?.waStatus === 'APPROVED' ? 'green' : template?.waStatus ? 'amber' : 'slate'}>{template?.waStatus ?? 'Manual'}</Badge>
+              </div>
+            </FormField>
+          </div>
         ) : (
           <FormField label="Subject" required error={errors.subject}>
             <Input value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={200} />
@@ -157,19 +182,35 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
               {'{#var#}'}
             </button>
           )}
+          {channel === 'whatsapp' && (
+            <button
+              type="button"
+              onClick={() => setBody((b) => `${b}{{${(b.match(/\{\{\d+\}\}/g)?.length ?? 0) + 1}}}`)}
+              className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-slate-700 hover:bg-brand-50"
+            >
+              {'{{n}}'}
+            </button>
+          )}
           <span>
             · a missing value is removed, never sent raw
             {channel === 'sms' && ' · {#var#} is a DLT variable typed when sending (max 30 characters)'}
+            {channel === 'whatsapp' && ' · {{1}}, {{2}} … are the template parameters typed or picked from the lead when sending'}
           </span>
         </div>
-        <FormField label={channel === 'sms' ? 'SMS text (must match the DLT-approved format)' : 'Email body'} required error={errors.body}>
+        <FormField
+          label={channel === 'sms' ? 'SMS text (must match the DLT-approved format)' : channel === 'whatsapp' ? 'WhatsApp body (must match the approved template)' : 'Email body'}
+          required
+          error={errors.body}
+        >
           {channel === 'sms' ? (
             <Textarea rows={5} maxLength={1000} value={body} onChange={(e) => setBody(e.target.value)} />
+          ) : channel === 'whatsapp' ? (
+            <Textarea rows={6} maxLength={1024} value={body} onChange={(e) => setBody(e.target.value)} />
           ) : (
             <RichText key={template?._id ?? 'new'} value={body} onChange={setBody} />
           )}
         </FormField>
-        {channel === 'sms' && <p className="text-right text-[11px] text-slate-400">{body.length} characters</p>}
+        {channel !== 'email' && <p className="text-right text-[11px] text-slate-400">{body.length} characters</p>}
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <Checkbox checked={active} onChange={(e) => setActive(e.target.checked)} /> Active
         </label>
@@ -180,10 +221,26 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
 
 function TemplatesTab() {
   const { data, isLoading } = useListMessageTemplatesQuery({})
+  const { data: options } = useMessagingOptionsQuery()
+  const [sync, { isLoading: syncing }] = useSyncWhatsAppTemplatesMutation()
   const [editing, setEditing] = useState<MessageTemplate | 'new' | null>(null)
+  const syncWhatsApp = async () => {
+    try {
+      const res = await sync().unwrap()
+      const c = res.data
+      toast.success(`WhatsApp templates synced: ${c.created} new, ${c.updated} updated, ${c.approved} approved${c.skipped ? `, ${c.skipped} skipped (no text body)` : ''}`)
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    }
+  }
   return (
     <>
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex justify-end gap-2">
+        {options?.data.whatsappProvider === 'meta' && (
+          <Button size="sm" variant="outline" onClick={syncWhatsApp} loading={syncing} title="Pull the templates approved in WhatsApp Manager">
+            <RefreshCw className="h-3.5 w-3.5" /> Sync from WhatsApp
+          </Button>
+        )}
         <Button size="sm" onClick={() => setEditing('new')}>
           <Plus className="h-3.5 w-3.5" /> New template
         </Button>
@@ -199,7 +256,7 @@ function TemplatesTab() {
               <tr>
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Channel</th>
-                <th className="px-4 py-2">DLT / Subject</th>
+                <th className="px-4 py-2">DLT / WhatsApp / Subject</th>
                 <th className="px-4 py-2">Status</th>
                 <th className="px-4 py-2">Updated</th>
               </tr>
@@ -209,9 +266,15 @@ function TemplatesTab() {
                 <tr key={t._id} className="cursor-pointer hover:bg-slate-50" onClick={() => setEditing(t)}>
                   <td className="px-4 py-2 font-medium text-slate-800">{t.name}</td>
                   <td className="px-4 py-2">
-                    <Badge tone={t.channel === 'sms' ? 'blue' : 'violet'}>{t.channel.toUpperCase()}</Badge>
+                    <Badge tone={t.channel === 'sms' ? 'blue' : t.channel === 'whatsapp' ? 'green' : 'violet'}>{t.channel.toUpperCase()}</Badge>
                   </td>
-                  <td className="px-4 py-2 text-xs text-slate-600">{t.channel === 'sms' ? `${t.dltTemplateId} · ${t.senderId}` : t.subject}</td>
+                  <td className="px-4 py-2 text-xs text-slate-600">
+                    {t.channel === 'sms'
+                      ? `${t.dltTemplateId} · ${t.senderId}`
+                      : t.channel === 'whatsapp'
+                        ? `${t.waTemplateName} · ${t.waLanguage}${t.waStatus ? ` · ${t.waStatus}` : ''}`
+                        : t.subject}
+                  </td>
                   <td className="px-4 py-2">
                     <Badge tone={t.isActive ? 'green' : 'slate'}>{t.isActive ? 'Active' : 'Inactive'}</Badge>
                   </td>
@@ -231,6 +294,7 @@ function AutomationsTab() {
   const { data, isLoading } = useListAutomationsQuery()
   const { data: sms } = useListMessageTemplatesQuery({ channel: 'sms', active: true })
   const { data: email } = useListMessageTemplatesQuery({ channel: 'email', active: true })
+  const { data: wa } = useListMessageTemplatesQuery({ channel: 'whatsapp', active: true })
   const [update] = useUpdateAutomationMutation()
   const change = async (id: string, body: { isActive?: boolean; template?: string | null }) => {
     try {
@@ -262,12 +326,12 @@ function AutomationsTab() {
               <tr key={r._id}>
                 <td className="px-4 py-2 text-slate-700">{r.triggerLabel}</td>
                 <td className="px-4 py-2">
-                  <Badge tone={r.channel === 'sms' ? 'blue' : 'violet'}>{r.channel.toUpperCase()}</Badge>
+                  <Badge tone={r.channel === 'sms' ? 'blue' : r.channel === 'whatsapp' ? 'green' : 'violet'}>{r.channel.toUpperCase()}</Badge>
                 </td>
                 <td className="px-4 py-2">
                   <Select className="!h-8 text-xs" value={r.template?._id ?? ''} onChange={(e) => change(r._id, { template: e.target.value || null })}>
                     <option value="">— none —</option>
-                    {(r.channel === 'sms' ? sms : email)?.data.map((t) => (
+                    {(r.channel === 'sms' ? sms : r.channel === 'whatsapp' ? wa : email)?.data.map((t) => (
                       <option key={t._id} value={t._id}>
                         {t.name}
                       </option>
@@ -383,12 +447,12 @@ function CampaignsTab() {
   )
 }
 
-/** Admin: SMS / email templates, automations and bulk-send reports (Go-live §8). */
+/** Admin: SMS / email / WhatsApp templates, automations and bulk-send reports (Go-live §8, GL-39). */
 export default function MessagingPage() {
   const [tab, setTab] = useState('templates')
   return (
     <>
-      <PageHeader title="SMS & Email" description="Templates, trigger-based automations and bulk-send reports. WhatsApp plugs in as a third channel later." />
+      <PageHeader title="SMS, Email & WhatsApp" description="Templates, trigger-based automations and bulk-send reports. WhatsApp templates come from WhatsApp Manager via Sync." />
       <Tabs
         tabs={[
           { key: 'templates', label: 'Templates' },

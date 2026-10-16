@@ -35,7 +35,7 @@ export function DltVariableFields({
             error={errors[`variables.${i}`]}
             hint={
               i === 0
-                ? `Fills the {#var#} markers in order${perRecipient ? ', for every recipient' : ''} · typed text max ${DLT_VAR_MAX} characters`
+                ? `Fills the template's variables in order${perRecipient ? ', for every recipient' : ''} · typed text max ${DLT_VAR_MAX} characters`
                 : undefined
             }
           >

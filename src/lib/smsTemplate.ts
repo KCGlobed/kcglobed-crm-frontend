@@ -23,6 +23,18 @@ export function fillDltVariables(body: string, values: string[]): string {
   return out
 }
 
+/** WhatsApp body parameter, as approved in WhatsApp Manager: {{1}}, {{2}} … */
+const WA_VAR_RE = /\{\{(\d+)\}\}/g
+
+/**
+ * Fills a template's markers with the values: {#var#} in order (SMS) or {{n}} by number (WhatsApp).
+ * A blank value keeps its marker, so the preview shows what is still missing.
+ */
+export function fillTemplateVariables(body: string, values: string[], channel: 'sms' | 'whatsapp' | 'email'): string {
+  if (channel === 'whatsapp') return body.replace(WA_VAR_RE, (marker, n: string) => (values[Number(n) - 1] ?? '').trim() || marker)
+  return fillDltVariables(body, values)
+}
+
 /**
  * Labels for the fixed lead fields a {#var#} value can name (the server's LEAD_FIELDS). The dropdown takes
  * the live list from /messaging/options, which also carries the custom lead fields; this is the fallback.

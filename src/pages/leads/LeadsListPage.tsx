@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Bookmark, CalendarRange, Download, Filter, Info, Mail, MessageSquareText, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
+import { Bookmark, Download, Filter, Info, Mail, MessageCircle, MessageSquareText, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useDeleteSavedFilterMutation,
@@ -19,6 +19,7 @@ import { DataTable, type Column } from '../../components/ui/DataTable'
 import { ColumnChooser } from '../../components/ui/ColumnChooser'
 import { FilterBar, PageHeader, SearchInput } from '../../components/ui/misc'
 import { Button } from '../../components/ui/Button'
+import { DateRangeFilter } from '../../components/ui/DateRangeFilter'
 import { Checkbox, Input, Select } from '../../components/ui/fields'
 import { Modal } from '../../components/ui/Modal'
 import { cn, parseApiError } from '../../lib/utils'
@@ -35,11 +36,6 @@ import { useLeadColumns } from './useLeadColumns'
 
 /** URL params that are not lead filters: paging, sorting, and the dashboard's `from` marker */
 const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order', 'from']
-/** local YYYY-MM-DD, `daysAgo` days back */
-const isoDay = (daysAgo = 0) => {
-  const d = new Date(Date.now() - daysAgo * 86_400_000)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 // HIDDEN for now: filter fields the backend offers but the panel leaves out.
 // - tag: no screen assigns tags to leads yet
 const HIDDEN_FILTER_FIELDS = ['tag']
@@ -89,16 +85,19 @@ export default function LeadsListPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
   const admin = isAdminLike(user)
+  // bulk select for everyone who has a bulk action: assign needs leads.reassign, bulk SMS / email / WhatsApp needs the
+  // same send permission as a single send (a counsellor only ever sees and selects their own leads)
+  const canSendBulk = can(user, 'communications', 'create')
+  const canBulk = can(user, 'leads', 'reassign') || canSendBulk
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
   const [saveOpen, setSaveOpen] = useState(false)
   const [savedOpen, setSavedOpen] = useState(false)
-  const [dateOpen, setDateOpen] = useState(false)
   const [filterName, setFilterName] = useState('')
   const [selected, setSelected] = useState<string[]>([])
   const [allMatching, setAllMatching] = useState(false)
-  const [bulkAction, setBulkAction] = useState<'assign' | 'sms' | 'email' | null>(null)
+  const [bulkAction, setBulkAction] = useState<'assign' | 'sms' | 'email' | 'whatsapp' | null>(null)
 
   // the static lead columns plus one per active custom field (Masters → Custom fields)
   const { columns: leadColumns, keys: leadColumnKeys } = useLeadColumns()
@@ -221,7 +220,7 @@ export default function LeadsListPage() {
     ),
   }
   const columns = [
-    ...(admin ? [selectColumn] : []),
+    ...(canBulk ? [selectColumn] : []),
     ...columnPrefs.visibleKeys.map((key) => leadColumns.find((c) => c.key === key)!).filter(Boolean),
   ]
   const smart = params.get('smart')
@@ -411,76 +410,7 @@ export default function LeadsListPage() {
           )}
         </div>
         {/* created-date range dropdown — filters on the lead's Created On date (backend created_from/created_to) */}
-        <div className="relative">
-          <Button variant={createdFrom || createdTo ? 'secondary' : 'outline'} size="sm" onClick={() => setDateOpen((o) => !o)}>
-            <CalendarRange className="h-3.5 w-3.5" />
-            {createdFrom || createdTo ? `${createdFrom || '…'} → ${createdTo || '…'}` : 'Created Date'}
-          </Button>
-          {dateOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setDateOpen(false)} />
-              <div className="absolute left-0 top-full z-50 mt-1.5 w-80 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
-                <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Created Between</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="block">
-                    <span className="mb-1 block text-[11px] font-medium text-slate-500">Start Date</span>
-                    <Input
-                      type="date"
-                      aria-label="Created from"
-                      value={createdFrom}
-                      max={createdTo || undefined}
-                      onChange={(e) => setDateRange(e.target.value, createdTo)}
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-[11px] font-medium text-slate-500">End Date</span>
-                    <Input
-                      type="date"
-                      aria-label="Created to"
-                      value={createdTo}
-                      min={createdFrom || undefined}
-                      onChange={(e) => setDateRange(createdFrom, e.target.value)}
-                    />
-                  </label>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-slate-100 pt-3">
-                  {(
-                    [
-                      ['Today', isoDay(), isoDay()],
-                      ['Last 7 Days', isoDay(6), isoDay()],
-                      ['Last 30 Days', isoDay(29), isoDay()],
-                      ['This Month', `${isoDay().slice(0, 8)}01`, isoDay()],
-                    ] as const
-                  ).map(([label, from, to]) => (
-                    <button
-                      key={label}
-                      type="button"
-                      className={cn(
-                        'rounded-full border px-2.5 py-1 text-[11px] transition-colors',
-                        createdFrom === from && createdTo === to
-                          ? 'border-brand-600 bg-brand-600 font-medium text-white'
-                          : 'border-slate-200 text-slate-600 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700'
-                      )}
-                      onClick={() => setDateRange(from, to)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-3 flex justify-end gap-2">
-                  {(createdFrom || createdTo) && (
-                    <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setDateRange('', '')}>
-                      Clear
-                    </Button>
-                  )}
-                  <Button size="sm" onClick={() => setDateOpen(false)}>
-                    Done
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        <DateRangeFilter from={createdFrom} to={createdTo} onChange={setDateRange} />
       </FilterBar>
 
       {chips.length > 0 && (
@@ -509,7 +439,7 @@ export default function LeadsListPage() {
         </div>
       )}
 
-      {admin && (selected.length > 0 || allMatching) && (
+      {canBulk && (selected.length > 0 || allMatching) && (
         <div className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm shadow-sm">
           <b className="text-brand-800">{selection.count} selected</b>
           {!allMatching && allPageSelected && total > pageIds.length && (
@@ -523,13 +453,16 @@ export default function LeadsListPage() {
                 <UserPlus className="h-3.5 w-3.5" /> Assign
               </Button>
             )}
-            {can(user, 'communications', 'edit') && (
+            {canSendBulk && (
               <>
                 <Button size="sm" variant="outline" onClick={() => setBulkAction('sms')}>
                   <MessageSquareText className="h-3.5 w-3.5" /> Bulk SMS
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setBulkAction('email')}>
                   <Mail className="h-3.5 w-3.5" /> Bulk Email
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setBulkAction('whatsapp')}>
+                  <MessageCircle className="h-3.5 w-3.5" /> Bulk WhatsApp
                 </Button>
               </>
             )}
@@ -589,7 +522,7 @@ export default function LeadsListPage() {
         />
       )}
       {bulkAction === 'assign' && <BulkAssignModal selection={selection} onClose={() => setBulkAction(null)} onDone={() => { setBulkAction(null); clearSelection() }} />}
-      {(bulkAction === 'sms' || bulkAction === 'email') && (
+      {(bulkAction === 'sms' || bulkAction === 'email' || bulkAction === 'whatsapp') && (
         <BulkSendModal channel={bulkAction} selection={selection} onClose={() => setBulkAction(null)} />
       )}
       <Modal

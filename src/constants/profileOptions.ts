@@ -13,6 +13,7 @@ export const RELATIONSHIPS = ['Father', 'Mother', 'Guardian', 'Other'] as const
 export const GRADE_TYPES = ['Percentage', 'CGPA'] as const
 export const MEDIUMS = ['English', 'Other'] as const
 export const UG_QUALIFICATIONS = ['B.Com', 'BBA', 'BMS', 'Other'] as const
+export const HIGHER_QUALIFICATIONS = ['M.Com', 'M.B.A', 'Other'] as const
 export const QUALIFICATION_STATUSES = ['Completed', 'Pursuing'] as const
 export const EMPLOYMENT_STATUSES = ['Fresher', 'Experienced'] as const
 
