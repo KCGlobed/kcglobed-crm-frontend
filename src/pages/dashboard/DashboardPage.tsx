@@ -419,104 +419,178 @@ interface FunnelStep {
   params?: ListParams
 }
 
-/**
- * The funnel's drawing: an inverted triangle in a 400 × 290 box, 224 wide at the top
- * and pointed at the bottom, cut into five bands of equal height with a 2px gap. The
- * space left of it holds the bands' names.
- */
-const FUNNEL = { w: 400, h: 290, cx: 282, halfTop: 112 }
-const halfAt = (y: number) => FUNNEL.halfTop * (1 - y / FUNNEL.h)
-/** each band's top and bottom; the last runs to the tip */
-const BANDS: { y0: number; y1: number }[] = [
-  { y0: 0, y1: 56 },
-  { y0: 58, y1: 114 },
-  { y0: 116, y1: 172 },
-  { y0: 174, y1: 230 },
-  { y0: 232, y1: 290 },
-]
-/** the bands' fills, top to bottom: the brand purple, lighter at the top and deepest at the tip, all dark enough for white counts */
+/** the bands' fills, top to bottom: the brand purple, lighter at the mouth and deepest at the bottom, all dark enough for white text */
 const BAND_FILLS = ['#7f5fbb', '#6a48aa', '#5f3d9e', '#4b2d87', '#3d1f73']
-/** where every band's name ends (right-aligned), left of the funnel */
-const LABEL_X = 142
-/** the bands' text: names beside the funnel in near-black, counts inside in white */
-const LABEL_INK = '#0F172A'
-const COUNT_INK = '#FFFFFF'
+const FUNNEL_INK = '#FFFFFF'
 
-function bandPoints({ y0, y1 }: (typeof BANDS)[number], last: boolean): string {
-  const { cx, h } = FUNNEL
+/** the bands' shares of the funnel's height, top to bottom; Total Leads gets the tall one */
+const BAND_SHARES = [90, 50, 50, 50, 50]
+/** how wide the cone's mouth may be, as a share of its height, so a wide card gets a slim funnel in the middle rather than a bowl */
+const FUNNEL_ASPECT = 1.1
+/** how wide the cone's bottom is, as a share of its top */
+const FUNNEL_TAPER = 0.42
+/** each rim ellipse is this many times as tall as it is wide… */
+const FUNNEL_RIM = 0.09
+/** …but the mouth takes at most this share of the height, so a wide, short box isn't all rim */
+const FUNNEL_RIM_MAX = 0.055
+/** room left round the drawing for the white outlines */
+const FUNNEL_PAD = 2
+/** the darkened edges laid over every band, so it reads as round */
+const FUNNEL_SHADE = 'funnel-shade'
+
+/**
+ * The funnel's drawing for a `w` × `h` box: a cone seen from slightly above, as tall as
+ * the box and as wide as it up to FUNNEL_ASPECT of that height, centred. Its axis runs
+ * from `top` down, narrowing from `halfTop` either side of `cx` to FUNNEL_TAPER of that.
+ * Every band's top and bottom edge is the front half of an ellipse `rim` times as tall
+ * as it is wide, and the whole ellipse at the top is the cone's mouth.
+ */
+function funnelGeometry(w: number, h: number) {
+  const halfTop = Math.min(w, h * FUNNEL_ASPECT) / 2 - FUNNEL_PAD
+  const halfBottom = halfTop * FUNNEL_TAPER
+  const rim = Math.min(FUNNEL_RIM, (h * FUNNEL_RIM_MAX) / halfTop)
+  const top = FUNNEL_PAD + halfTop * rim
+  const bottom = h - FUNNEL_PAD - halfBottom * rim
+  const halfAt = (y: number) => halfTop - ((halfTop - halfBottom) * (y - top)) / (bottom - top)
+  const unit = (bottom - top) / BAND_SHARES.reduce((sum, share) => sum + share, 0)
+  let y = top
+  const bands = BAND_SHARES.map((share) => {
+    const y0 = y
+    y += share * unit
+    return { y0, y1: y }
+  })
+  return { cx: w / 2, top, halfTop, rim, halfAt, bands }
+}
+
+type FunnelGeometry = ReturnType<typeof funnelGeometry>
+
+/** A band's outline: down its left side, along the front of its bottom rim, up its right side and back along the front of its top rim. */
+function bandPath({ cx, rim, halfAt }: FunnelGeometry, { y0, y1 }: FunnelGeometry['bands'][number]): string {
   const a = halfAt(y0)
-  if (last) return `${cx - a},${y0} ${cx + a},${y0} ${cx},${h}`
   const b = halfAt(y1)
-  return `${cx - a},${y0} ${cx + a},${y0} ${cx + b},${y1} ${cx - b},${y1}`
+  return `M ${cx - a} ${y0} L ${cx - b} ${y1} A ${b} ${b * rim} 0 0 0 ${cx + b} ${y1} L ${cx + a} ${y0} A ${a} ${a * rim} 0 0 1 ${cx - a} ${y0} Z`
+}
+
+/** The size of the element the returned ref is put on, in whole pixels, kept current as it resizes; 0 × 0 until it mounts. */
+function useElementSize() {
+  const [node, setNode] = useState<HTMLElement | null>(null)
+  const [size, setSize] = useState({ width: 0, height: 0 })
+  useEffect(() => {
+    if (!node) return
+    const observer = new ResizeObserver(([entry]) => {
+      const width = Math.round(entry.contentRect.width)
+      const height = Math.round(entry.contentRect.height)
+      setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }))
+    })
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [node])
+  return [setNode, size] as const
 }
 
 /**
- * Conversion funnel: an inverted triangle, one band per step from Total Leads at the
- * wide top down to Enrolled at the tip, shaded from lighter to deep purple on the way
- * down. Every band's name sits beside the funnel in black, joined to it by a thin
- * line; its count (the summary's figure, or 0) sits inside in white. A band with
- * leads opens their list.
+ * Conversion funnel: a cone filling the card, one band per step from Total Leads at the
+ * wide mouth down to Enrolled, shaded from lighter to deep purple on the way down. Its
+ * count (the summary's figure, or 0) and name sit inside in white. A band with leads
+ * opens their list.
  */
 function FunnelCard({ steps, hint, loading, onOpen }: { steps: FunnelStep[] | undefined; hint?: string; loading: boolean; onOpen: (params: ListParams) => void }) {
-  const { w, h, cx } = FUNNEL
+  const [measure, { width, height }] = useElementSize()
+  const geometry = width > 0 && height > 0 ? funnelGeometry(width, height) : undefined
   return (
     <Card
       title="Conversion Funnel"
       actions={hint && <span className="text-xs text-slate-500">{hint}</span>}
-      // the card stretches to its row's height; the funnel sits in the middle of that
+      // the card stretches to its row's height (at least min-h-80 on its own), and the funnel fills its body
       className="flex flex-col"
-      bodyClassName="flex flex-1 items-center justify-center"
+      bodyClassName="relative flex min-h-80 flex-1 items-center justify-center"
     >
       {loading && <Skeleton className="mx-auto h-64 w-5/6" />}
       {!loading && !steps && <p className="py-6 text-center text-xs text-slate-400">No Data Yet</p>}
+      {/* laid over the body's padded area rather than in its flow, so the drawing never sets the row's height */}
       {!loading && steps && (
-        <svg viewBox={`0 0 ${w} ${h}`} role="group" aria-label="Conversion funnel" className="mx-auto block h-auto w-full max-w-sm">
-          {steps.map((step, i) => {
-            const band = BANDS[i]
-            const fill = BAND_FILLS[i]
-            if (!band || !fill) return null
-            const params = step.params
-            const open = step.count > 0 && params ? () => onOpen(params) : undefined
-            const figure = step.count.toLocaleString()
-            const last = i === BANDS.length - 1
-            const mid = (band.y0 + band.y1) / 2
-            // the tip narrows to nothing, so its count and side label sit near its top
-            const anchorY = last ? band.y0 + 18 : mid
-            const edge = cx - halfAt(anchorY)
-            const onKeyDown = open
-              ? (e: KeyboardEvent<SVGGElement>) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    open()
-                  }
-                }
-              : undefined
-            return (
-              <g
-                key={step.label}
-                role={open ? 'button' : undefined}
-                tabIndex={open ? 0 : undefined}
-                aria-label={`${step.label}: ${figure}`}
-                onClick={open}
-                onKeyDown={onKeyDown}
-                className={cn('outline-none', open && 'cursor-pointer hover:opacity-80 focus-visible:opacity-80')}
-              >
-                {open && <title>{`Open ${step.label} leads`}</title>}
-                <polygon points={bandPoints(band, last)} fill={fill} stroke="#fff" strokeWidth={2} strokeLinejoin="round" />
-                <line x1={LABEL_X + 6} y1={anchorY} x2={edge - 2} y2={anchorY} stroke="#94a3b8" strokeWidth={1} />
-                <text x={LABEL_X} y={anchorY + 4} textAnchor="end" fontSize={12} fontWeight={500} fill={LABEL_INK}>
-                  {step.label}
-                </text>
-                {/* a halo in the band's colour keeps a wide count readable where it spills past the narrow tip */}
-                <text x={cx} y={anchorY + 4} textAnchor="middle" fontSize={12} fontWeight={700} fill={COUNT_INK} stroke={fill} strokeWidth={3} paintOrder="stroke">
-                  {figure}
-                </text>
-              </g>
-            )
-          })}
-        </svg>
+        <div ref={measure} className="absolute inset-4">
+          {geometry && <FunnelDrawing steps={steps} width={width} height={height} geometry={geometry} onOpen={onOpen} />}
+        </div>
       )}
     </Card>
+  )
+}
+
+function FunnelDrawing({
+  steps,
+  width,
+  height,
+  geometry,
+  onOpen,
+}: {
+  steps: FunnelStep[]
+  width: number
+  height: number
+  geometry: FunnelGeometry
+  onOpen: (params: ListParams) => void
+}) {
+  const { cx, top, halfTop, rim, halfAt, bands } = geometry
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="group" aria-label="Conversion funnel" className="block">
+      <defs>
+        {/* left to right across each band: darker at both sides, its own colour through the middle where the text sits */}
+        <linearGradient id={FUNNEL_SHADE}>
+          <stop offset="0" stopColor="#000" stopOpacity={0.22} />
+          <stop offset="0.3" stopColor="#000" stopOpacity={0} />
+          <stop offset="0.7" stopColor="#000" stopOpacity={0} />
+          <stop offset="1" stopColor="#000" stopOpacity={0.28} />
+        </linearGradient>
+      </defs>
+      {steps.map((step, i) => {
+        const band = bands[i]
+        const fill = BAND_FILLS[i]
+        if (!band || !fill) return null
+        const params = step.params
+        const open = step.count > 0 && params ? () => onOpen(params) : undefined
+        const figure = step.count.toLocaleString()
+        const first = i === 0
+        // the band's middle seen face on: between the fronts of its two rims
+        const mid = (band.y0 + halfAt(band.y0) * rim + band.y1 + halfAt(band.y1) * rim) / 2
+        const outline = bandPath(geometry, band)
+        const onKeyDown = open
+          ? (e: KeyboardEvent<SVGGElement>) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                open()
+              }
+            }
+          : undefined
+        return (
+          <g
+            key={step.label}
+            role={open ? 'button' : undefined}
+            tabIndex={open ? 0 : undefined}
+            aria-label={`${step.label}: ${figure}`}
+            onClick={open}
+            onKeyDown={onKeyDown}
+            className={cn('outline-none', open && 'cursor-pointer hover:opacity-80 focus-visible:opacity-80')}
+          >
+            {open && <title>{`Open ${step.label} leads`}</title>}
+            {/* the mouth: the inside of the cone, a shade darker than the top band */}
+            {first && (
+              <>
+                <ellipse cx={cx} cy={top} rx={halfTop} ry={halfTop * rim} fill={fill} />
+                <ellipse cx={cx} cy={top} rx={halfTop} ry={halfTop * rim} fill="#000" fillOpacity={0.3} stroke="#fff" strokeWidth={1.5} />
+              </>
+            )}
+            <path d={outline} fill={fill} />
+            <path d={outline} fill={`url(#${FUNNEL_SHADE})`} stroke="#fff" strokeWidth={1.5} strokeLinejoin="round" />
+            <text x={cx} y={mid - 2} textAnchor="middle" fontSize={first ? 24 : 17} fontWeight={700} fill={FUNNEL_INK}>
+              {figure}
+            </text>
+            <text x={cx} y={mid + (first ? 16 : 12)} textAnchor="middle" fontSize={first ? 12.5 : 11} fontWeight={500} fill={FUNNEL_INK}>
+              {step.label}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
   )
 }
 
