@@ -38,7 +38,7 @@ type PeriodKey = 'overall' | 'thisWeek' | 'today' | 'custom'
 
 /** Pipeline cards: each shows the count of the stage of that name from the summary's `byStage` rows. */
 const PIPELINE_CARDS: { label: string; icon: LucideIcon }[] = [
-  { label: 'Connected', icon: PhoneCall },
+  { label: 'Registration & Fee', icon: Receipt },
   { label: 'Not Connected', icon: PhoneOff },
   { label: 'Interview', icon: CalendarCheck },
 ]
