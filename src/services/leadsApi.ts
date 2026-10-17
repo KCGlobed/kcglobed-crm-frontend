@@ -14,6 +14,7 @@ import type {
   FilterFieldsMeta,
   CustomFieldDef,
   ImportPreview,
+  ImportValidation,
   ImportResult,
   Lead,
   LeadActivity,
@@ -252,6 +253,10 @@ export const leadsApi = api.injectEndpoints({
     importPreview: build.mutation<ApiResponse<ImportPreview>, FormData>({
       query: (body) => ({ url: '/leads/import/preview', method: 'POST', body }),
     }),
+    /** full-file dry run: would-be counts + downloadable report, nothing written */
+    validateImport: build.mutation<ApiResponse<ImportValidation>, FormData>({
+      query: (body) => ({ url: '/leads/import/validate', method: 'POST', body }),
+    }),
     bulkUploadLeads: build.mutation<ApiResponse<ImportResult>, FormData>({
       query: (body) => ({ url: '/leads/bulk-upload', method: 'POST', body }),
       invalidatesTags: [{ type: 'Leads', id: 'LIST' }, 'Dashboard', 'Notifications'],
@@ -349,6 +354,7 @@ export const {
   useUploadCallProofMutation,
   useProfileOptionsQuery,
   useImportPreviewMutation,
+  useValidateImportMutation,
   useCreateImportCustomFieldMutation,
   useBulkUploadLeadsMutation,
   useLazyExportJobQuery,

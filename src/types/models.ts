@@ -714,6 +714,17 @@ export interface ImportResult {
   notesAdded?: number
 }
 
+/** Full-file dry run before the import: would-be counts + a downloadable row-wise report. */
+export interface ImportValidation {
+  total: number
+  willCreate: number
+  willUpdate: number
+  duplicates: number
+  failed: number
+  reportFile: string
+  reasons: { row: number; reason: string }[]
+}
+
 export type ImportColumnStatus = 'mapped' | 'unmapped' | 'skipped'
 /** CRM lists a lookup column's values must match */
 export type ImportLookup = 'program' | 'cohort' | 'track' | 'source' | 'stage' | 'owner'

@@ -1,11 +1,12 @@
 import { Fragment, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, Download, FileSpreadsheet, Plus, Upload } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Download, FileCheck, FileSpreadsheet, Plus, Upload } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useBulkUploadLeadsMutation,
   useCreateImportCustomFieldMutation,
   useImportPreviewMutation,
+  useValidateImportMutation,
 } from '../../services/leadsApi'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
 import { Button } from '../../components/ui/Button'
@@ -23,6 +24,7 @@ import type {
   ImportMapping,
   ImportPreview,
   ImportResult,
+  ImportValidation,
   ImportValue,
 } from '../../types/models'
 import { ownerLabel, useAssignableOwners } from './leadSelection'
@@ -94,7 +96,10 @@ export default function BulkUploadPage() {
   const [duplicates, setDuplicates] = useState<'skip' | 'update_empty'>('skip')
   const [sendWelcome, setSendWelcome] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
+  /** full-file dry run shown before the Confirm button; cleared by any mapping/value change */
+  const [validation, setValidation] = useState<ImportValidation | null>(null)
   const [runPreview, { isLoading: previewing }] = useImportPreviewMutation()
+  const [runValidate, { isLoading: validating }] = useValidateImportMutation()
   const [upload, { isLoading: uploading }] = useBulkUploadLeadsMutation()
 
   const fields = useMemo<ImportField[]>(() => {
@@ -171,6 +176,7 @@ export default function BulkUploadPage() {
   }
 
   const refreshPreview = async (m = mapping, s = skipped, v = values) => {
+    setValidation(null) // any change invalidates the dry run — validate again before importing
     try {
       setPreview((await runPreview(form(m, s, v)).unwrap()).data)
     } catch (err) {
@@ -180,6 +186,7 @@ export default function BulkUploadPage() {
 
   const reset = () => {
     setResult(null)
+    setValidation(null)
     setPreview(null)
     setCreatingFor(null)
     setCreatedFields([])
@@ -270,6 +277,18 @@ export default function BulkUploadPage() {
     void refreshPreview(next, nextSkipped)
   }
 
+  /** Step 1 of the final stage: the full-file dry run — nothing is written yet. */
+  const onValidate = async () => {
+    try {
+      const res = await runValidate(form(mapping, skipped, values, { options: { duplicates } })).unwrap()
+      setValidation(res.data)
+      toast.success(res.message)
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    }
+  }
+
+  /** Step 2: only reachable from the validation card's Confirm button. */
   const onUpload = async () => {
     try {
       const res = await upload(
@@ -277,6 +296,7 @@ export default function BulkUploadPage() {
           options: { source, assignMode, owners: assignMode === 'one' ? owners.slice(0, 1) : owners, duplicates, sendWelcome },
         })
       ).unwrap()
+      setValidation(null)
       setResult(res.data)
       toast.success(res.message)
       window.scrollTo({ top: 0 })
@@ -587,7 +607,7 @@ export default function BulkUploadPage() {
                       </Select>
                     </FormField>
                     <FormField label="Duplicates" required>
-                      <Select value={duplicates} onChange={(e) => setDuplicates(e.target.value as typeof duplicates)}>
+                      <Select value={duplicates} onChange={(e) => { setDuplicates(e.target.value as typeof duplicates); setValidation(null) }}>
                         <option value="skip">Skip (default)</option>
                         <option value="update_empty">Update Empty Fields</option>
                       </Select>
@@ -686,14 +706,73 @@ export default function BulkUploadPage() {
             </>
           )}
 
+          {validation && (
+            <Card title="Validation result — nothing imported yet" className="border-brand-200">
+              <div className="space-y-4 p-4">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                  {(
+                    [
+                      ['Rows', validation.total, 'text-slate-800'],
+                      ['Will create', validation.willCreate, 'text-emerald-700'],
+                      ['Will update', validation.willUpdate, 'text-sky-700'],
+                      ['Duplicate (will skip)', validation.duplicates, 'text-amber-700'],
+                      ['Failed', validation.failed, 'text-red-700'],
+                    ] as const
+                  ).map(([label, value, tone]) => (
+                    <div key={label} className="rounded-lg border border-slate-200 p-3 text-center">
+                      <p className={cn('text-xl font-semibold', tone)}>{value}</p>
+                      <p className="text-[11px] text-slate-500">{label}</p>
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    authorizedDownload(`/leads/import/errors/${validation.reportFile}`, 'validation-report.xlsx').catch((e) =>
+                      toast.error(parseApiError(e).message)
+                    )
+                  }
+                >
+                  <Download className="h-3.5 w-3.5" /> Download validation report ({validation.total} rows)
+                </Button>
+                {validation.reasons.length > 0 && (
+                  <div className="max-h-56 overflow-y-auto rounded-lg border border-slate-200">
+                    <table className="w-full text-xs">
+                      <tbody className="divide-y divide-slate-100">
+                        {validation.reasons.map((e, i) => (
+                          <tr key={i}>
+                            <td className="w-16 px-3 py-1.5 text-slate-500">Row {e.row}</td>
+                            <td className="px-3 py-1.5 text-slate-700">{e.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
           <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-end gap-2 rounded-xl border border-slate-200 bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
             {blocker && <span className="mr-auto text-xs text-slate-500">{blocker}</span>}
-            <Button variant="outline" onClick={() => navigate('/app/leads')}>
-              Cancel
+            {!validation && !blocker && (
+              <span className="mr-auto text-xs text-slate-500">
+                Validate first — the import only runs after you confirm the result.
+              </span>
+            )}
+            <Button variant="outline" onClick={() => (validation ? setValidation(null) : navigate('/app/leads'))}>
+              {validation ? 'Cancel import' : 'Cancel'}
             </Button>
-            <Button onClick={onUpload} loading={uploading} disabled={!preview || !!blocker} title={blocker ?? undefined}>
-              <Upload className="h-3.5 w-3.5" /> Upload {preview ? `${preview.totalRows.toLocaleString()} rows` : ''}
-            </Button>
+            {!validation ? (
+              <Button onClick={onValidate} loading={validating} disabled={!preview || !!blocker} title={blocker ?? undefined}>
+                <FileCheck className="h-3.5 w-3.5" /> Validate {preview ? `${preview.totalRows.toLocaleString()} rows` : ''}
+              </Button>
+            ) : (
+              <Button onClick={onUpload} loading={uploading} disabled={!!blocker} title={blocker ?? undefined}>
+                <Upload className="h-3.5 w-3.5" /> Confirm import ({(validation.willCreate + validation.willUpdate).toLocaleString()} leads)
+              </Button>
+            )}
           </div>
         </div>
       )}
