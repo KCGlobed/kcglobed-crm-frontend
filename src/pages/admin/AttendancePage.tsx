@@ -148,7 +148,7 @@ export default function AttendancePage() {
         </div>
       ),
   }
-  const callsCol: Column<AttendanceRow> = { key: 'calls', header: 'Calls', align: 'right', render: (r) => cell(String(r.calls)) }
+  const callsCol: Column<AttendanceRow> = { key: 'calls', header: 'Total Calls', align: 'right', render: (r) => cell(String(r.calls)) }
   const talkCol: Column<AttendanceRow> = { key: 'talk', header: 'Total Talk Time', align: 'right', render: (r) => cell(formatHms(r.talktimeSeconds)) }
   const breakCols: Column<AttendanceRow>[] = BREAK_TYPES.map(({ key, label }) => ({
     key: `break-${key}`,
@@ -178,7 +178,7 @@ export default function AttendancePage() {
   }
 
   const reportColumns: Record<ReportTab, Column<AttendanceRow>[]> = {
-    consolidated: [dateCol, nameCol, statusCol, loginCol, logoutCol, hoursCol, talkCol, ...breakCols, totalBreakCol],
+    consolidated: [dateCol, nameCol, statusCol, loginCol, logoutCol, hoursCol, callsCol, talkCol, ...breakCols, totalBreakCol],
     login: [dateCol, nameCol, statusCol, loginCol, logoutCol, hoursCol],
     talk: [dateCol, nameCol, callsCol, talkCol],
     breaks: [dateCol, nameCol, ...breakCols, totalBreakCol],

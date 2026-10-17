@@ -27,8 +27,9 @@ export function useAssignableOwners() {
   return useMemo(
     () =>
       (data?.data ?? []).filter(
-        // an older backend without canOwnLeads: fall back to counsellors and pool members
-        (u) => u.canOwnLeads ?? (u.role === 'counsellor' || u.receivesLeads)
+        // assignable = can own leads AND inside the caller's own team hierarchy;
+        // older backends without the flags: fall back to counsellors and pool members
+        (u) => u.assignable ?? u.canOwnLeads ?? (u.role === 'counsellor' || u.receivesLeads)
       ),
     [data]
   )
