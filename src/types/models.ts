@@ -705,6 +705,8 @@ export interface ImportResult {
   failed: number
   fileName: string
   errorFile: string | null
+  /** full report: every row with its result (lead number or reason) */
+  resultFile?: string | null
   errors: { row: number; reason: string }[]
   perCounsellor: { _id: string; name: string; count: number }[]
   mappedColumns?: number

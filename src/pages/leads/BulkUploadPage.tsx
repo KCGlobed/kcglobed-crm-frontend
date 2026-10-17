@@ -335,19 +335,34 @@ export default function BulkUploadPage() {
                 Assigned: {result.perCounsellor.filter((p) => p.count).map((p) => `${p.name} ${p.count}`).join(' · ')}
               </p>
             )}
-            {result.errorFile && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() =>
-                  authorizedDownload(`/leads/import/errors/${result.errorFile}`, 'upload-errors.xlsx').catch((e) =>
-                    toast.error(parseApiError(e).message)
-                  )
-                }
-              >
-                <Download className="h-3.5 w-3.5" /> Download error file ({result.skipped + result.failed} rows)
-              </Button>
-            )}
+            <div className="flex flex-wrap gap-2">
+              {result.resultFile && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    authorizedDownload(`/leads/import/errors/${result.resultFile}`, 'upload-report.xlsx').catch((e) =>
+                      toast.error(parseApiError(e).message)
+                    )
+                  }
+                >
+                  <Download className="h-3.5 w-3.5" /> Download full report ({result.total} rows)
+                </Button>
+              )}
+              {result.errorFile && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    authorizedDownload(`/leads/import/errors/${result.errorFile}`, 'upload-errors.xlsx').catch((e) =>
+                      toast.error(parseApiError(e).message)
+                    )
+                  }
+                >
+                  <Download className="h-3.5 w-3.5" /> Download error file ({result.skipped + result.failed} rows)
+                </Button>
+              )}
+            </div>
             {result.errors.length > 0 && (
               <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200">
                 <table className="w-full text-xs">
