@@ -93,7 +93,7 @@ export default function BulkUploadPage() {
   const [source, setSource] = useState('')
   const [assignMode, setAssignMode] = useState<'unassigned' | 'one' | 'split'>('unassigned')
   const [owners, setOwners] = useState<string[]>([])
-  const [duplicates, setDuplicates] = useState<'skip' | 'update_empty'>('skip')
+  const [duplicates, setDuplicates] = useState<'skip' | 'update_empty' | 'reenquire'>('skip')
   const [sendWelcome, setSendWelcome] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   /** full-file dry run shown before the Confirm button; cleared by any mapping/value change */
@@ -335,6 +335,7 @@ export default function BulkUploadPage() {
                   ['Rows', result.total, 'text-slate-800'],
                   ['Created', result.created, 'text-emerald-700'],
                   ['Updated', result.updated, 'text-sky-700'],
+                  ...((result.reEnquired ?? 0) > 0 ? ([['Re-enquired', result.reEnquired ?? 0, 'text-violet-700']] as const) : []),
                   ['Skipped (duplicate)', result.skipped, 'text-amber-700'],
                   ['Failed', result.failed, 'text-red-700'],
                 ] as const
@@ -610,6 +611,7 @@ export default function BulkUploadPage() {
                       <Select value={duplicates} onChange={(e) => { setDuplicates(e.target.value as typeof duplicates); setValidation(null) }}>
                         <option value="skip">Skip (default)</option>
                         <option value="update_empty">Update Empty Fields</option>
+                        <option value="reenquire">Mark as Re-enquiry (fills empty fields, floats to top, owner notified)</option>
                       </Select>
                     </FormField>
                   </div>
@@ -715,6 +717,9 @@ export default function BulkUploadPage() {
                       ['Rows', validation.total, 'text-slate-800'],
                       ['Will create', validation.willCreate, 'text-emerald-700'],
                       ['Will update', validation.willUpdate, 'text-sky-700'],
+                      ...((validation.willReEnquire ?? 0) > 0 || duplicates === 'reenquire'
+                        ? ([['Will re-enquire', validation.willReEnquire ?? 0, 'text-violet-700']] as const)
+                        : []),
                       ['Duplicate (will skip)', validation.duplicates, 'text-amber-700'],
                       ['Failed', validation.failed, 'text-red-700'],
                     ] as const
@@ -770,7 +775,7 @@ export default function BulkUploadPage() {
               </Button>
             ) : (
               <Button onClick={onUpload} loading={uploading} disabled={!!blocker} title={blocker ?? undefined}>
-                <Upload className="h-3.5 w-3.5" /> Confirm import ({(validation.willCreate + validation.willUpdate).toLocaleString()} leads)
+                <Upload className="h-3.5 w-3.5" /> Confirm import ({(validation.willCreate + validation.willUpdate + (validation.willReEnquire ?? 0)).toLocaleString()} leads)
               </Button>
             )}
           </div>

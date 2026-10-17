@@ -701,6 +701,8 @@ export interface ImportResult {
   total: number
   created: number
   updated: number
+  /** duplicates imported as re-enquiries (duplicates mode: reenquire) */
+  reEnquired?: number
   skipped: number
   failed: number
   fileName: string
@@ -719,6 +721,7 @@ export interface ImportValidation {
   total: number
   willCreate: number
   willUpdate: number
+  willReEnquire?: number
   duplicates: number
   failed: number
   reportFile: string
