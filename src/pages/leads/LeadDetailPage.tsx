@@ -57,11 +57,10 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
   )
 }
 
-const TRACK_LABELS: Record<string, string> = { ads: 'Ads', partner: 'Partner', other: 'Other' }
-
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    // h-full: the cards of one Overview row line up
+    <div className="h-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h3>
       {children}
     </div>
@@ -92,8 +91,9 @@ function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCu
     .map((def) => ({ def, text: formatCustomValue(lead.customFields?.[def.key], def) }))
     .filter((r) => r.text !== null && r.text !== undefined && r.text !== '')
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      <div className="space-y-4">
+    <div className="space-y-4">
+      {/* Row 1: Contact | Additional Lead Information | Notes */}
+      <div className="grid gap-4 lg:grid-cols-3">
         <Card title="Contact">
           <DetailRow label="Mobile" value={lead.mobile} />
           <DetailRow label="Email" value={lead.email} />
@@ -106,11 +106,11 @@ function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCu
           /> */}
         </Card>
         {(() => {
-          // only the custom fields that actually hold a value; empty defs stay hidden
+          // only the custom fields that actually hold a value; empty defs stay hidden. The card itself always shows,
+          // so row 1 keeps its three columns for every lead
           const filled = infoDefs
             .map((def) => ({ def, value: formatCustomValue(lead.customFields?.[def.key], def) }))
             .filter(({ value }) => value !== null && value !== undefined && value !== '')
-          if (!filled.length && !onEditCustom) return null
           return (
             <Card title="Additional Lead Information">
               {filled.map(({ def, value }) => (
@@ -150,42 +150,8 @@ function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCu
           )}
         </Card>
       </div>
-      <div className="space-y-4">
-      <Card title="System Fields">
-        <DetailRow label="Lead ID" value={lead.leadNo} />
-        <DetailRow label="Created On" value={formatDateTime(lead.createdAt)} />
-        <DetailRow label="Created Via" value={lead.createdViaLabel ?? lead.createdVia} />
-        <DetailRow label="Created By" value={lead.createdBy?.name ?? 'System'} />
-        <DetailRow label="First Source" value={lead.firstSource?.name} />
-        <DetailRow label="Latest Source" value={lead.source?.name} />
-        {lead.meta?.campaignName && <DetailRow label="Meta Campaign" value={lead.meta.campaignName} />}
-        {lead.meta?.adsetName && <DetailRow label="Meta Ad Set" value={lead.meta.adsetName} />}
-        {lead.meta?.adName && <DetailRow label="Meta Ad" value={lead.meta.adName} />}
-        {lead.meta?.formName && <DetailRow label="Meta Form" value={lead.meta.formName} />}
-        {lead.uploadFileName && <DetailRow label="Upload File" value={lead.uploadFileName} />}
-        <DetailRow label="Owner" value={lead.owner?.name ?? 'Unassigned'} />
-        <DetailRow label="Assigned On" value={formatDateTime(lead.assignedAt)} />
-        <DetailRow label="Re-enquiry Count" value={lead.reEnquiryCount ?? 0} />
-        <DetailRow label="Student Profile Completion" value={`${lead.profileCompletion ?? 0}%`} />
-        {/* only from the new backend; the old one had no discussion % (it sent it as customFieldsCompletion) */}
-        {lead.discussionCompletion !== undefined && <DetailRow label="Counsellor Discussion Completion" value={`${lead.discussionCompletion}%`} />}
-      </Card>
-      {/* Everything the capture API records about where the lead came from (utm block + referral block + track) */}
-      <Card title="Source & Tracking">
-        <DetailRow label="UTM Source" value={lead.utm?.source} />
-        <DetailRow label="UTM Medium" value={lead.utm?.medium} />
-        <DetailRow label="UTM Campaign" value={lead.utm?.campaign} />
-        <DetailRow label="UTM Term" value={lead.utm?.term} />
-        <DetailRow label="UTM Content" value={lead.utm?.content} />
-        <DetailRow label="Landing Page" value={lead.utm?.landingPage} />
-        <DetailRow label="Referrer" value={lead.utm?.referrer} />
-        {lead.referral?.code && <DetailRow label="Referral Code" value={lead.referral.code} />}
-        {lead.referral?.partnerName && <DetailRow label="Partner Name" value={lead.referral.partnerName} />}
-        {lead.referral?.partnerLink && <DetailRow label="Partner Link" value={lead.referral.partnerLink} />}
-        <DetailRow label="Track" value={TRACK_LABELS[lead.track] ?? lead.track} />
-      </Card>
-      </div>
-      <div className="space-y-4">
+      {/* Row 2: Recent Calls | Recent Communications */}
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Recent Calls">
           {!calls?.data.length && <p className="text-xs text-slate-400">No Calls Logged Yet</p>}
           {calls?.data.slice(0, 5).map((c) => (
