@@ -58,6 +58,11 @@ export const messagingApi = api.injectEndpoints({
       query: ({ id, body }) => ({ url: id ? `/messaging/templates/${id}` : '/messaging/templates', method: id ? 'PUT' : 'POST', body }),
       invalidatesTags: (_r, error) => (error ? [] : ['MessageTemplates', 'Automations']),
     }),
+    /** Super Admin only; refused while campaigns or automations still use the template. */
+    deleteMessageTemplate: build.mutation<ApiResponse<{ _id: string; name: string }>, string>({
+      query: (id) => ({ url: `/messaging/templates/${id}`, method: 'DELETE' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['MessageTemplates', 'Automations']),
+    }),
     /** Saved texts for template variables (Communication → Texts); active=true is what the send dialogs offer. */
     listSavedTexts: build.query<ApiResponse<SavedText[]>, { active?: boolean } | void>({
       query: (arg) => ({ url: '/messaging/texts', params: arg && arg.active ? { active: 'true' } : {} }),
@@ -207,6 +212,7 @@ export const {
   useMessagingOptionsQuery,
   useListMessageTemplatesQuery,
   useSaveMessageTemplateMutation,
+  useDeleteMessageTemplateMutation,
   useListSavedTextsQuery,
   useSaveSavedTextMutation,
   useDeleteSavedTextMutation,

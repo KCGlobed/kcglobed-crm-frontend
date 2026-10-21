@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, Plus, RefreshCw } from 'lucide-react'
+import { Mail, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useCancelCampaignMutation,
+  useDeleteMessageTemplateMutation,
   useGetCampaignQuery,
   useListAutomationsQuery,
   useListCampaignsQuery,
@@ -13,6 +14,8 @@ import {
   useSyncWhatsAppTemplatesMutation,
   useUpdateAutomationMutation,
 } from '../../../services/messagingApi'
+import { useCurrentUser } from '../../../app/hooks'
+import { ConfirmDialog } from '../../../components/ui/feedback'
 import { PageHeader, Tabs } from '../../../components/ui/misc'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
@@ -194,10 +197,24 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
 
 function TemplatesTab() {
   const navigate = useNavigate()
+  const user = useCurrentUser()
   const { data, isLoading } = useListMessageTemplatesQuery({})
   const { data: options } = useMessagingOptionsQuery()
   const [sync, { isLoading: syncing }] = useSyncWhatsAppTemplatesMutation()
+  const [remove, { isLoading: removing }] = useDeleteMessageTemplateMutation()
   const [editing, setEditing] = useState<MessageTemplate | 'new' | null>(null)
+  const [deleting, setDeleting] = useState<MessageTemplate | null>(null)
+  const onDelete = async () => {
+    if (!deleting) return
+    try {
+      const res = await remove(deleting._id).unwrap()
+      toast.success(res.message)
+      setDeleting(null)
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+      setDeleting(null)
+    }
+  }
   const syncWhatsApp = async () => {
     try {
       const res = await sync().unwrap()
@@ -238,6 +255,7 @@ function TemplatesTab() {
                 <th className="px-4 py-2">DLT / WhatsApp / Subject</th>
                 <th className="px-4 py-2">Status</th>
                 <th className="px-4 py-2">Updated</th>
+                {user?.isSuperAdmin && <th className="px-4 py-2" />}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -258,6 +276,22 @@ function TemplatesTab() {
                     <Badge tone={t.isActive ? 'green' : 'slate'}>{t.isActive ? 'Active' : 'Inactive'}</Badge>
                   </td>
                   <td className="px-4 py-2 text-xs text-slate-500">{formatDateTime(t.updatedAt)}</td>
+                  {user?.isSuperAdmin && (
+                    <td className="px-4 py-2 text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600"
+                        title="Delete template (Super Admin)"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeleting(t)
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -265,6 +299,16 @@ function TemplatesTab() {
         </div>
       )}
       {editing && <TemplateDrawer template={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
+      <ConfirmDialog
+        open={!!deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={onDelete}
+        title="Delete Template"
+        message={`Delete "${deleting?.name}" (${deleting?.channel.toUpperCase()}) permanently? If campaigns or automations use it, the delete is refused — deactivate it instead.`}
+        confirmLabel="Delete"
+        danger
+        loading={removing}
+      />
     </>
   )
 }
