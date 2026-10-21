@@ -1,22 +1,42 @@
 name: Deploy Frontend
 
+# Branch -> environment:
+#   main -> production (GitHub Environment "production")
+#   dev  -> staging    (GitHub Environment "staging")
+# A manual run (workflow_dispatch) follows the same rule for the branch it is run from.
+#
+# Secrets are read from the selected GitHub Environment (Settings -> Environments);
+# an environment that does not define a secret falls back to the repository-level
+# secret, so the existing SERVER_HOST / SERVER_USER / SSH_PRIVATE_KEY keep serving
+# production. Add staging's own copies under the "staging" environment.
+#
+# Optional per-environment variable:
+#   DEPLOY_PATH - web root on the server (defaults below)
+
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 concurrency:
-  group: production-deploy
+  group: deploy-${{ github.ref_name == 'main' && 'production' || 'staging' }}
   cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    environment: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+    env:
+      DEPLOY_ENV: ${{ github.ref_name == 'main' && 'production' || 'staging' }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH || (github.ref_name == 'main' && '/var/www/kcg-crm-frontend' || '/var/www/kcg-crm-frontend-staging') }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Show target
+        run: echo "Deploying branch '${{ github.ref_name }}' to $DEPLOY_ENV ($DEPLOY_PATH)"
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -42,7 +62,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "dist/*"
-          target: "/var/www/kcg-crm-frontend"
+          target: ${{ env.DEPLOY_PATH }}
           strip_components: 1
           rm: true
 
@@ -54,8 +74,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            test -f /var/www/kcg-crm-frontend/index.html
-            chown -R www-data:www-data /var/www/kcg-crm-frontend
+            DEPLOY_PATH="${{ env.DEPLOY_PATH }}"
+            test -f "$DEPLOY_PATH/index.html"
+            chown -R www-data:www-data "$DEPLOY_PATH"
             nginx -t
             systemctl reload nginx
-            echo "Deploy successful"
+            echo "Deploy successful: ${{ env.DEPLOY_ENV }} <- ${{ github.ref_name }} ($DEPLOY_PATH)"

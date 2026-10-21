@@ -812,8 +812,8 @@ export default function DashboardPage() {
         <>
           <LeadsSection period={period} loading={isLoading} onOpen={open} />
 
-          <section className="mt-5" aria-label="Lead Status">
-            <SectionHeading title="Lead Status" />
+          {/* the status tiles and the pipeline cards together, one grid straight under the lead cards (no heading) */}
+          <section className="mt-3 sm:mt-4" aria-label="Lead stages">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
               {STATUS_TILES.map(({ key: tileKey, label, icon, accent }) => {
                 // the summary names the stage behind each tile (it may be renamed in Masters); the count comes from the period's stage rows
@@ -822,7 +822,7 @@ export default function DashboardPage() {
                 const params = row?.params
                 return (
                   <KpiCard
-                    key={tileKey}
+                    key={`status-${tileKey}`}
                     label={row?.name ?? name}
                     value={row?.count}
                     progress={share(row?.count, total)}
@@ -835,18 +835,12 @@ export default function DashboardPage() {
                   />
                 )
               })}
-            </div>
-          </section>
-
-          <section className="mt-5" aria-label="Pipeline">
-            <SectionHeading title="Pipeline" />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
               {PIPELINE_CARDS.map(({ label, icon }) => {
                 const row = stageOf(label)
                 const params = row?.params
                 return (
                   <KpiCard
-                    key={label}
+                    key={`pipeline-${label}`}
                     label={row?.name ?? label}
                     value={row?.count}
                     progress={share(row?.count, total)}

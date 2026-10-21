@@ -90,6 +90,8 @@ const ALL_LEAD_COLUMNS: LeadColumn[] = [
         '—'
       ),
   },
+  // placeholder until call attempts are counted per lead: every row shows a dash for now
+  { key: 'callAttempts', header: 'No. of Call Attempts', exportKeys: [], align: 'center', render: () => text(null) },
   {
     key: 'owner',
     header: 'Owner',
@@ -221,7 +223,7 @@ export const LEAD_COLUMNS = ALL_LEAD_COLUMNS.filter((c) => !HIDDEN_COLUMNS.inclu
 export const LEAD_COLUMN_KEYS = LEAD_COLUMNS.map((c) => c.key)
 /** Go-live §11.1 default columns */
 export const DEFAULT_VISIBLE_COLUMNS = [
-  'leadNo', 'firstName', 'mobile', 'email', 'stage', 'owner', 'firstSource', 'source', 'city', 'program',
+  'leadNo', 'firstName', 'mobile', 'email', 'stage', 'callAttempts', 'owner', 'firstSource', 'source', 'city', 'program',
   'utmSource', 'utmMedium', 'utmCampaign', 'createdAt', 'lastActivityAt', 'nextFollowUpAt',
 ]
 export const LOCKED_COLUMNS = ['firstName']

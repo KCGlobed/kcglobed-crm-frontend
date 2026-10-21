@@ -15,7 +15,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useDeleteLeadMutation, useGetLeadQuery, useLeadCallsQuery, useLeadNotesQuery } from '../../services/leadsApi'
+import { useDeleteLeadMutation, useGetLeadQuery, useLeadCallsQuery, useLeadDocumentsQuery, useLeadNotesQuery } from '../../services/leadsApi'
 import { useLeadMessagesQuery } from '../../services/messagingApi'
 import { useLeadTasksQuery } from '../../services/tasksApi'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
@@ -28,11 +28,13 @@ import { ProgressRing } from '../../components/ui/ProgressRing'
 import { ConfirmDialog, ErrorState, Skeleton } from '../../components/ui/feedback'
 import { Tabs } from '../../components/ui/misc'
 import { cn, formatDateTime, fullName, initials, parseApiError, timeAgo } from '../../lib/utils'
+import { useAuthorizedObjectUrl } from '../../lib/download'
 import { LeadFormDrawer } from './LeadFormDrawer'
 import { formatCustomValue } from './leadColumns'
 import { LeadTimeline } from './LeadTimeline'
 import { LeadNotes } from './LeadNotes'
 import { LeadProfileTab } from './profile/LeadProfileTab'
+import { documentPath, isImageDocument } from './profile/documentFiles'
 import { LeadFollowUps } from './LeadFollowUps'
 import { LeadHistory } from './LeadHistory'
 import { CounsellorDiscussion } from './CounsellorDiscussion'
@@ -41,6 +43,7 @@ import { DispositionDrawer } from './DispositionDrawer'
 import { ChangeStageModal } from './ChangeStageModal'
 import { AddNoteModal, AssignLeadModal, SendMessageModal } from './LeadActionModals'
 import { WhatsAppChat } from './WhatsAppChat'
+import { MessageHistory } from './MessageHistory'
 import { FollowUpFormModal } from '../tasks/FollowUpFormModal'
 import { subStageOf } from '../../lib/stages'
 import type { CustomFieldDef, Lead, LeadMessage } from '../../types/models'
@@ -224,6 +227,36 @@ function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCu
 /** A number we can message: 10 digits (or country-coded); a missing or masked number has fewer. */
 const hasUsableMobile = (mobile?: string | null) => (mobile ?? '').replace(/\D/g, '').length >= 10
 
+/**
+ * The lead's profile photo (the Documents tab's "Photograph", or initials until one is uploaded) inside the
+ * profile-completion arc, with the % pinned to the bottom edge of the ring.
+ */
+function LeadAvatar({ lead }: { lead: Lead }) {
+  const { data: docs } = useLeadDocumentsQuery(lead._id)
+  const photo = docs?.data.documents.find((d) => d.type === 'photo')?.current ?? null
+  const image = useAuthorizedObjectUrl(photo && isImageDocument(photo) ? `${documentPath(lead._id, photo._id)}?inline=1` : null)
+  const pct = lead.profileCompletion ?? 0
+  return (
+    <div className="relative shrink-0" title={`Student profile completion: ${pct}%`}>
+      <ProgressRing value={pct} size={80} stroke={5} tone="emerald" testId="profile-completion-ring">
+        {image.url ? (
+          <img src={image.url} alt={fullName(lead)} className="h-16 w-16 rounded-full object-cover" />
+        ) : (
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-brand-100 text-lg font-bold text-brand-700">
+            {initials(fullName(lead))}
+          </span>
+        )}
+      </ProgressRing>
+      <span
+        className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border-2 border-white bg-emerald-500 px-1.5 py-px text-[10px] font-bold leading-4 tabular-nums text-white"
+        data-testid="profile-completion-pct"
+      >
+        {pct}%
+      </span>
+    </div>
+  )
+}
+
 function HeaderFact({ label, children, danger }: { label: string; children: React.ReactNode; danger?: boolean }) {
   return (
     <div className="min-w-0">
@@ -290,12 +323,10 @@ export default function LeadDetailPage() {
           </div>
         ) : (
           <>
-            {/* the name block is centred on the rings, which are the taller side */}
+            {/* the name block is centred on the avatar ring and the score ring, which are the taller sides */}
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-4">
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-bold text-brand-700">
-                  {initials(fullName(lead))}
-                </span>
+                <LeadAvatar lead={lead} />
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-lg font-semibold text-slate-800">{fullName(lead)}</h1>
@@ -321,17 +352,8 @@ export default function LeadDetailPage() {
                 </div>
               </div>
 
-              {/* Profile completion and the Lead Score side by side, at the right corner */}
+              {/* Lead Score alone at the right corner; profile completion lives on the avatar */}
               <div className="flex items-center gap-4" data-testid="lead-scores">
-                <ProgressRing
-                  value={lead.profileCompletion ?? 0}
-                  tone="emerald"
-                  label="Profile"
-                  testId="profile-completion-ring"
-                  title="Student profile completion"
-                >
-                  <span className="text-sm font-bold tabular-nums text-slate-800">{lead.profileCompletion ?? 0}%</span>
-                </ProgressRing>
                 <ProgressRing
                   value={lead.score ?? 0}
                   tone="brand"
@@ -438,6 +460,8 @@ export default function LeadDetailPage() {
           { key: 'discussion', label: 'Counsellor Discussion' },
           { key: 'timeline', label: 'Timeline' },
           { key: 'whatsapp', label: 'WhatsApp History' },
+          { key: 'sms', label: 'SMS History' },
+          { key: 'email', label: 'Email History' },
           ...(can(user, 'tasks', 'view')
             ? [{ key: 'followups', label: `Follow-ups${followUpCount !== undefined ? ` (${followUpCount})` : ''}` }]
             : []),
@@ -466,6 +490,8 @@ export default function LeadDetailPage() {
           <LeadTimeline leadId={lead._id} />
         ) : tab === 'whatsapp' ? (
           <WhatsAppChat lead={lead} canSend={canSend} />
+        ) : tab === 'sms' || tab === 'email' ? (
+          <MessageHistory lead={lead} channel={tab} canSend={canSend} />
         ) : tab === 'history' ? (
           <LeadHistory leadId={lead._id} />
         ) : (

@@ -43,10 +43,10 @@ const schema = z.object({
     .string()
     .transform((v) => v.replace(/[\s-]/g, '').replace(/^(\+91|91(?=\d{10}$)|0)/, ''))
     .pipe(z.string().regex(/^[6-9]\d{9}$/, '10 digits starting with 6–9')),
-  email: z.email('Enter a valid email').optional().or(z.literal('')),
-  state: z.string().optional(),
-  city: z.string().optional(),
-  programInterest: z.string().optional(),
+  email: z.string().trim().min(1, 'Email is required').pipe(z.email('Enter a valid email')),
+  state: z.string().min(1, 'Choose the state'),
+  city: z.string().trim().min(1, 'City is required').max(100, 'Max 100 characters'),
+  programInterest: z.string().min(1, 'Choose the program'),
   source: z.string().min(1, 'Choose the source'),
   note: z.string().max(2000, 'Max 2,000 characters').optional(),
   owner: z.string().optional(),
@@ -187,7 +187,7 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
                 {...mobileField(register('mobile'))}
               />
             </FormField>
-            <FormField label="Email" error={errors.email?.message}>
+            <FormField label="Email" error={errors.email?.message} required>
               <Input
                 type="email"
                 placeholder="name@example.com"
@@ -199,18 +199,19 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
         </FieldGroup>
         <FieldGroup title="Location & Interest">
           <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="State" error={errors.state?.message}>
-              <Select {...register('state')}>
+            <FormField label="State" error={errors.state?.message} required>
+              <Select {...register('state')} aria-invalid={!!errors.state}>
                 <option value="">—</option>
                 {places?.data.states.map((s) => (
                   <option key={s}>{s}</option>
                 ))}
               </Select>
             </FormField>
-            <FormField label="City" error={errors.city?.message}>
+            <FormField label="City" error={errors.city?.message} required>
               <Input
                 list="quick-add-cities"
                 {...register('city')}
+                aria-invalid={!!errors.city}
                 placeholder={state ? 'Pick or type' : 'Choose a state first'}
               />
               <datalist id="quick-add-cities">
@@ -219,8 +220,8 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
                 ))}
               </datalist>
             </FormField>
-            <FormField label="Program Interest">
-              <Select {...register('programInterest')}>
+            <FormField label="Program Interest" error={errors.programInterest?.message} required>
+              <Select {...register('programInterest')} aria-invalid={!!errors.programInterest}>
                 <option value="">—</option>
                 {masters?.data.programs.map((p) => (
                   <option key={p._id} value={p._id}>

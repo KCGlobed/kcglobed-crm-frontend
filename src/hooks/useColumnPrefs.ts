@@ -34,8 +34,9 @@ function write(storageKey: string, prefs: StoredPrefs) {
 /**
  * Which table columns are visible and in what order, remembered per user in
  * this browser. `allKeys` may change after mount (custom-field columns arrive
- * with the masters): columns added later appear at the end, hidden; columns
- * that no longer exist are dropped from saved layouts.
+ * with the masters): columns added later appear at the end, hidden, except a
+ * default column that a saved layout predates, which is shown in its default
+ * place; columns that no longer exist are dropped from saved layouts.
  */
 export function useColumnPrefs(storageKey: string, { allKeys, defaultVisible, locked = [] }: Options) {
   const defaults = useMemo<StoredPrefs>(() => ({ order: allKeys, visible: defaultVisible }), [allKeys, defaultVisible])
@@ -53,9 +54,23 @@ export function useColumnPrefs(storageKey: string, { allKeys, defaultVisible, lo
   // the saved layout reconciled with the columns that exist right now
   const prefs = useMemo<StoredPrefs>(() => {
     const known = new Set(allKeys)
-    const order = [...stored.order.filter((k) => known.has(k)), ...allKeys.filter((k) => !stored.order.includes(k))]
-    return { order, visible: stored.visible.filter((k) => known.has(k)) }
-  }, [stored, allKeys])
+    const order = stored.order.filter((k) => known.has(k))
+    const visible = stored.visible.filter((k) => known.has(k))
+    for (const key of allKeys) {
+      if (order.includes(key)) continue
+      if (defaultVisible.includes(key)) {
+        // a default column added since this layout was saved: shown, right after the nearest
+        // column that precedes it in the default order (a hidden default stays in `order`, so
+        // only a column the layout has never seen lands here)
+        const before = allKeys.slice(0, allKeys.indexOf(key)).reverse().find((k) => order.includes(k))
+        order.splice(before ? order.indexOf(before) + 1 : 0, 0, key)
+        visible.push(key)
+      } else {
+        order.push(key)
+      }
+    }
+    return { order, visible }
+  }, [stored, allKeys, defaultVisible])
 
   const visibleKeys = useMemo(() => {
     const shown = new Set([...prefs.visible, ...locked])
