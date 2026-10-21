@@ -8,21 +8,9 @@ import { EmptyState, Skeleton } from '../../components/ui/feedback'
 import { cn, formatDateTime, parseApiError } from '../../lib/utils'
 import type { Lead, WhatsAppChatMessage } from '../../types/models'
 import { SendMessageModal } from './LeadActionModals'
+import { dayLabel, timeOf } from './chatTime'
 
 const POLL_MS = 10_000
-
-function dayLabel(iso: string): string {
-  const d = new Date(iso)
-  const today = new Date()
-  const yesterday = new Date()
-  yesterday.setDate(today.getDate() - 1)
-  const same = (a: Date, b: Date) => a.toDateString() === b.toDateString()
-  if (same(d, today)) return 'Today'
-  if (same(d, yesterday)) return 'Yesterday'
-  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-const timeOf = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
 
 function StatusTick({ m }: { m: WhatsAppChatMessage }) {
   if (m.status === 'failed') {

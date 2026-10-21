@@ -1037,6 +1037,8 @@ export interface LeadMessage {
   scheduledAt?: string
   /** the {#var#} / {{n}} values it is rendered with */
   variables?: string[]
+  /** email: the files that went with it (public url, for the history pane) */
+  attachments?: MessageAsset[]
 }
 
 /** One row of the Activity Log's Scheduled tab: a bulk send or a single message waiting for its time. */
