@@ -1,6 +1,6 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarCheck, ChevronRight, CircleDashed, Coffee, GraduationCap, Inbox, PhoneCall, PhoneOff, Receipt, ThumbsDown, ThumbsUp, Timer, UserCheck, Users, type LucideIcon } from 'lucide-react'
+import { CalendarCheck, ChevronRight, CircleDashed, Coffee, GraduationCap, Inbox, Phone, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOff, Receipt, ThumbsDown, ThumbsUp, Timer, UserCheck, Users, type LucideIcon } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useDashboardSummaryQuery } from '../../services/miscApi'
 import { leadsApi, useListLeadsQuery, type LeadListParams } from '../../services/leadsApi'
@@ -363,6 +363,10 @@ function CounsellorCards({ summary, period: state, loading, onOpen }: { summary?
           <KpiCard label="Total Calls Today" value={activity?.calls ?? 0} progress={activity?.calls ? 100 : 0} hint="Calls placed" icon={PhoneCall} accent="cyan" loading={loading} />
           <KpiCard label="Total Talk time Today" value={formatHms(activity?.talktimeSeconds)} progress={activity?.talktimeSeconds ? 100 : 0} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
           <KpiCard label="Total Break Time Today" value={formatHms(activity?.breakSeconds)} progress={activity?.breakSeconds ? 100 : 0} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
+          {/* inbound calls are not tracked yet: these stay 0 until they are */}
+          <KpiCard label="Inbound Total" value={0} progress={0} hint="Calls received today" icon={PhoneIncoming} accent="blue" loading={loading} />
+          <KpiCard label="Inbound Received" value={0} progress={0} hint="Answered" icon={Phone} accent="green" loading={loading} />
+          <KpiCard label="Inbound Missed" value={0} progress={0} hint="Not answered" icon={PhoneMissed} accent="red" loading={loading} />
         </div>
       </section>
     </>
