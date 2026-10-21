@@ -8,6 +8,8 @@ import { parseApiError } from '../../lib/utils'
 import { EmailPreview } from '../../components/email/EmailPreview'
 import { AttachmentList } from '../../components/email/AttachmentList'
 import { DLT_VAR_MAX, LEAD_FIELD_LABELS, fillTemplateVariables, leadFieldOf } from '../../lib/smsTemplate'
+import { sendOptionLabel, waSendable } from '../../lib/whatsappFormat'
+import { WhatsAppTemplateMessage } from '../../components/whatsapp/TemplatePreview'
 import type { CampaignPreview } from '../../types/models'
 import { DltVariableFields } from './DltVariableFields'
 import { selectionBody, type LeadSelection } from './leadSelection'
@@ -148,6 +150,8 @@ export function BulkSendModal({
               {preview.sample.subject && <p className="mb-1 text-sm font-medium text-slate-800">{preview.sample.subject}</p>}
               {channel === 'email' ? (
                 <EmailPreview html={preview.sample.body} height="16rem" />
+              ) : channel === 'whatsapp' ? (
+                <WhatsAppTemplateMessage template={preview.template} body={preview.sample.body} />
               ) : (
                 <p className="whitespace-pre-wrap text-sm text-slate-700">{preview.sample.body}</p>
               )}
@@ -162,14 +166,13 @@ export function BulkSendModal({
           <FormField
             label={`${label} template`}
             required
-            hint={channel === 'sms' ? 'Only DLT-approved templates are listed' : channel === 'whatsapp' ? 'Only templates approved in WhatsApp Manager are listed' : undefined}
+            hint={channel === 'sms' ? 'Only DLT-approved templates are listed' : channel === 'whatsapp' ? 'Only templates Meta approved are listed' : undefined}
           >
             <Select value={template} onChange={(e) => choose(e.target.value)}>
               <option value="">Choose…</option>
-              {templates?.data.map((t) => (
+              {templates?.data.filter(waSendable).map((t) => (
                 <option key={t._id} value={t._id}>
-                  {t.name}
-                  {t.dltTemplateId ? ` · DLT ${t.dltTemplateId}` : ''}
+                  {sendOptionLabel(t)}
                 </option>
               ))}
             </Select>
@@ -189,6 +192,8 @@ export function BulkSendModal({
               {channel === 'email' && chosen.attachments?.length ? <AttachmentList attachments={chosen.attachments} readOnly className="mb-2" /> : null}
               {channel === 'email' ? (
                 <EmailPreview html={liveText} height="16rem" />
+              ) : channel === 'whatsapp' ? (
+                <WhatsAppTemplateMessage template={chosen} body={liveText} />
               ) : (
                 <p className="whitespace-pre-wrap text-sm text-slate-800">{liveText}</p>
               )}

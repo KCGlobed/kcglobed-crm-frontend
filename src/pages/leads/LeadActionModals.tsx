@@ -15,6 +15,8 @@ import { EmailEditor } from '../../components/email/EmailEditor'
 import { EmailPreview } from '../../components/email/EmailPreview'
 import { AttachmentList } from '../../components/email/AttachmentList'
 import { DLT_VAR_MAX, LEAD_FIELD_LABELS, fillTemplateVariables, leadFieldOf, resolveDltVariables } from '../../lib/smsTemplate'
+import { sendOptionLabel, waSendable } from '../../lib/whatsappFormat'
+import { WhatsAppTemplateMessage } from '../../components/whatsapp/TemplatePreview'
 import type { Lead, MessageAsset, MessagePreview } from '../../types/models'
 import { DltVariableFields } from './DltVariableFields'
 import { ownerLabel, useAssignableOwners } from './leadSelection'
@@ -223,15 +225,15 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
             channel === 'sms'
               ? 'Only DLT-approved SMS templates can be sent'
               : channel === 'whatsapp'
-                ? 'Only templates approved in WhatsApp Manager can be sent'
+                ? 'Only templates Meta approved are listed'
                 : undefined
           }
         >
           <Select value={template} disabled={reviewing} onChange={(e) => choose(e.target.value)}>
             <option value="">Choose…</option>
-            {templates?.data.map((t) => (
+            {templates?.data.filter(waSendable).map((t) => (
               <option key={t._id} value={t._id}>
-                {t.name}
+                {channel === 'whatsapp' ? sendOptionLabel(t) : t.name}
               </option>
             ))}
           </Select>
@@ -254,7 +256,11 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
                 : `DLT ${shown.template.dltTemplateId} · Sender ${shown.template.senderId}`}{' '}
               · {smsText.length} chars
             </p>
-            <p className="whitespace-pre-wrap text-sm text-slate-800">{smsText}</p>
+            {channel === 'whatsapp' ? (
+              <WhatsAppTemplateMessage template={shown.template} body={smsText} />
+            ) : (
+              <p className="whitespace-pre-wrap text-sm text-slate-800">{smsText}</p>
+            )}
           </div>
         )}
         {shown && channel === 'sms' && shown.template.dltType === 'explicit' && (
