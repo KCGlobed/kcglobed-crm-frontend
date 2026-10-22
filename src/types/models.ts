@@ -1284,7 +1284,9 @@ export interface RoundRobinMember {
   hasLeadsAccess: boolean
   /** team opted out / inactive */
   teamPaused: boolean
-  /** active + flag + not super admin + leads access + online + team not paused → in rotation */
+  /** punched out on a break right now: skipped by the rotation until the break ends */
+  onBreak?: { type: string; label: string; startedAt: string } | null
+  /** active + flag + not super admin + leads access + online + team not paused + not on a break → in rotation */
   eligible: boolean
   /** order in rotation; null when not eligible */
   position: number | null
