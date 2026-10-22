@@ -4,7 +4,7 @@ import { Badge } from '../../components/ui/Badge'
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/feedback'
 import { cn, formatDateTime, parseApiError, timeAgo } from '../../lib/utils'
 import { FollowUpActions } from '../tasks/FollowUpActions'
-import { statusLabel, statusTone } from '../tasks/taskMeta'
+import { reminderLabel, statusLabel, statusTone } from '../tasks/taskMeta'
 
 /** The lead's follow-ups: open ones (soonest first), then closed ones. */
 export function LeadFollowUps({ leadId }: { leadId: string }) {
@@ -35,7 +35,7 @@ export function LeadFollowUps({ leadId }: { leadId: string }) {
             </p>
             <p className={cn('mt-0.5 text-xs', t.isOverdue ? 'text-red-600' : 'text-slate-500')}>
               {t.status === 'open'
-                ? `Due ${formatDateTime(t.dueAt)} (${timeAgo(t.dueAt)}) · ${t.assignee.name} · reminder ${t.reminderMinutes} min before`
+                ? `Due ${formatDateTime(t.dueAt)} (${timeAgo(t.dueAt)}) · ${t.assignee.name} · reminder ${reminderLabel(t.reminderMinutes)} before`
                 : `${statusLabel(t)} ${formatDateTime(t.completedAt)}${t.completedBy ? ` by ${t.completedBy.name}` : ''}`}
             </p>
             {t.notes && <p className="mt-1 whitespace-pre-wrap text-xs text-slate-600">{t.notes}</p>}

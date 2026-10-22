@@ -8,7 +8,7 @@ import { Button } from '../../components/ui/Button'
 import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 import type { Task, TaskType } from '../../types/models'
-import { REMINDER_OPTIONS, TASK_TYPES, toLocalInput } from './taskMeta'
+import { REMINDER_OPTIONS, TASK_TYPES, reminderLabel, toLocalInput } from './taskMeta'
 
 interface Props {
   leadId: string
@@ -99,7 +99,7 @@ export function FollowUpFormModal({ leadId, ownerId, task, onClose }: Props) {
           <Select value={reminder} onChange={(e) => setReminder(Number(e.target.value))}>
             {REMINDER_OPTIONS.map((m) => (
               <option key={m} value={m}>
-                {m} min before
+                {reminderLabel(m)} before
               </option>
             ))}
           </Select>

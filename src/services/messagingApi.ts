@@ -2,10 +2,12 @@ import { api } from './api'
 import type {
   ApiListResponse,
   ApiResponse,
-  AutomationRuleRow,
+  AutomationBody,
+  AutomationRow,
   CampaignPreview,
   CampaignRecipient,
   CampaignRow,
+  FilterCondition,
   LeadMessage,
   MessageAsset,
   MessagePreview,
@@ -14,6 +16,10 @@ import type {
   SavedText,
   MetaFormMappingRow,
   ScheduledSend,
+  StaffAlertBody,
+  StaffAlertRow,
+  StaffAlertTestResult,
+  StaffAlertsResponse,
   WhatsAppChat,
   WhatsAppChatMessage,
 } from '../types/models'
@@ -22,6 +28,10 @@ export interface MessagingOptions {
   placeholders: string[]
   triggers: { value: string; label: string; channels: string[] }[]
   channels: { value: string; label: string }[]
+  /** Automation tab: when a rule runs, how a schedule repeats, and the day labels (Monday = 0) */
+  triggerTypes?: { value: string; label: string }[]
+  recurrences?: { value: string; label: string }[]
+  weekdays?: { value: number; label: string }[]
   bulkWindow: string
   bulkMax: number
   /** "meta" when the WhatsApp Cloud API is connected (template sync available); "console" only logs */
@@ -97,13 +107,44 @@ export const messagingApi = api.injectEndpoints({
     sendTestEmail: build.mutation<ApiResponse<{ to: string; status: string; provider?: string }>, { subject: string; body: string; attachments?: string[] }>({
       query: (body) => ({ url: '/messaging/templates/test-email', method: 'POST', body }),
     }),
-    listAutomations: build.query<ApiResponse<AutomationRuleRow[]>, void>({
+    /** Communication → Automation: the rules that send a template on a lead event or a schedule. */
+    listAutomations: build.query<ApiResponse<AutomationRow[]>, void>({
       query: () => '/messaging/automations',
       providesTags: ['Automations'],
     }),
-    updateAutomation: build.mutation<ApiResponse<AutomationRuleRow>, { id: string; body: { isActive?: boolean; template?: string | null } }>({
-      query: ({ id, body }) => ({ url: `/messaging/automations/${id}`, method: 'PUT', body }),
+    createAutomation: build.mutation<ApiResponse<AutomationRow>, AutomationBody>({
+      query: (body) => ({ url: '/messaging/automations', method: 'POST', body }),
       invalidatesTags: (_r, error) => (error ? [] : ['Automations']),
+    }),
+    /** Edits the fields sent; `{ isActive }` alone switches the automation on or off. */
+    updateAutomation: build.mutation<ApiResponse<AutomationRow>, { id: string; body: AutomationBody }>({
+      query: ({ id, body }) => ({ url: `/messaging/automations/${id}`, method: 'PUT', body }),
+      invalidatesTags: (_r, error) => (error ? [] : ['Automations', 'Campaigns']),
+    }),
+    deleteAutomation: build.mutation<ApiResponse<{ _id: string; name: string; channel: string; cancelled: number }>, string>({
+      query: (id) => ({ url: `/messaging/automations/${id}`, method: 'DELETE' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['Automations', 'Campaigns']),
+    }),
+    /** How many leads the conditions reach right now on the channel (the form's live count). */
+    previewAutomationAudience: build.mutation<
+      ApiResponse<{ matching: number; final: number; excluded: { optedOut: number; invalid: number; duplicate: number } }>,
+      { channel: string; conditions: FilterCondition[] }
+    >({
+      query: (body) => ({ url: '/messaging/automations/preview', method: 'POST', body }),
+    }),
+    /** Communication → Automation → Counsellor alerts: the three staff-facing alerts' wording, channels and windows. */
+    listStaffAlerts: build.query<ApiResponse<StaffAlertsResponse>, void>({
+      query: () => '/notifications/alerts',
+      providesTags: ['StaffAlerts'],
+    }),
+    /** Edits the fields sent; `{ isActive }` alone switches the alert on or off. */
+    updateStaffAlert: build.mutation<ApiResponse<StaffAlertRow>, { trigger: string; body: StaffAlertBody }>({
+      query: ({ trigger, body }) => ({ url: `/notifications/alerts/${trigger}`, method: 'PUT', body }),
+      invalidatesTags: (_r, error) => (error ? [] : ['StaffAlerts']),
+    }),
+    /** The draft on screen (or the saved alert) to the signed-in user with sample values, on every channel it has on. */
+    testStaffAlert: build.mutation<ApiResponse<StaffAlertTestResult>, { trigger: string; body: StaffAlertBody }>({
+      query: ({ trigger, body }) => ({ url: `/notifications/alerts/${trigger}/test`, method: 'POST', body }),
     }),
     listCampaigns: build.query<ApiResponse<CampaignRow[]>, void>({
       query: () => '/messaging/campaigns',
@@ -222,7 +263,13 @@ export const {
   useUploadMessageAttachmentMutation,
   useSendTestEmailMutation,
   useListAutomationsQuery,
+  useCreateAutomationMutation,
   useUpdateAutomationMutation,
+  useDeleteAutomationMutation,
+  usePreviewAutomationAudienceMutation,
+  useListStaffAlertsQuery,
+  useUpdateStaffAlertMutation,
+  useTestStaffAlertMutation,
   useListCampaignsQuery,
   useGetCampaignQuery,
   useCampaignRecipientsQuery,
