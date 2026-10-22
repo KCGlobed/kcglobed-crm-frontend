@@ -341,7 +341,7 @@ export interface Task {
   dueAt: string
   assignee: Ref
   priority: 'high' | 'normal'
-  reminderMinutes: 5 | 15 | 30 | 60
+  reminderMinutes: 5 | 15 | 30 | 60 | 120
   notes?: string
   status: 'open' | 'done' | 'cancelled'
   isOverdue: boolean
@@ -1108,15 +1108,143 @@ export interface MessagePreview {
   warning?: string
 }
 
-export interface AutomationRuleRow {
+export type AutomationTriggerType = 'event' | 'schedule'
+export type AutomationRecurrence = 'once' | 'daily' | 'weekly' | 'monthly'
+
+/**
+ * Communication → Automation: one rule that sends a template on a channel when a lead event happens
+ * (optionally after a wait) or on a schedule, to the leads matching its conditions (the lead list's filters).
+ */
+export interface AutomationRow {
   _id: string
-  trigger: string
-  triggerLabel: string
-  channel: string
+  name: string
+  channel: 'sms' | 'email' | 'whatsapp'
+  channelLabel: string
+  triggerType: AutomationTriggerType
+  event: string | null
+  eventLabel: string | null
+  delayMinutes: number
+  recurrence: AutomationRecurrence | null
+  runAt: string | null
+  /** weekly: Monday = 0 */
+  weekdays: number[]
+  endAt: string | null
+  conditions: FilterCondition[]
+  /** SMS / WhatsApp: the {#var#} / {{n}} values it sends with (typed text or "{lead_field}") */
+  variables: string[]
   isActive: boolean
-  template: Ref | null
+  /** one line: when it sends ("Every day at 10:30", "Lead assigned · after 30 min") */
+  schedule: string
+  template: { _id: string; name: string; isActive: boolean; variableCount: number } | null
+  nextRunAt: string | null
+  lastRunAt: string | null
+  runCount: number
+  sentCount: number
+  /** schedule: the latest run (a bulk send filed under the automation) */
+  lastRun: { _id: string; status: string; scheduledAt: string; final: number; sent: number; failed: number } | null
+  createdBy: string | null
+  updatedBy: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** What the automation form sends; a PUT with only `isActive` is the on / off switch. */
+export interface AutomationBody {
+  name?: string
+  channel?: 'sms' | 'email' | 'whatsapp'
+  template?: string
+  variables?: string[]
+  triggerType?: AutomationTriggerType
+  event?: string | null
+  delayMinutes?: number
+  recurrence?: AutomationRecurrence | null
+  runAt?: string | null
+  weekdays?: number[]
+  endAt?: string | null
+  conditions?: FilterCondition[]
+  isActive?: boolean
+}
+
+export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_assigned'
+
+/**
+ * Communication → Automation → Counsellor alerts: the wording, channels and windows of the three staff-facing
+ * alerts (follow-up reminder, untouched lead, new lead assigned). The texts use {{Placeholders}}.
+ */
+export interface StaffAlertRow {
+  _id: string
+  trigger: StaffAlertTrigger
+  label: string
+  /** the notification type it is filed under in the bell / Activity Log */
+  notificationType: string
+  isActive: boolean
+  /** lead_untouched: the main window after assignment, in working minutes */
+  offsetMinutes: number
+  /** lead_untouched: the earlier nudge, in working minutes; null = off */
+  earlyOffsetMinutes: number | null
+  emailEnabled: boolean
+  smsEnabled: boolean
+  pushEnabled: boolean
+  emailSubject: string
+  emailBody: string
+  smsBody: string
+  smsSenderId: string | null
+  smsDltTemplateId: string | null
+  smsDltType: 'implicit' | 'explicit'
+  /** the in-app (bell) and push title / message */
+  pushTitle: string
+  pushBody: string
+  /** the email's button text */
+  ctaLabel: string
+  /** one line: when it goes out */
+  when: string
   updatedBy: string | null
   updatedAt: string
+  createdAt: string
+}
+
+/** What the alert form sends; a PUT with only `isActive` is the on / off switch. */
+export interface StaffAlertBody {
+  isActive?: boolean
+  offsetMinutes?: number
+  earlyOffsetMinutes?: number | null
+  emailEnabled?: boolean
+  smsEnabled?: boolean
+  pushEnabled?: boolean
+  emailSubject?: string
+  emailBody?: string
+  smsBody?: string
+  smsSenderId?: string | null
+  smsDltTemplateId?: string | null
+  smsDltType?: 'implicit' | 'explicit'
+  pushTitle?: string
+  pushBody?: string
+  ctaLabel?: string
+}
+
+export interface StaffAlertPlaceholder {
+  key: string
+  label: string
+  sample: string
+}
+
+export interface StaffAlertsResponse {
+  items: StaffAlertRow[]
+  placeholders: Record<StaffAlertTrigger, StaffAlertPlaceholder[]>
+  workingHours: { start: string; end: string; days: number[] }
+  /** "webinfosys" needs a DLT sender id + template id before SMS can be switched on; "console" only logs */
+  smsProvider: string
+  dltTypes: string[]
+  reminderOptions: number[]
+  offsetRange: [number, number]
+}
+
+/** The test send's outcome per channel (only the channels that are on). */
+export interface StaffAlertTestResult {
+  push?: number
+  email?: string
+  sms?: { status: string; provider?: string; providerMessageId?: string; error?: string }
+  warning?: string
 }
 
 export interface CampaignRow {

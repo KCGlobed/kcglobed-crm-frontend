@@ -49,7 +49,7 @@ const ACTIVITY_ACTIONS = [
 const COMMUNICATION_ACTIONS = [
   'message_send', 'message_sent', 'message_delivered', 'message_failed', 'message_received', 'opt_out',
   'message_schedule', 'message_schedule_cancel', 'bulk_send', 'bulk_send_now', 'bulk_send_done', 'bulk_send_cancel',
-  'template_create', 'template_update', 'automation_update', 'whatsapp_template_sync', 'saved_text_create', 'saved_text_update', 'saved_text_delete', 'asset_upload', 'asset_delete', 'email_test',
+  'template_create', 'template_update', 'automation_create', 'automation_update', 'automation_delete', 'staff_alert_update', 'staff_alert_test', 'whatsapp_template_sync', 'saved_text_create', 'saved_text_update', 'saved_text_delete', 'asset_upload', 'asset_delete', 'email_test',
 ]
 const CHANNEL_OPTIONS = [
   ['sms', 'SMS'],

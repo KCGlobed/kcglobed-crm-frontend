@@ -108,6 +108,7 @@ const crmApi = createApi({
     'SavedTexts',
     'MessageAssets',
     'Automations',
+    'StaffAlerts',
     'Campaigns',
     'MetaIntegration',
     'RoundRobin',

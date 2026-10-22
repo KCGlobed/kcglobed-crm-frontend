@@ -15,7 +15,11 @@ export const TASK_TYPES: { value: TaskType; label: string }[] = [
 /** Display name of a follow-up type; API-provided lists carry the backend's label as the fallback. */
 export const taskTypeLabel = (value: string, fallback?: string) => TASK_TYPES.find((t) => t.value === value)?.label ?? fallback ?? value
 
-export const REMINDER_OPTIONS = [5, 15, 30, 60] as const
+/** Minutes before the due time the follow-up reminder alert goes out (the counsellor alert's wording is the admin's). */
+export const REMINDER_OPTIONS = [5, 15, 30, 60, 120] as const
+
+/** "15 min" / "2 h" */
+export const reminderLabel = (minutes: number) => (minutes >= 60 && minutes % 60 === 0 ? `${minutes / 60} h` : `${minutes} min`)
 
 /** 'YYYY-MM-DDTHH:mm' in local time, for <input type="datetime-local"> */
 export function toLocalInput(date: Date): string {

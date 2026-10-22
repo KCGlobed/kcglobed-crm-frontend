@@ -21,7 +21,7 @@ import { useLeadTasksQuery } from '../../services/tasksApi'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
 import { useCurrentUser } from '../../app/hooks'
 import { can } from '../../constants/permissions'
-import { isAdminLike } from '../../lib/roles'
+import { isAdminLike, isCounsellor } from '../../lib/roles'
 import { Badge, StageBadge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { ProgressRing } from '../../components/ui/ProgressRing'
@@ -57,10 +57,11 @@ function DetailRow({ label, value }: { label: string; value?: string | number | 
   )
 }
 
+const TRACK_LABELS: Record<string, string> = { ads: 'Ads', partner: 'Partner', other: 'Other' }
+
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    // h-full: the cards of one Overview row line up
-    <div className="h-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</h3>
       {children}
     </div>
@@ -78,7 +79,22 @@ const isSimulatedStatus = (m: LeadMessage) =>
 /** Masters custom fields that hold the remark captured with the lead (label like "Remarks"). */
 const isRemarkField = (def: CustomFieldDef) => /remark/i.test(def.label) || /remark/i.test(def.key)
 
-function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCustom?: () => void; onViewNotes?: () => void }) {
+/**
+ * The lead's Overview. A counsellor (`compact`) sees two rows: Contact | Additional Lead Information | Notes, then
+ * Recent Calls | Recent Communications. Super Admin and Admin keep the full three columns, with the System Fields
+ * and Source & Tracking cards.
+ */
+function OverviewTab({
+  lead,
+  compact,
+  onEditCustom,
+  onViewNotes,
+}: {
+  lead: Lead
+  compact?: boolean
+  onEditCustom?: () => void
+  onViewNotes?: () => void
+}) {
   const { data: calls } = useLeadCallsQuery(lead._id)
   const { data: notes } = useLeadNotesQuery(lead._id)
   const { data: messages } = useLeadMessagesQuery(lead._id)
@@ -90,101 +106,164 @@ function OverviewTab({ lead, onEditCustom, onViewNotes }: { lead: Lead; onEditCu
     .filter(isRemarkField)
     .map((def) => ({ def, text: formatCustomValue(lead.customFields?.[def.key], def) }))
     .filter((r) => r.text !== null && r.text !== undefined && r.text !== '')
-  return (
-    <div className="space-y-4">
-      {/* Row 1: Contact | Additional Lead Information | Notes */}
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card title="Contact">
-          <DetailRow label="Mobile" value={lead.mobile} />
-          <DetailRow label="Email" value={lead.email} />
-          <DetailRow label="City" value={lead.city} />
-          <DetailRow label="State" value={lead.state} />
-          <DetailRow label="Program Interest" value={lead.programInterest?.name} />
-          {/* <DetailRow
-            label="Opted Out"
-            value={[lead.optedOut?.sms ? 'SMS' : null, lead.optedOut?.email ? 'Email' : null].filter(Boolean).join(', ') || 'No'}
-          /> */}
-        </Card>
-        {(() => {
-          // only the custom fields that actually hold a value; empty defs stay hidden. The card itself always shows,
-          // so row 1 keeps its three columns for every lead
-          const filled = infoDefs
-            .map((def) => ({ def, value: formatCustomValue(lead.customFields?.[def.key], def) }))
-            .filter(({ value }) => value !== null && value !== undefined && value !== '')
-          return (
-            <Card title="Additional Lead Information">
-              {filled.map(({ def, value }) => (
-                <DetailRow key={def.key} label={def.label} value={value} />
-              ))}
-              {!filled.length && <p className="text-xs text-slate-400">No Additional Information Yet</p>}
-              {onEditCustom && (
-                <Button variant="outline" size="sm" className="mt-2" onClick={onEditCustom}>
-                  <Pencil className="h-3.5 w-3.5" /> Edit additional information
-                </Button>
-              )}
-            </Card>
-          )
-        })()}
-        {/* Notes section beside the lead information: the remark captured with the lead first, then the latest notes (newest first) */}
-        <Card title="Notes">
-          {remarks.map(({ def, text }) => (
-            <div key={def.key} className="border-b border-slate-50 py-1.5 text-xs last:border-0" data-testid={`overview-remark-${def.key}`}>
-              <p className="whitespace-pre-wrap text-slate-700">{text}</p>
-              <p className="mt-0.5 text-slate-400">{def.label} · captured with the lead</p>
-            </div>
-          ))}
-          {!remarks.length && !notes?.data.length && <p className="text-xs text-slate-400">No Notes Yet</p>}
-          {notes?.data.slice(0, 5).map((n) => (
-            <div key={n._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0" data-testid="overview-note">
-              <p className="line-clamp-3 whitespace-pre-wrap text-slate-700">{n.body}</p>
-              <p className="mt-0.5 text-slate-400">
-                {n.createdBy?.name ?? 'System'}
-                {n.category ? ` · ${n.category}` : ''} · {formatDateTime(n.createdAt)}
-              </p>
-            </div>
-          ))}
-          {onViewNotes && (
-            <Button variant="outline" size="sm" className="mt-2" onClick={onViewNotes}>
-              <NotebookPen className="h-3.5 w-3.5" /> View All Notes{notes?.data.length ? ` (${notes.data.length})` : ''}
-            </Button>
+  // only the custom fields that actually hold a value; empty defs stay hidden
+  const filled = infoDefs
+    .map((def) => ({ def, value: formatCustomValue(lead.customFields?.[def.key], def) }))
+    .filter(({ value }) => value !== null && value !== undefined && value !== '')
+
+  const contact = (
+    <Card title="Contact">
+      <DetailRow label="Mobile" value={lead.mobile} />
+      <DetailRow label="Email" value={lead.email} />
+      <DetailRow label="City" value={lead.city} />
+      <DetailRow label="State" value={lead.state} />
+      <DetailRow label="Program Interest" value={lead.programInterest?.name} />
+      {/* <DetailRow
+        label="Opted Out"
+        value={[lead.optedOut?.sms ? 'SMS' : null, lead.optedOut?.email ? 'Email' : null].filter(Boolean).join(', ') || 'No'}
+      /> */}
+    </Card>
+  )
+  const additional = (
+    <Card title="Additional Lead Information">
+      {filled.map(({ def, value }) => (
+        <DetailRow key={def.key} label={def.label} value={value} />
+      ))}
+      {!filled.length && <p className="text-xs text-slate-400">No Additional Information Yet</p>}
+      {onEditCustom && (
+        <Button variant="outline" size="sm" className="mt-2" onClick={onEditCustom}>
+          <Pencil className="h-3.5 w-3.5" /> Edit additional information
+        </Button>
+      )}
+    </Card>
+  )
+  // the remark captured with the lead first, then the latest notes (newest first)
+  const notesCard = (
+    <Card title="Notes">
+      {remarks.map(({ def, text }) => (
+        <div key={def.key} className="border-b border-slate-50 py-1.5 text-xs last:border-0" data-testid={`overview-remark-${def.key}`}>
+          <p className="whitespace-pre-wrap text-slate-700">{text}</p>
+          <p className="mt-0.5 text-slate-400">{def.label} · captured with the lead</p>
+        </div>
+      ))}
+      {!remarks.length && !notes?.data.length && <p className="text-xs text-slate-400">No Notes Yet</p>}
+      {notes?.data.slice(0, 5).map((n) => (
+        <div key={n._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0" data-testid="overview-note">
+          <p className="line-clamp-3 whitespace-pre-wrap text-slate-700">{n.body}</p>
+          <p className="mt-0.5 text-slate-400">
+            {n.createdBy?.name ?? 'System'}
+            {n.category ? ` · ${n.category}` : ''} · {formatDateTime(n.createdAt)}
+          </p>
+        </div>
+      ))}
+      {onViewNotes && (
+        <Button variant="outline" size="sm" className="mt-2" onClick={onViewNotes}>
+          <NotebookPen className="h-3.5 w-3.5" /> View All Notes{notes?.data.length ? ` (${notes.data.length})` : ''}
+        </Button>
+      )}
+    </Card>
+  )
+  const recentCalls = (
+    <Card title="Recent Calls">
+      {!calls?.data.length && <p className="text-xs text-slate-400">No Calls Logged Yet</p>}
+      {calls?.data.slice(0, 5).map((c) => (
+        <div key={c._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0">
+          <p className="font-medium text-slate-700">
+            {c.subStage ?? c.stage} {c.durationSeconds
+              ? `· ${c.durationSeconds >= 3600 ? `${Math.floor(c.durationSeconds / 3600)}h ` : ''}${Math.floor((c.durationSeconds % 3600) / 60)}m ${c.durationSeconds % 60}s`
+              : ''}
+          </p>
+          <p className="text-slate-400">
+            {c.user?.name} · {formatDateTime(c.createdAt)}
+          </p>
+        </div>
+      ))}
+    </Card>
+  )
+  const recentMessages = (
+    <Card title="Recent Communications">
+      {!messages?.data.length && <p className="text-xs text-slate-400">Nothing Sent Yet</p>}
+      {messages?.data.slice(0, 5).map((m) => (
+        <div key={m._id} className="flex items-start justify-between gap-2 border-b border-slate-50 py-1.5 text-xs last:border-0">
+          <span className="min-w-0">
+            <span className="block truncate font-medium text-slate-700">
+              {m.channel.toUpperCase()} · {m.template ?? 'custom'}
+            </span>
+            <span className="text-slate-400">
+              {m.sentBy} · {timeAgo(m.createdAt)}
+            </span>
+          </span>
+          {!isSimulatedStatus(m) && (
+            <Badge tone={m.status === 'delivered' ? 'green' : m.status === 'failed' || m.status === 'bounced' ? 'red' : 'blue'}>{m.status}</Badge>
           )}
+        </div>
+      ))}
+    </Card>
+  )
+
+  if (compact) {
+    // grid items stretch to their row's height, so the cards of a row line up
+    return (
+      <div className="space-y-4">
+        {/* Row 1: Contact | Additional Lead Information (always shown, so the row keeps its three columns) | Notes */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          {contact}
+          {additional}
+          {notesCard}
+        </div>
+        {/* Row 2: Recent Calls | Recent Communications */}
+        <div className="grid gap-4 lg:grid-cols-2">
+          {recentCalls}
+          {recentMessages}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="grid gap-4 lg:grid-cols-3">
+      <div className="space-y-4">
+        {contact}
+        {(filled.length > 0 || !!onEditCustom) && additional}
+        {notesCard}
+      </div>
+      <div className="space-y-4">
+        <Card title="System Fields">
+          <DetailRow label="Lead ID" value={lead.leadNo} />
+          <DetailRow label="Created On" value={formatDateTime(lead.createdAt)} />
+          <DetailRow label="Created Via" value={lead.createdViaLabel ?? lead.createdVia} />
+          <DetailRow label="Created By" value={lead.createdBy?.name ?? 'System'} />
+          <DetailRow label="First Source" value={lead.firstSource?.name} />
+          <DetailRow label="Latest Source" value={lead.source?.name} />
+          {lead.meta?.campaignName && <DetailRow label="Meta Campaign" value={lead.meta.campaignName} />}
+          {lead.meta?.adsetName && <DetailRow label="Meta Ad Set" value={lead.meta.adsetName} />}
+          {lead.meta?.adName && <DetailRow label="Meta Ad" value={lead.meta.adName} />}
+          {lead.meta?.formName && <DetailRow label="Meta Form" value={lead.meta.formName} />}
+          {lead.uploadFileName && <DetailRow label="Upload File" value={lead.uploadFileName} />}
+          <DetailRow label="Owner" value={lead.owner?.name ?? 'Unassigned'} />
+          <DetailRow label="Assigned On" value={formatDateTime(lead.assignedAt)} />
+          <DetailRow label="Re-enquiry Count" value={lead.reEnquiryCount ?? 0} />
+          <DetailRow label="Student Profile Completion" value={`${lead.profileCompletion ?? 0}%`} />
+          {/* only from the new backend; the old one had no discussion % (it sent it as customFieldsCompletion) */}
+          {lead.discussionCompletion !== undefined && <DetailRow label="Counsellor Discussion Completion" value={`${lead.discussionCompletion}%`} />}
+        </Card>
+        {/* Everything the capture API records about where the lead came from (utm block + referral block + track) */}
+        <Card title="Source & Tracking">
+          <DetailRow label="UTM Source" value={lead.utm?.source} />
+          <DetailRow label="UTM Medium" value={lead.utm?.medium} />
+          <DetailRow label="UTM Campaign" value={lead.utm?.campaign} />
+          <DetailRow label="UTM Term" value={lead.utm?.term} />
+          <DetailRow label="UTM Content" value={lead.utm?.content} />
+          <DetailRow label="Landing Page" value={lead.utm?.landingPage} />
+          <DetailRow label="Referrer" value={lead.utm?.referrer} />
+          {lead.referral?.code && <DetailRow label="Referral Code" value={lead.referral.code} />}
+          {lead.referral?.partnerName && <DetailRow label="Partner Name" value={lead.referral.partnerName} />}
+          {lead.referral?.partnerLink && <DetailRow label="Partner Link" value={lead.referral.partnerLink} />}
+          <DetailRow label="Track" value={TRACK_LABELS[lead.track] ?? lead.track} />
         </Card>
       </div>
-      {/* Row 2: Recent Calls | Recent Communications */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="Recent Calls">
-          {!calls?.data.length && <p className="text-xs text-slate-400">No Calls Logged Yet</p>}
-          {calls?.data.slice(0, 5).map((c) => (
-            <div key={c._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0">
-              <p className="font-medium text-slate-700">
-                {c.subStage ?? c.stage} {c.durationSeconds
-                  ? `· ${c.durationSeconds >= 3600 ? `${Math.floor(c.durationSeconds / 3600)}h ` : ''}${Math.floor((c.durationSeconds % 3600) / 60)}m ${c.durationSeconds % 60}s`
-                  : ''}
-              </p>
-              <p className="text-slate-400">
-                {c.user?.name} · {formatDateTime(c.createdAt)}
-              </p>
-            </div>
-          ))}
-        </Card>
-        <Card title="Recent Communications">
-          {!messages?.data.length && <p className="text-xs text-slate-400">Nothing Sent Yet</p>}
-          {messages?.data.slice(0, 5).map((m) => (
-            <div key={m._id} className="flex items-start justify-between gap-2 border-b border-slate-50 py-1.5 text-xs last:border-0">
-              <span className="min-w-0">
-                <span className="block truncate font-medium text-slate-700">
-                  {m.channel.toUpperCase()} · {m.template ?? 'custom'}
-                </span>
-                <span className="text-slate-400">
-                  {m.sentBy} · {timeAgo(m.createdAt)}
-                </span>
-              </span>
-              {!isSimulatedStatus(m) && (
-                <Badge tone={m.status === 'delivered' ? 'green' : m.status === 'failed' || m.status === 'bounced' ? 'red' : 'blue'}>{m.status}</Badge>
-              )}
-            </div>
-          ))}
-        </Card>
+      <div className="space-y-4">
+        {recentCalls}
+        {recentMessages}
       </div>
     </div>
   )
@@ -442,7 +521,7 @@ export default function LeadDetailPage() {
         {isLoading || !lead ? (
           <Skeleton className="h-48 w-full" />
         ) : tab === 'overview' ? (
-          <OverviewTab lead={lead} onEditCustom={canEdit ? () => setTab('discussion') : undefined} onViewNotes={() => setTab('notes')} />
+          <OverviewTab lead={lead} compact={isCounsellor(user)} onEditCustom={canEdit ? () => setTab('discussion') : undefined} onViewNotes={() => setTab('notes')} />
         ) : tab === 'profile' ? (
           <LeadProfileTab leadId={lead._id} />
         ) : tab === 'discussion' ? (

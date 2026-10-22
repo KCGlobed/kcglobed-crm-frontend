@@ -6,13 +6,11 @@ import {
   useCancelCampaignMutation,
   useDeleteMessageTemplateMutation,
   useGetCampaignQuery,
-  useListAutomationsQuery,
   useListCampaignsQuery,
   useListMessageTemplatesQuery,
   useMessagingOptionsQuery,
   useSaveMessageTemplateMutation,
   useSyncWhatsAppTemplatesMutation,
-  useUpdateAutomationMutation,
 } from '../../../services/messagingApi'
 import { useCurrentUser } from '../../../app/hooks'
 import { ConfirmDialog } from '../../../components/ui/feedback'
@@ -25,6 +23,7 @@ import { Modal } from '../../../components/ui/Modal'
 import { EmptyState, Skeleton } from '../../../components/ui/feedback'
 import { formatDateTime, parseApiError } from '../../../lib/utils'
 import type { CampaignRow, MessageTemplate } from '../../../types/models'
+import { AutomationsTab } from './AutomationsTab'
 import { TextsTab } from './TextsTab'
 
 function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onClose: () => void }) {
@@ -313,67 +312,6 @@ function TemplatesTab() {
   )
 }
 
-function AutomationsTab() {
-  const { data, isLoading } = useListAutomationsQuery()
-  const { data: sms } = useListMessageTemplatesQuery({ channel: 'sms', active: true })
-  const { data: email } = useListMessageTemplatesQuery({ channel: 'email', active: true })
-  const { data: wa } = useListMessageTemplatesQuery({ channel: 'whatsapp', active: true })
-  const [update] = useUpdateAutomationMutation()
-  const change = async (id: string, body: { isActive?: boolean; template?: string | null }) => {
-    try {
-      await update({ id, body }).unwrap()
-      toast.success('Automation updated')
-    } catch (err) {
-      toast.error(parseApiError(err).message)
-    }
-  }
-  if (isLoading) return <Skeleton className="h-40 w-full" />
-  return (
-    <div className="space-y-2">
-      <p className="text-xs text-slate-500">
-        Automations never fire for Junk / Invalid leads, skip opted-out channels and never repeat the same trigger on a lead within 24 hours.
-      </p>
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left text-[11px] uppercase text-slate-500">
-            <tr>
-              <th className="px-4 py-2">Trigger</th>
-              <th className="px-4 py-2">Channel</th>
-              <th className="px-4 py-2">Template</th>
-              <th className="px-4 py-2">On</th>
-              <th className="px-4 py-2">Last change</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {data?.data.map((r) => (
-              <tr key={r._id}>
-                <td className="px-4 py-2 text-slate-700">{r.triggerLabel}</td>
-                <td className="px-4 py-2">
-                  <Badge tone={r.channel === 'sms' ? 'blue' : r.channel === 'whatsapp' ? 'green' : 'violet'}>{r.channel.toUpperCase()}</Badge>
-                </td>
-                <td className="px-4 py-2">
-                  <Select className="!h-8 text-xs" value={r.template?._id ?? ''} onChange={(e) => change(r._id, { template: e.target.value || null })}>
-                    <option value="">— none —</option>
-                    {(r.channel === 'sms' ? sms : r.channel === 'whatsapp' ? wa : email)?.data.map((t) => (
-                      <option key={t._id} value={t._id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </Select>
-                </td>
-                <td className="px-4 py-2">
-                  <Checkbox checked={r.isActive} onChange={(e) => change(r._id, { isActive: e.target.checked })} />
-                </td>
-                <td className="px-4 py-2 text-[11px] text-slate-500">{r.updatedBy ? `${r.updatedBy} · ${formatDateTime(r.updatedAt)}` : 'Default'}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  )
-}
-
 function CampaignReport({ id, onClose }: { id: string; onClose: () => void }) {
   const { data } = useGetCampaignQuery(id, { pollingInterval: 5000 })
   const c = data?.data
@@ -475,11 +413,11 @@ export default function MessagingPage() {
   const [tab, setTab] = useState('templates')
   return (
     <>
-      <PageHeader title="SMS, Email & WhatsApp" description="Templates, saved texts for template variables, trigger-based automations and bulk-send reports. WhatsApp templates come from WhatsApp Manager via Sync." />
+      <PageHeader title="SMS, Email & WhatsApp" description="Templates, saved texts for template variables, automations on lead events or a schedule, and bulk-send reports. WhatsApp templates come from WhatsApp Manager via Sync." />
       <Tabs
         tabs={[
           { key: 'templates', label: 'Templates' },
-          { key: 'automations', label: 'Automations' },
+          { key: 'automations', label: 'Automation' },
           { key: 'campaigns', label: 'Bulk sends' },
           { key: 'texts', label: 'Texts' },
         ]}
