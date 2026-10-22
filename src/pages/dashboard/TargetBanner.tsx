@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { cn } from '../../lib/utils'
 import type { Mood } from '../../lib/targetMood'
 import type { Target } from '../../types/models'
@@ -29,7 +30,12 @@ export function TargetSmiley({ target, mood, className }: { target: Target; mood
       : `${target.percent}% done, ${mood.expected}% expected by now`
   return (
     <div className={cn('flex flex-col items-center text-center', className)} title={title} data-testid="banner-mood">
-      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 shadow-lg ring-2 ring-gold-300/70 sm:h-14 sm:w-14">
+      <span
+        className={cn(
+          'flex h-12 w-12 items-center justify-center rounded-full bg-white/15 shadow-lg ring-2 ring-gold-300/70 sm:h-14 sm:w-14',
+          target.status === 'completed' && 'animate-target-pop'
+        )}
+      >
         <span className="text-3xl leading-none drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)] sm:text-4xl" role="img" aria-label={mood.label}>
           {mood.emoji}
         </span>
@@ -39,9 +45,18 @@ export function TargetSmiley({ target, mood, className }: { target: Target; mood
   )
 }
 
-/** The progress bar along the banner's bottom edge; lighter shades than the list so it reads on purple. */
+/**
+ * The progress bar along the banner's bottom edge; lighter shades than the list so it reads on purple.
+ * It grows from empty when the dashboard opens, a sheen runs over a live target, and a completed one glows.
+ */
 export function TargetBar({ target }: { target: Target }) {
   const width = Math.min(100, target.percent)
+  const done = width >= 100
+  const [grown, setGrown] = useState(false)
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setGrown(true))
+    return () => cancelAnimationFrame(frame)
+  }, [])
   return (
     <div
       className="absolute inset-x-0 bottom-0 h-1.5 bg-white/15"
@@ -52,9 +67,16 @@ export function TargetBar({ target }: { target: Target }) {
       aria-valuemax={100}
     >
       <div
-        className={cn('h-full transition-all', width >= 100 ? 'bg-emerald-400' : width >= 50 ? 'bg-brand-300' : 'bg-amber-400')}
-        style={{ width: `${width}%` }}
-      />
+        className={cn(
+          'relative h-full transition-[width] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
+          done ? 'animate-target-glow bg-emerald-400' : cn('overflow-hidden', width >= 50 ? 'bg-brand-300' : 'bg-amber-400')
+        )}
+        style={{ width: `${grown ? width : 0}%` }}
+      >
+        {!done && (
+          <span aria-hidden className="animate-target-shimmer absolute inset-0 bg-linear-to-r from-transparent via-white/70 to-transparent" />
+        )}
+      </div>
     </div>
   )
 }
