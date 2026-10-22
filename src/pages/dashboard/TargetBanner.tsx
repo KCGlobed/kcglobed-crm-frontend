@@ -3,7 +3,9 @@ import { cn } from '../../lib/utils'
 import type { Mood } from '../../lib/targetMood'
 import type { Target } from '../../types/models'
 
-/** One line under the welcome heading: the stage, the count, time left and the pace still needed. */
+const MIN_VISIBLE = 2 // % of the bar drawn even at 0%
+
+/** One line under the welcome heading: the stage, the count and the time left. */
 export function TargetLine({ target, mood }: { target: Target; mood: Mood }) {
   return (
     <p className="mt-2 text-xs text-brand-100 sm:text-sm" data-testid="banner-target">
@@ -14,20 +16,19 @@ export function TargetLine({ target, mood }: { target: Target; mood: Mood }) {
       </span>
       {' · '}
       {mood.timeLeft}
-      {mood.pace && ` · ${mood.pace}`}
     </p>
   )
 }
 
 /**
- * The mood in the banner's right corner; the tooltip spells out how it was read. Positioned absolutely by the
- * banner so a larger smiley never makes the banner taller.
+ * The mood in the banner's right corner: the emoji follows the mood, the caption always reads "Goal Post" and
+ * the tooltip names the mood. Positioned absolutely by the banner so a larger smiley never makes it taller.
  */
 export function TargetSmiley({ target, mood, className }: { target: Target; mood: Mood; className?: string }) {
   const title =
     target.status === 'completed'
-      ? `${target.achieved} of ${target.targetCount} reached`
-      : `${target.percent}% done, ${mood.expected}% expected by now`
+      ? `${mood.label} ${target.achieved} of ${target.targetCount} reached`
+      : `${mood.label}: ${target.percent}% done, ${mood.expected}% expected by now`
   return (
     <div className={cn('flex flex-col items-center text-center', className)} title={title} data-testid="banner-mood">
       <span
@@ -40,7 +41,7 @@ export function TargetSmiley({ target, mood, className }: { target: Target; mood
           {mood.emoji}
         </span>
       </span>
-      <span className="mt-1 whitespace-nowrap text-xs font-bold tracking-wide text-gold-300">{mood.label}</span>
+      <span className="mt-1 whitespace-nowrap text-xs font-bold tracking-wide text-gold-300">Goal Post</span>
     </div>
   )
 }
@@ -52,6 +53,8 @@ export function TargetSmiley({ target, mood, className }: { target: Target; mood
 export function TargetBar({ target }: { target: Target }) {
   const width = Math.min(100, target.percent)
   const done = width >= 100
+  // a just-started target still shows a sliver at the start, never an empty bar
+  const shown = Math.max(MIN_VISIBLE, width)
   const [grown, setGrown] = useState(false)
   useEffect(() => {
     const frame = requestAnimationFrame(() => setGrown(true))
@@ -71,7 +74,7 @@ export function TargetBar({ target }: { target: Target }) {
           'relative h-full transition-[width] duration-[1100ms] ease-[cubic-bezier(0.22,1,0.36,1)]',
           done ? 'animate-target-glow bg-emerald-400' : cn('overflow-hidden', width >= 50 ? 'bg-brand-300' : 'bg-amber-400')
         )}
-        style={{ width: `${grown ? width : 0}%` }}
+        style={{ width: `${grown ? shown : 0}%` }}
       >
         {!done && (
           <span aria-hidden className="animate-target-shimmer absolute inset-0 bg-linear-to-r from-transparent via-white/70 to-transparent" />
