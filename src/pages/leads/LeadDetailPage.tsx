@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   CalendarPlus,
@@ -322,7 +322,9 @@ export default function LeadDetailPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
   const admin = isAdminLike(user)
-  const [tab, setTab] = useState('overview')
+  // ?tab=whatsapp (a WhatsApp reply notification) opens straight on that tab
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState(() => searchParams.get('tab') || 'overview')
   const [modal, setModal] = useState<'edit' | 'assign' | 'delete' | 'call' | 'update' | 'stage' | 'followup' | 'note' | 'sms' | 'email' | 'whatsapp' | null>(null)
 
   const { data, isLoading, isError, error, refetch } = useGetLeadQuery(id, { skip: !id })

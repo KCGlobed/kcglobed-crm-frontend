@@ -1206,7 +1206,7 @@ export interface AutomationBody {
   isActive?: boolean
 }
 
-export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_assigned'
+export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_assigned' | 'whatsapp_reply'
 
 /**
  * Communication → Automation → Counsellor alerts: the wording, channels and windows of the three staff-facing
