@@ -7,6 +7,7 @@ import {
   Settings2,
   ShieldCheck,
   Shuffle,
+  Target,
   UserCog,
   Users,
 } from 'lucide-react'
@@ -28,6 +29,7 @@ export const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
       { label: 'Dashboard', path: '/app/dashboard', module: 'dashboard', icon: LayoutDashboard },
       { label: 'Leads', path: '/app/leads', module: 'leads', icon: ClipboardList },
       { label: 'Follow-ups', path: '/app/tasks', module: 'tasks', icon: CalendarClock },
+      { label: 'Target Manager', path: '/app/targets', module: 'targets', icon: Target },
     ],
   },
   {

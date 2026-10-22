@@ -115,6 +115,7 @@ const crmApi = createApi({
     'PushDevices',
     'Breaks',
     'Attendance',
+    'Targets',
   ],
   endpoints: () => ({}),
 })

@@ -18,6 +18,7 @@ export type ModuleKey =
   | 'masters'
   | 'audit'
   | 'attendance'
+  | 'targets'
 
 export type ActionKey =
   | 'view'
@@ -1569,4 +1570,34 @@ export interface AttendanceRow {
   breakSeconds: number
   activeBreak: { type: BreakType; label: string; note?: string; startedAt: string } | null
   incompleteBreaks: number
+}
+
+// ---------- Target Manager ----------
+
+export type TargetStatus = 'active' | 'completed' | 'cancelled' | 'expired'
+
+/** A lead owner's goal: `targetCount` leads entering `stage` between startAt and endAt. */
+export interface Target {
+  _id: string
+  assignee: { _id: string; name: string }
+  stage: { _id: string; name: string }
+  targetCount: number
+  /** leads that entered the stage in the range while owned by the assignee (live while active, frozen once closed) */
+  achieved: number
+  /** achieved ÷ targetCount × 100, can exceed 100 */
+  percent: number
+  description?: string | null
+  startAt: string
+  endAt: string
+  status: TargetStatus
+  closedAt?: string | null
+  assignedBy?: { _id: string; name: string } | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TargetOptions {
+  stages: { _id: string; name: string }[]
+  /** assignee id → their active target id: they cannot get another until it closes */
+  busyAssignees: Record<string, string>
 }
