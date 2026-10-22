@@ -21,6 +21,11 @@ export const targetsApi = api.injectEndpoints({
       query: (params) => ({ url: '/targets', params: cleanParams(params) }),
       providesTags: ['Targets'],
     }),
+    // the dashboard banner: polled, so marked as background (it must not keep an idle session alive)
+    myTarget: build.query<ApiResponse<Target | null>, void>({
+      query: () => ({ url: '/targets/mine', headers: { 'X-Background': '1' } }),
+      providesTags: ['Targets'],
+    }),
     targetOptions: build.query<ApiResponse<TargetOptions>, void>({
       query: () => '/targets/options',
       providesTags: ['Targets'],
@@ -42,6 +47,7 @@ export const targetsApi = api.injectEndpoints({
 
 export const {
   useListTargetsQuery,
+  useMyTargetQuery,
   useTargetOptionsQuery,
   useCreateTargetMutation,
   useUpdateTargetMutation,

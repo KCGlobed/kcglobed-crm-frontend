@@ -5,6 +5,9 @@ import dayjs from 'dayjs'
 import { useDashboardSummaryQuery } from '../../services/miscApi'
 import { leadsApi, useListLeadsQuery, type LeadListParams } from '../../services/leadsApi'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
+import { useMyTargetQuery } from '../../services/targetsApi'
+import { targetMood } from '../../lib/targetMood'
+import { TargetBar, TargetLine, TargetSmiley } from './TargetBanner'
 import { Card, PageHeader } from '../../components/ui/misc'
 import { DateRangeFilter } from '../../components/ui/DateRangeFilter'
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/feedback'
@@ -724,6 +727,10 @@ function RecentLeadsCard({
 
 export default function DashboardPage() {
   const user = useCurrentUser()
+  // the signed-in person's own target for the banner; re-read every 2 minutes as leads change stage
+  const { data: mine } = useMyTargetQuery(undefined, { skip: !user || user.isSuperAdmin, pollingInterval: 120_000 })
+  const myTarget = mine?.data ?? null
+  const mood = myTarget ? targetMood(myTarget) : null
   const counsellor = isCounsellor(user)
   const navigate = useNavigate()
   const { data, isLoading, isError, error, refetch } = useDashboardSummaryQuery()
@@ -801,13 +808,18 @@ export default function DashboardPage() {
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-brand-400/40 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-24 right-16 h-48 w-48 rounded-full border border-gold-400/40" />
         <div aria-hidden className="pointer-events-none absolute -bottom-12 right-44 h-28 w-28 rounded-full border border-white/10" />
-        <div className="relative">
-          <p className="flex items-center gap-2 text-xs font-medium text-gold-300">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" />
-            {today}
-          </p>
-          <h1 className="mt-1 truncate text-xl font-bold tracking-tight sm:text-2xl">Welcome back, {user?.name.split(' ')[0] ?? ''}</h1>
+        <div className="relative flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-xs font-medium text-gold-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-gold-400" />
+              {today}
+            </p>
+            <h1 className="mt-1 truncate text-xl font-bold tracking-tight sm:text-2xl">Welcome back, {user?.name.split(' ')[0] ?? ''}</h1>
+            {myTarget && mood && <TargetLine target={myTarget} mood={mood} />}
+          </div>
+          {myTarget && mood && <TargetSmiley target={myTarget} mood={mood} />}
         </div>
+        {myTarget && <TargetBar target={myTarget} />}
       </section>
 
       {counsellor ? (
