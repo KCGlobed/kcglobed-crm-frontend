@@ -32,6 +32,7 @@ export const NOTIFICATION_ICONS: Record<string, { icon: typeof Bell; className: 
   language_barrier: { icon: Languages, className: 'bg-pink-50 text-pink-600' },
   bulk_done: { icon: Send, className: 'bg-emerald-50 text-emerald-700' },
   whatsapp_reply: { icon: MessageCircle, className: 'bg-emerald-50 text-emerald-700' },
+  team_alert: { icon: Bell, className: 'bg-brand-50 text-brand-600' },
   export_ready: { icon: Download, className: 'bg-emerald-50 text-emerald-700' },
   integration_error: { icon: PlugZap, className: 'bg-red-50 text-red-600' },
   system: { icon: Sparkles, className: 'bg-slate-100 text-slate-500' },

@@ -1173,8 +1173,15 @@ export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_
  */
 export interface StaffAlertRow {
   _id: string
-  trigger: StaffAlertTrigger
+  /** one of the three built-in alerts; null for an alert added in the CRM (Team alerts → Add alert) */
+  trigger: StaffAlertTrigger | null
   label: string
+  /** added in the CRM: its name, the lead event it goes out on (straight away) and the lead conditions it needs */
+  custom?: boolean
+  name?: string | null
+  event?: string | null
+  eventLabel?: string | null
+  conditions?: FilterCondition[]
   /** the notification type it is filed under in the bell / Activity Log */
   notificationType: string
   isActive: boolean
@@ -1198,6 +1205,13 @@ export interface StaffAlertRow {
   ctaLabel: string
   /** one line: when it goes out */
   when: string
+  /** who gets it: the lead's counsellor (the follow-up's assignee), everyone in these roles, these users — the last
+   * two only about leads they can open */
+  notifyOwner: boolean
+  recipientRoles: string[]
+  recipientUsers: string[]
+  /** one line: "Counsellor + Support + 2 people" */
+  recipientsText: string
   updatedBy: string | null
   updatedAt: string
   createdAt: string
@@ -1220,6 +1234,13 @@ export interface StaffAlertBody {
   pushTitle?: string
   pushBody?: string
   ctaLabel?: string
+  notifyOwner?: boolean
+  recipientRoles?: string[]
+  recipientUsers?: string[]
+  /** an added alert only */
+  name?: string
+  event?: string
+  conditions?: FilterCondition[]
 }
 
 export interface StaffAlertPlaceholder {
@@ -1230,13 +1251,20 @@ export interface StaffAlertPlaceholder {
 
 export interface StaffAlertsResponse {
   items: StaffAlertRow[]
-  placeholders: Record<StaffAlertTrigger, StaffAlertPlaceholder[]>
+  /** per built-in trigger, and "custom" for an added alert */
+  placeholders: Record<string, StaffAlertPlaceholder[]>
   workingHours: { start: string; end: string; days: number[] }
   /** "webinfosys" needs a DLT sender id + template id before SMS can be switched on; "console" only logs */
   smsProvider: string
   dltTypes: string[]
   reminderOptions: number[]
   offsetRange: [number, number]
+  /** who an alert can go to: role keys (role templates + Super Admin / Admin / Counsellor) and active users */
+  recipientRoles: { value: string; label: string }[]
+  recipientUsers: { value: string; label: string; role: string }[]
+  /** Add alert: the lead events it can go out on, and the ready-made wording */
+  events?: { value: string; label: string }[]
+  customDefaults?: StaffAlertBody
 }
 
 /** The test send's outcome per channel (only the channels that are on). */

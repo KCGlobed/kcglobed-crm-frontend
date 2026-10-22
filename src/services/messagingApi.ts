@@ -143,6 +143,16 @@ export const messagingApi = api.injectEndpoints({
       invalidatesTags: (_r, error) => (error ? [] : ['StaffAlerts']),
     }),
     /** The draft on screen (or the saved alert) to the signed-in user with sample values, on every channel it has on. */
+    /** Team alerts → Add alert: a new alert on a lead event. */
+    createStaffAlert: build.mutation<ApiResponse<StaffAlertRow>, StaffAlertBody>({
+      query: (body) => ({ url: '/notifications/alerts', method: 'POST', body }),
+      invalidatesTags: (_r, error) => (error ? [] : ['StaffAlerts']),
+    }),
+    /** An added alert only (the built-in ones are switched off instead); `key` is its id. */
+    deleteStaffAlert: build.mutation<ApiResponse<{ _id: string; name: string }>, string>({
+      query: (key) => ({ url: `/notifications/alerts/${key}`, method: 'DELETE' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['StaffAlerts']),
+    }),
     testStaffAlert: build.mutation<ApiResponse<StaffAlertTestResult>, { trigger: string; body: StaffAlertBody }>({
       query: ({ trigger, body }) => ({ url: `/notifications/alerts/${trigger}/test`, method: 'POST', body }),
     }),
@@ -269,6 +279,8 @@ export const {
   usePreviewAutomationAudienceMutation,
   useListStaffAlertsQuery,
   useUpdateStaffAlertMutation,
+  useCreateStaffAlertMutation,
+  useDeleteStaffAlertMutation,
   useTestStaffAlertMutation,
   useListCampaignsQuery,
   useGetCampaignQuery,

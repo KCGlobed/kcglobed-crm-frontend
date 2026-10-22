@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Mail, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -408,23 +408,26 @@ function CampaignsTab() {
   )
 }
 
+// each tab with the one line that says what it is for
+const PAGE_TABS = [
+  { key: 'templates', label: 'Templates', hint: 'The SMS, email and WhatsApp messages you can send to leads.' },
+  { key: 'automations', label: 'Automation', hint: 'Messages that go out on their own, and the alerts your team gets.' },
+  { key: 'campaigns', label: 'Bulk sends', hint: 'Messages sent to many leads at once, with how each one went.' },
+  { key: 'texts', label: 'Texts', hint: 'Saved values — a link, a date, a venue — to fill in template variables.' },
+] as const
+
 /** Admin: SMS / email / WhatsApp templates, automations and bulk-send reports (Go-live §8, GL-39). */
 export default function MessagingPage() {
-  const [tab, setTab] = useState('templates')
+  // the open tab lives in the URL (?tab=automations), so a refresh or a shared link opens the same tab
+  const [params, setParams] = useSearchParams()
+  const tab = PAGE_TABS.find((t) => t.key === params.get('tab'))?.key ?? 'templates'
+  const setTab = (key: string) => setParams(key === 'templates' ? {} : { tab: key }, { replace: true })
   return (
     <>
-      <PageHeader title="SMS, Email & WhatsApp" description="Templates, saved texts for template variables, automations on lead events or a schedule, and bulk-send reports. WhatsApp templates come from WhatsApp Manager via Sync." />
-      <Tabs
-        tabs={[
-          { key: 'templates', label: 'Templates' },
-          { key: 'automations', label: 'Automation' },
-          { key: 'campaigns', label: 'Bulk sends' },
-          { key: 'texts', label: 'Texts' },
-        ]}
-        active={tab}
-        onChange={setTab}
-      />
-      <div className="mt-4">
+      <PageHeader title="SMS, Email & WhatsApp" description="Message templates, automatic messages and bulk sends to your leads." />
+      <Tabs tabs={PAGE_TABS.map(({ key, label }) => ({ key, label }))} active={tab} onChange={setTab} />
+      <p className="mt-3 text-xs text-slate-500">{PAGE_TABS.find((t) => t.key === tab)?.hint}</p>
+      <div className="mt-3">
         {tab === 'templates' ? <TemplatesTab /> : tab === 'automations' ? <AutomationsTab /> : tab === 'texts' ? <TextsTab /> : <CampaignsTab />}
       </div>
     </>
