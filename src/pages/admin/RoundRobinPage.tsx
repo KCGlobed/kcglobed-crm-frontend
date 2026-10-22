@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Activity, FileSpreadsheet, FileText, Inbox, RefreshCw, UserCheck, UserRoundCheck, type LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import dayjs from 'dayjs'
 import { authorizedDownload } from '../../lib/download'
 import {
   useRoundRobinStatusQuery,
@@ -300,6 +301,7 @@ function memberStatus(m: RoundRobinMember): { label: string; tone: 'green' | 'sl
   if (!m.receivesLeads) return { label: 'Opted out', tone: 'slate' }
   if (!m.hasLeadsAccess) return { label: 'No leads access', tone: 'amber' }
   if (m.teamPaused) return { label: 'Paused team', tone: 'amber' }
+  if (m.onBreak) return { label: `On ${m.onBreak.label} · since ${dayjs(m.onBreak.startedAt).format('h:mm A')}`, tone: 'amber' }
   return { label: 'Offline', tone: 'slate' }
 }
 
