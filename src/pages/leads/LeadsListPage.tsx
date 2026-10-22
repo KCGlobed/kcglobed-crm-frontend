@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Bookmark, Download, Filter, Info, Mail, MessageCircle, MessageSquareText, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
+import { Bookmark, Download, Filter, Info, Mail, MessageCircle, MessageSquareText, PhoneCall, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useDeleteSavedFilterMutation,
@@ -33,6 +33,9 @@ import { parseConditions, type LeadSelection } from './leadSelection'
 import { BulkSendModal } from './BulkSendModal'
 import { DEFAULT_VISIBLE_COLUMNS, LOCKED_COLUMNS } from './leadColumns'
 import { useLeadColumns } from './useLeadColumns'
+import { LeadRowActions } from './LeadRowActions'
+import { startQueue } from '../../features/telephony/callQueue'
+import { useTelephonyEnabled } from '../../features/telephony/useLiveCalls'
 
 /** URL params that are not lead filters: paging, sorting, and the dashboard's `from` marker */
 const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order', 'from']
@@ -89,6 +92,9 @@ export default function LeadsListPage() {
   // same send permission as a single send (a counsellor only ever sees and selects their own leads)
   const canSendBulk = can(user, 'communications', 'create')
   const canBulk = can(user, 'leads', 'reassign') || canSendBulk
+  // click-to-dial: a Call action per row and "Start calling" through the list (the dialer must be set up)
+  const { enabled: dialerEnabled } = useTelephonyEnabled()
+  const canCall = dialerEnabled && can(user, 'leads', 'edit')
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
   const [filterOpen, setFilterOpen] = useState(false)
@@ -227,10 +233,25 @@ export default function LeadsListPage() {
       </span>
     ),
   }
+  const actionsColumn: Column<Lead> = {
+    key: '__actions',
+    header: '',
+    align: 'right',
+    className: 'w-10',
+    render: (l) => <LeadRowActions lead={l} />,
+  }
   const columns = [
     ...(canBulk ? [selectColumn] : []),
     ...columnPrefs.visibleKeys.map((key) => leadColumns.find((c) => c.key === key)!).filter(Boolean),
+    ...(canCall ? [actionsColumn] : []),
   ]
+  // "Start calling": the selected leads, else this page, one after the other (each opens with ?dial=1)
+  const callableIds = (selected.length ? (data?.data.filter((l) => selected.includes(l._id)) ?? []) : (data?.data ?? [])).map((l) => l._id)
+  const startCalling = () => {
+    const first = startQueue(callableIds, smart ? smartLabel(smart) : params.get('search') ? 'search' : undefined)
+    if (!first) return toast.error('No leads to call')
+    navigate(`/app/leads/${first}?dial=1`)
+  }
   const smart = params.get('smart')
   const chips = linkedFilterChips(params, meta?.data.fields)
   // "Not Connected" pill: the backend lists it as a smart filter from this release on. Against an
@@ -279,6 +300,11 @@ export default function LeadsListPage() {
         description={data ? `${total} leads ${admin ? 'in the CRM' : 'assigned to you'} · auto-refreshes every 30 s` : undefined}
         actions={
           <>
+            {canCall && callableIds.length > 0 && (
+              <Button variant="outline" size="sm" onClick={startCalling} title="Call these leads one after the other, from this page" data-testid="start-calling">
+                <PhoneCall className="h-3.5 w-3.5" /> Start calling{selected.length ? ` (${selected.length})` : ''}
+              </Button>
+            )}
             {can(user, 'leads', 'export') && (
               <Button variant="outline" size="sm" onClick={() => setExportOpen(true)}>
                 <Download className="h-3.5 w-3.5" /> Export

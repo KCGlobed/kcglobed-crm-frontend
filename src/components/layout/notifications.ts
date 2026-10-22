@@ -10,6 +10,8 @@ import {
   Inbox,
   Languages,
   MessageCircle,
+  PhoneIncoming,
+  PhoneMissed,
   PlugZap,
   Repeat,
   Send,
@@ -36,6 +38,8 @@ export const NOTIFICATION_ICONS: Record<string, { icon: typeof Bell; className: 
   whatsapp_template: { icon: MessageCircle, className: 'bg-emerald-50 text-emerald-700' },
   export_ready: { icon: Download, className: 'bg-emerald-50 text-emerald-700' },
   integration_error: { icon: PlugZap, className: 'bg-red-50 text-red-600' },
+  incoming_call: { icon: PhoneIncoming, className: 'bg-emerald-50 text-emerald-700' },
+  missed_call: { icon: PhoneMissed, className: 'bg-red-50 text-red-600' },
   system: { icon: Sparkles, className: 'bg-slate-100 text-slate-500' },
 }
 
@@ -44,7 +48,9 @@ export function useOpenNotification() {
   const navigate = useNavigate()
   return useCallback(
     (n: CrmNotification) => {
-      if (n.data?.leadId) navigate(`/app/leads/${n.data.leadId}`)
+      // a dialer call: the lead page opens its outcome drawer once the call has ended
+      if (n.data?.leadId && n.data?.callId) navigate(`/app/leads/${n.data.leadId}?disposition=${n.data.callId}`)
+      else if (n.data?.leadId) navigate(`/app/leads/${n.data.leadId}`)
       else if (n.data?.smart) navigate(`/app/leads?smart=${n.data.smart}`)
       else if (n.data?.templateId) navigate(`/app/admin/messaging/whatsapp/${n.data.templateId}`)
       else if (n.data?.url)

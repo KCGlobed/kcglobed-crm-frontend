@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Check, Lock, LockOpen, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -138,7 +138,7 @@ function UnlockModal({ leadId, onClose }: { leadId: string; onClose: () => void 
   )
 }
 
-export function LeadProfileTab({ leadId }: { leadId: string }) {
+export function LeadProfileTab({ leadId, actions }: { leadId: string; actions?: ReactNode }) {
   const user = useCurrentUser()
   const { data, isLoading, isError, error, refetch } = useLeadProfileQuery(leadId)
   const [step, setStep] = useState(0)
@@ -179,6 +179,7 @@ export function LeadProfileTab({ leadId }: { leadId: string }) {
           </div>
           <span className="text-xs font-semibold tabular-nums text-slate-700">{profile.completionPercent}%</span>
         </div>
+        {actions && <div className="flex items-center gap-2">{actions}</div>}
         {profile.locked ? (
           <div className="flex items-center gap-2">
             <Badge tone="violet">

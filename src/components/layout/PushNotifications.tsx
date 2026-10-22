@@ -22,6 +22,11 @@ export function PushNotifications() {
     if (!userId) return
     let cancelled = false
     const arrived = (m: PushMessage) => {
+      if (m.type === 'incoming_call') {
+        // the dialer popover shows who is calling; the push only makes the live feed refresh at once
+        dispatch(api.util.invalidateTags(['LiveCalls', 'Notifications']))
+        return
+      }
       showPushToast(m, navigate)
       dispatch(api.util.invalidateTags(['Notifications'])) // the bell count catches up at once
     }

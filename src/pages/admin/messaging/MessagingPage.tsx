@@ -25,6 +25,7 @@ import { WhatsAppStatusBadge } from '../../../components/whatsapp/TemplateStatus
 import { formatDateTime, parseApiError } from '../../../lib/utils'
 import type { CampaignRow, MessageTemplate } from '../../../types/models'
 import { AutomationsTab } from './AutomationsTab'
+import { CallingTab } from './CallingTab'
 import { TextsTab } from './TextsTab'
 
 function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onClose: () => void }) {

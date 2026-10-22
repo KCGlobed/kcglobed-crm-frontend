@@ -11,6 +11,7 @@ import { formatDateTime, parseApiError, timeAgo } from '../../lib/utils'
 import type { Task, TaskView } from '../../types/models'
 import { FollowUpActions } from './FollowUpActions'
 import { TASK_TYPES, statusLabel, statusTone } from './taskMeta'
+import { CallButton } from '../../features/telephony/CallButton'
 
 const VIEWS: { key: TaskView; label: string }[] = [
   { key: 'today', label: 'Today' },
@@ -89,7 +90,17 @@ export default function TasksPage() {
     },
     ...(who === 'me' ? [] : [{ key: 'assignee', header: 'Assignee', render: (t: Task) => <span className="text-xs">{t.assignee.name}</span> }]),
     { key: 'status', header: 'Status', render: (t) => <Badge tone={statusTone(t)}>{statusLabel(t)}</Badge> },
-    { key: 'actions', header: '', className: 'text-right', render: (t) => <FollowUpActions task={t} /> },
+    {
+      key: 'actions',
+      header: '',
+      className: 'text-right',
+      render: (t) => (
+        <div className="flex items-center justify-end gap-1">
+          {t.status === 'open' && <CallButton leadId={t.lead._id} iconOnly variant="ghost" />}
+          <FollowUpActions task={t} />
+        </div>
+      ),
+    },
   ]
 
   return (

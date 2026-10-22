@@ -249,6 +249,11 @@ textarea:focus-visible {
   --normal-border: var(--color-red-700);
   --normal-text: #ffffff;
 }
+[data-sonner-toast].crm-toast-call {
+  --normal-bg: var(--color-emerald-600);
+  --normal-border: var(--color-emerald-700);
+  --normal-text: #ffffff;
+}
 [data-sonner-toast].crm-toast [data-description] {
   color: var(--normal-text);
   opacity: 0.88;
