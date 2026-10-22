@@ -18,8 +18,12 @@ import {
 } from 'lucide-react'
 import { useLeadTimelineQuery } from '../../services/leadsApi'
 import { ErrorState, Skeleton, EmptyState } from '../../components/ui/feedback'
+import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
+import { formatHms } from '../../lib/durations'
 import { cn, formatDateTime, parseApiError } from '../../lib/utils'
+import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
+import { statusLabel, statusTone } from '../../features/telephony/callState'
 
 const TYPE_ICONS: Record<string, { icon: typeof Sparkles; className: string }> = {
   created: { icon: FilePlus2, className: 'bg-emerald-50 text-emerald-600' },
@@ -53,6 +57,23 @@ const FILTERS: { key: string; label: string; types?: string }[] = [
   { key: 'edits', label: 'Profile Update', types: 'edit,profile' },
 ]
 
+
+/** A dialer call's status, talk time and recording under its timeline entry (the data the backend puts on it). */
+function CallActivityExtras({ data }: { data: Record<string, unknown> }) {
+  const callId = typeof data.callId === 'string' ? data.callId : null
+  const status = typeof data.status === 'string' ? data.status : undefined
+  const duration = typeof data.durationSeconds === 'number' ? data.durationSeconds : null
+  const proofId = typeof data.recordingProofId === 'string' ? data.recordingProofId : null
+  const dialer = data.source === 'dialer'
+  if (!callId || (!dialer && !proofId)) return null
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-2" data-testid="call-activity-extras">
+      {dialer && status && <Badge tone={statusTone(status)}>{statusLabel(status)}</Badge>}
+      {dialer && !!duration && <span className="font-mono text-[11px] tabular-nums text-slate-500">{formatHms(duration)}</span>}
+      {proofId && <RecordingPlayer callId={callId} proofId={proofId} compact />}
+    </div>
+  )
+}
 
 function TimelinePage({ leadId, page, types, isLast, onMore }: {
   leadId: string
@@ -92,6 +113,7 @@ function TimelinePage({ leadId, page, types, isLast, onMore }: {
               {activity.description && (
                 <p className="mt-0.5 whitespace-pre-wrap text-xs text-slate-500">{activity.description}</p>
               )}
+              {activity.type === 'call' && activity.data && <CallActivityExtras data={activity.data} />}
               <p className="mt-0.5 text-[11px] text-slate-400">
                 {activity.actor?.name ?? activity.actorName ?? 'System'} · {formatDateTime(activity.createdAt)}
               </p>

@@ -37,6 +37,17 @@ const schema = z.object({
     .trim()
     .regex(/^(\d{10})?$/, 'Mobile must be 10 digits')
     .optional(),
+  // the dialer (Smartflo): the agent id it created for this user, and the mobile it rings if that differs
+  telephonyAgentId: z
+    .string()
+    .trim()
+    .regex(/^(0[56]0\d{6,9})?$/, 'A Smartflo agent ID looks like 050XXXXXXXX')
+    .optional(),
+  telephonyAgentNumber: z
+    .string()
+    .trim()
+    .regex(/^(\+?91)?(\d{10})?$/, 'Mobile must be 10 digits')
+    .optional(),
   password: z
     .string()
     .optional()
@@ -118,6 +129,8 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
       email: user?.email ?? '',
       designation: user?.designation ?? '',
       mobile: user?.mobile ?? '',
+      telephonyAgentId: user?.telephonyAgentId ?? '',
+      telephonyAgentNumber: user?.telephonyAgentNumber ?? '',
       password: '',
       team: refId(user?.team),
       reportingManager: refId(user?.reportingManager),
@@ -190,6 +203,8 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
       email: values.email,
       designation: values.designation,
       mobile: values.mobile || null,
+      telephonyAgentId: values.telephonyAgentId || null,
+      telephonyAgentNumber: values.telephonyAgentNumber || null,
       team: values.team || null,
       reportingManager: values.reportingManager || null,
       isActive: values.isActive,
@@ -275,8 +290,14 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
             <FormField label="Designation" required error={errors.designation?.message}>
               <Input maxLength={60} placeholder="e.g. Admission Counsellor" {...register('designation')} aria-invalid={!!errors.designation} />
             </FormField>
-            <FormField label="Mobile" error={errors.mobile?.message} hint="Optional · 10 digits · used as {counsellor_mobile} in SMS">
+            <FormField label="Mobile" error={errors.mobile?.message} hint="Optional · 10 digits · used as {counsellor_mobile} in SMS, and the phone the dialer rings">
               <Input aria-invalid={!!errors.mobile} {...mobileField(register('mobile'))} />
+            </FormField>
+            <FormField label="Dialer agent ID" error={errors.telephonyAgentId?.message} hint="Smartflo agent (050…) — filled by Communication → Calling → Create in Smartflo / Sync">
+              <Input placeholder="050XXXXXXXX" aria-invalid={!!errors.telephonyAgentId} {...register('telephonyAgentId')} data-testid="telephony-agent-id" />
+            </FormField>
+            <FormField label="Dialer mobile (if different)" error={errors.telephonyAgentNumber?.message} hint="Only when the number registered in Smartflo is not the mobile above">
+              <Input placeholder="10 digits" aria-invalid={!!errors.telephonyAgentNumber} {...register('telephonyAgentNumber')} data-testid="telephony-agent-number" />
             </FormField>
             <FormField
               label={isEdit ? 'Reset password (optional)' : 'Password (optional)'}

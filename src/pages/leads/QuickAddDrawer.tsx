@@ -14,7 +14,7 @@ import { Button } from '../../components/ui/Button'
 import { FieldGroup, FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { mobileField } from '../../lib/mobile'
 import { parseApiError } from '../../lib/utils'
-import type { DuplicateCheck, Source } from '../../types/models'
+import type { DuplicateCheck, Lead, Source } from '../../types/models'
 import { ownerLabel, useAssignableOwners } from './leadSelection'
 
 // GL-10 Quick Add sources: these lead the dropdown when Masters has them (matched
@@ -53,8 +53,22 @@ const schema = z.object({
 })
 type FormValues = z.input<typeof schema>
 
-/** One-screen Quick Add (GL-10). The duplicate check runs while typing, before save. */
-export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+/**
+ * One-screen Quick Add (GL-10). The duplicate check runs while typing, before save. `initialMobile`
+ * prefills the number (an unknown caller from the dialer); `onCreated` gets the new lead before the
+ * page opens it.
+ */
+export function QuickAddDrawer({
+  open,
+  onClose,
+  initialMobile,
+  onCreated,
+}: {
+  open: boolean
+  onClose: () => void
+  initialMobile?: string
+  onCreated?: (lead: Lead) => void
+}) {
   const user = useCurrentUser()
   const navigate = useNavigate()
   const counsellor = isCounsellor(user)
@@ -76,7 +90,7 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
     defaultValues: {
       firstName: '',
       lastName: '',
-      mobile: '',
+      mobile: (initialMobile ?? '').replace(/\D/g, '').slice(-10),
       email: '',
       state: '',
       city: '',
@@ -128,6 +142,7 @@ export function QuickAddDrawer({ open, onClose }: { open: boolean; onClose: () =
       toast.success(
         `Lead ${res.data.leadNo} created${res.data.owner ? ` · owner ${res.data.owner.name}` : ' · in the Unassigned Pool'}`
       )
+      onCreated?.(res.data)
       onClose()
       navigate(`/app/leads/${res.data._id}`)
     } catch (err) {

@@ -72,6 +72,9 @@ export interface User {
   templateKey?: string
   lastLoginAt?: string
   createdAt: string
+  /** Smartflo agent id (050…) / registered mobile the dialer rings for click-to-call; blank = the user's mobile */
+  telephonyAgentId?: string | null
+  telephonyAgentNumber?: string | null
 }
 
 export type TeamType = 'department' | 'team' | 'counsellor_group'
@@ -318,6 +321,8 @@ export interface Lead {
   optedOut?: { sms: boolean; email: boolean }
   isOverdue?: boolean
   ownerActive?: boolean | null
+  /** calls logged on the lead (manual + dialer), for the list's "No. of Call Attempts" column */
+  callsCount?: number
   profileValues?: Record<string, unknown>
   discussionValues?: Record<string, unknown>
 }
@@ -419,6 +424,8 @@ export interface Notification {
   data?: {
     leadId?: string
     taskId?: string
+    /** incoming_call / missed_call: the dialer call row */
+    callId?: string
     exportId?: string
     url?: string
     smart?: string
@@ -860,17 +867,124 @@ export interface CallLog {
   _id: string
   user?: Ref | null
   direction: 'outbound' | 'inbound'
+  /** answered | not_answered | busy | failed; a dialer call is also initiated | ringing | in_progress while live */
   status: string
   startedAt?: string
+  answeredAt?: string | null
+  endedAt?: string | null
   durationSeconds?: number | null
   stage?: string
   subStage?: string
   note?: string
+  /** manual (Log Call drawer) or dialer (Smartflo) */
   source: string
+  /** dialer rows: the outcome popup is still due */
+  needsDisposition?: boolean
+  providerStatus?: string | null
+  hangupCause?: string | null
+  /** the provider's own recording link — only sent to admin-like users, as a fallback until the file is downloaded */
+  recordingUrl?: string | null
+  customerNumber?: string | null
+  agentNumber?: string | null
+  dialerRefId?: string | null
+  dialerCallId?: string | null
+  dialerMeta?: Record<string, unknown>
   /** proof of the call: the screenshot of the call time (required since call proofs), the recording (optional) */
   screenshot?: CallProofFile | null
   recording?: CallProofFile | null
   createdAt: string
+}
+
+/** The lead a dialer call belongs to, as the live-calls feed and the call log carry it (null = unknown caller). */
+export interface LiveCallLead {
+  _id: string
+  name: string
+  leadNo: string
+  stage?: string | null
+  owner?: Ref | null
+}
+
+/** A dialer call from GET /telephony/calls/live or /telephony/calls. */
+export interface LiveCall extends CallLog {
+  lead: LiveCallLead | null
+}
+
+export interface LiveCallsPayload {
+  /** this user's calls still in progress (plus inbound calls ringing them) */
+  active: LiveCall[]
+  /** ended calls whose outcome has not been saved or skipped yet */
+  pending: LiveCall[]
+  serverTime: string
+  pollSeconds: number
+}
+
+/** One webhook the admin adds in Smartflo (API Connect → Webhook), as the Calling tab lists it. */
+export interface TelephonyTemplate {
+  n: number
+  callType: string
+  trigger: string
+  outboundType?: string | null
+  event: string
+  fields: { key: string; value: string }[]
+}
+
+export interface TelephonyRouting {
+  inboundDidId?: string | null
+  destination?: string | null
+  departmentId?: string | null
+}
+
+/** GET /telephony/status: the basics for everyone; the configuration block for the Super Admin. */
+export interface TelephonyStatus {
+  provider: 'console' | 'smartflo' | string
+  enabled: boolean
+  pollSeconds: number
+  myAgent?: { agentId?: string | null; agentNumber?: string | null } | null
+  configured?: { auth: boolean; callerId: boolean; secret: boolean; roleId: boolean }
+  callerId?: string | null
+  inboundDid?: string | null
+  webhookUrl?: string | null
+  templates?: TelephonyTemplate[]
+  auth?: { mode: 'token' | 'login' | 'none'; ok: boolean; error?: string | null; daysLeft?: number | null; tokenExpires?: string | null }
+  agents?: { mapped: number; total: number }
+  counters?: { eventsToday: number; unmatched: number; recordingErrors: number }
+  routing?: TelephonyRouting | null
+}
+
+export interface TelephonyEventRow {
+  _id: string
+  event: string
+  direction?: string | null
+  refId?: string | null
+  callId?: string | null
+  uuid?: string | null
+  status: string
+  attempts: number
+  lastError?: string | null
+  createdAt: string
+  processedAt?: string | null
+  call?: { _id: string; lead?: { _id: string; name: string; leadNo: string } | null } | null
+  payload: Record<string, unknown>
+}
+
+export interface TelephonyAgentRow {
+  _id: string
+  name: string
+  email?: string
+  mobile?: string | null
+  telephonyAgentId?: string | null
+  telephonyAgentNumber?: string | null
+  smartflo?: { agentId: string; status: number; statusLabel: string; followMeNumber?: string | null } | null
+}
+
+export interface TelephonyNumberRow {
+  id: string
+  did: string
+  name?: string | null
+  destination?: string | null
+  destinationName?: string | null
+  isCallerId: boolean
+  isInbound: boolean
 }
 
 /** A call screenshot or recording (POST /calls/proofs, then sent with the call; GET /calls/:id/proofs/:proofId). */
@@ -886,10 +1000,16 @@ export interface CallProofFile {
 export interface AttendanceCallRow {
   _id: string
   createdAt: string
-  user: { _id: string; name: string }
-  lead: { _id: string; name: string; leadNo: string }
+  /** null for a dialer call that no CRM user answered */
+  user: { _id: string; name: string } | null
+  /** null for an inbound dialer call from a number no lead has */
+  lead: { _id: string; name: string; leadNo: string } | null
   durationSeconds?: number | null
   status: string
+  direction?: 'outbound' | 'inbound'
+  /** manual (Log Call drawer) or dialer */
+  source?: string
+  customerNumber?: string | null
   stage?: string | null
   subStage?: string | null
   screenshot: CallProofFile | null
@@ -1371,6 +1491,14 @@ export interface DashboardSummary {
     calls?: number
     talktimeSeconds?: number
     breakSeconds?: number
+    /** dialer figures (apps.telephony): connected calls, connect rate %, inbound / outbound counts, average talk time */
+    connected?: number
+    connectRate?: number
+    inbound?: number
+    outbound?: number
+    inboundAnswered?: number
+    inboundMissed?: number
+    avgTalkSeconds?: number
   }
 }
 

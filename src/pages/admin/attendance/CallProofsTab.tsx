@@ -30,16 +30,31 @@ export function CallProofsTab({ filters, setParam }: { filters: Record<string, u
       header: 'Date & Time',
       render: (c) => <span className="whitespace-nowrap text-xs text-slate-600">{dayjs(c.createdAt).format('ddd, D MMM YYYY · h:mm A')}</span>,
     },
-    { key: 'user', header: 'Sales Executive', render: (c) => <span className="text-xs font-medium text-slate-800">{c.user.name}</span> },
+    {
+      key: 'user',
+      header: 'Sales Executive',
+      render: (c) => (
+        <span className="flex items-center gap-1.5 text-xs font-medium text-slate-800">
+          {c.user?.name ?? <span className="text-slate-400">Not answered</span>}
+          {c.source === 'dialer' && <Badge tone="cyan">Dialer</Badge>}
+        </span>
+      ),
+    },
     {
       key: 'lead',
       header: 'Lead',
-      render: (c) => (
-        <Link to={`/app/leads/${c.lead._id}`} onClick={(e) => e.stopPropagation()} className="block min-w-0 text-xs hover:underline">
-          <span className="font-medium text-brand-700">{c.lead.name}</span>
-          <span className="block text-[11px] text-slate-400">{c.lead.leadNo}</span>
-        </Link>
-      ),
+      render: (c) =>
+        c.lead ? (
+          <Link to={`/app/leads/${c.lead._id}`} onClick={(e) => e.stopPropagation()} className="block min-w-0 text-xs hover:underline">
+            <span className="font-medium text-brand-700">{c.lead.name}</span>
+            <span className="block text-[11px] text-slate-400">{c.lead.leadNo}</span>
+          </Link>
+        ) : (
+          <span className="block text-xs text-slate-500">
+            Unknown caller
+            {c.customerNumber && <span className="block text-[11px] text-slate-400">{c.customerNumber}</span>}
+          </span>
+        ),
     },
     {
       key: 'duration',
@@ -53,7 +68,7 @@ export function CallProofsTab({ filters, setParam }: { filters: Record<string, u
       header: 'Proof',
       render: (c) => (
         <div className="flex flex-wrap gap-1">
-          {c.screenshot ? <Badge tone="blue">Screenshot</Badge> : <Badge tone="slate">No screenshot</Badge>}
+          {c.screenshot ? <Badge tone="blue">Screenshot</Badge> : c.source === 'dialer' ? <Badge tone="slate">Dialer log</Badge> : <Badge tone="slate">No screenshot</Badge>}
           {c.recording && <Badge tone="violet">Recording</Badge>}
         </div>
       ),
@@ -107,7 +122,13 @@ function CallProofPreview({ call, onClose }: { call: AttendanceCallRow; onClose:
     authorizedDownload(`${proofPath(call, proof)}?download=1`, proof.fileName).catch((e) => toast.error(parseApiError(e).message))
 
   return (
-    <Modal open onClose={onClose} title={`Call by ${call.user.name}`} description={`${call.lead.name} · ${call.lead.leadNo} · ${dayjs(call.createdAt).format('ddd, D MMM YYYY · h:mm A')}`} size="xl">
+    <Modal
+      open
+      onClose={onClose}
+      title={`Call by ${call.user?.name ?? 'the dialer'}`}
+      description={`${call.lead ? `${call.lead.name} · ${call.lead.leadNo}` : `Unknown caller${call.customerNumber ? ` · ${call.customerNumber}` : ''}`} · ${dayjs(call.createdAt).format('ddd, D MMM YYYY · h:mm A')}`}
+      size="xl"
+    >
       <div className="grid gap-5 md:grid-cols-[1fr_15rem]">
         <div className="flex min-h-72 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
           {!call.screenshot ? (
@@ -127,9 +148,9 @@ function CallProofPreview({ call, onClose }: { call: AttendanceCallRow; onClose:
 
         <div className="space-y-4">
           <div className="rounded-lg border border-brand-100 bg-brand-50/50 p-4 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Entered duration</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{call.source === 'dialer' ? 'Talk time (dialer)' : 'Entered duration'}</p>
             <p className="mt-1 text-3xl font-bold tabular-nums text-slate-900">{call.durationSeconds != null ? formatHms(call.durationSeconds) : '—'}</p>
-            <p className="mt-1 text-[11px] text-slate-500">Compare it with the call time in the screenshot</p>
+            <p className="mt-1 text-[11px] text-slate-500">{call.source === 'dialer' ? 'Reported by the dialer' : 'Compare it with the call time in the screenshot'}</p>
           </div>
           <dl className="space-y-1 text-xs">
             <div className="flex justify-between gap-2">

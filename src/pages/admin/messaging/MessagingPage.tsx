@@ -24,6 +24,7 @@ import { EmptyState, Skeleton } from '../../../components/ui/feedback'
 import { formatDateTime, parseApiError } from '../../../lib/utils'
 import type { CampaignRow, MessageTemplate } from '../../../types/models'
 import { AutomationsTab } from './AutomationsTab'
+import { CallingTab } from './CallingTab'
 import { TextsTab } from './TextsTab'
 
 function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onClose: () => void }) {
@@ -410,6 +411,7 @@ function CampaignsTab() {
 
 /** Admin: SMS / email / WhatsApp templates, automations and bulk-send reports (Go-live §8, GL-39). */
 export default function MessagingPage() {
+  const user = useCurrentUser()
   const [tab, setTab] = useState('templates')
   return (
     <>
@@ -420,12 +422,24 @@ export default function MessagingPage() {
           { key: 'automations', label: 'Automation' },
           { key: 'campaigns', label: 'Bulk sends' },
           { key: 'texts', label: 'Texts' },
+          // the dialer (Smartflo) set-up: Super Admin only
+          ...(user?.isSuperAdmin ? [{ key: 'calling', label: 'Calling' }] : []),
         ]}
         active={tab}
         onChange={setTab}
       />
       <div className="mt-4">
-        {tab === 'templates' ? <TemplatesTab /> : tab === 'automations' ? <AutomationsTab /> : tab === 'texts' ? <TextsTab /> : <CampaignsTab />}
+        {tab === 'templates' ? (
+          <TemplatesTab />
+        ) : tab === 'automations' ? (
+          <AutomationsTab />
+        ) : tab === 'texts' ? (
+          <TextsTab />
+        ) : tab === 'calling' && user?.isSuperAdmin ? (
+          <CallingTab />
+        ) : (
+          <CampaignsTab />
+        )}
       </div>
     </>
   )

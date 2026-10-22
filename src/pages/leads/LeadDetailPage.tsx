@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   CalendarPlus,
@@ -9,8 +9,9 @@ import {
   Milestone,
   NotebookPen,
   Pencil,
-  Phone,
   PhoneCall,
+  PhoneIncoming,
+  PhoneOutgoing,
   Trash2,
   UserPlus,
 } from 'lucide-react'
@@ -46,7 +47,13 @@ import { WhatsAppChat } from './WhatsAppChat'
 import { MessageHistory } from './MessageHistory'
 import { FollowUpFormModal } from '../tasks/FollowUpFormModal'
 import { subStageOf } from '../../lib/stages'
-import type { CustomFieldDef, Lead, LeadMessage } from '../../types/models'
+import { formatHms } from '../../lib/durations'
+import { CallButton } from '../../features/telephony/CallButton'
+import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
+import { OPEN_DISPOSITION_EVENT, type OpenDispositionDetail } from '../../features/telephony/events'
+import { isFinalStatus, statusLabel, statusTone } from '../../features/telephony/callState'
+import { useLiveCalls, useStartCall } from '../../features/telephony/useLiveCalls'
+import type { CallLog, CustomFieldDef, Lead, LeadMessage } from '../../types/models'
 
 function DetailRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
@@ -167,15 +174,23 @@ function OverviewTab({
     <Card title="Recent Calls">
       {!calls?.data.length && <p className="text-xs text-slate-400">No Calls Logged Yet</p>}
       {calls?.data.slice(0, 5).map((c) => (
-        <div key={c._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0">
-          <p className="font-medium text-slate-700">
-            {c.subStage ?? c.stage} {c.durationSeconds
-              ? `· ${c.durationSeconds >= 3600 ? `${Math.floor(c.durationSeconds / 3600)}h ` : ''}${Math.floor((c.durationSeconds % 3600) / 60)}m ${c.durationSeconds % 60}s`
-              : ''}
+        <div key={c._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0" data-testid="recent-call">
+          <p className="flex flex-wrap items-center gap-1.5 font-medium text-slate-700">
+            {c.direction === 'inbound' ? (
+              <PhoneIncoming className="h-3 w-3 shrink-0 text-emerald-600" aria-label="Inbound" />
+            ) : (
+              <PhoneOutgoing className="h-3 w-3 shrink-0 text-brand-600" aria-label="Outbound" />
+            )}
+            <span>{c.subStage ?? c.stage ?? (c.source === 'dialer' ? (c.needsDisposition ? 'Outcome pending' : 'No outcome') : '—')}</span>
+            {c.source === 'dialer' && <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge>}
+            {!!c.durationSeconds && <span className="font-mono font-normal tabular-nums text-slate-500">{formatHms(c.durationSeconds)}</span>}
           </p>
           <p className="text-slate-400">
-            {c.user?.name} · {formatDateTime(c.createdAt)}
+            {c.user?.name ?? (c.source === 'dialer' ? 'Dialer' : 'System')} · {formatDateTime(c.createdAt)}
           </p>
+          {(c.recording || c.recordingUrl) && (
+            <RecordingPlayer callId={c._id} proofId={c.recording?._id} fileName={c.recording?.fileName} fallbackUrl={c.recordingUrl} compact className="mt-1" />
+          )}
         </div>
       ))}
     </Card>
@@ -317,7 +332,8 @@ export default function LeadDetailPage() {
   const user = useCurrentUser()
   const admin = isAdminLike(user)
   const [tab, setTab] = useState('overview')
-  const [modal, setModal] = useState<'edit' | 'assign' | 'delete' | 'call' | 'update' | 'stage' | 'followup' | 'note' | 'sms' | 'email' | 'whatsapp' | null>(null)
+  const [modal, setModal] = useState<'edit' | 'assign' | 'delete' | 'call' | 'update' | 'dialer' | 'stage' | 'followup' | 'note' | 'sms' | 'email' | 'whatsapp' | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const { data, isLoading, isError, error, refetch } = useGetLeadQuery(id, { skip: !id })
   const [deleteLead, { isLoading: deleting }] = useDeleteLeadMutation()
@@ -325,7 +341,71 @@ export default function LeadDetailPage() {
   const { data: followUps } = useLeadTasksQuery(id, { skip: !id || !can(user, 'tasks', 'view') })
   const followUpCount = followUps?.data.length
   const lead = data?.data
-  const close = () => setModal(null)
+  const canEdit = can(user, 'leads', 'edit')
+
+  // --- dialer: the outcome drawer for a call that ended — asked for by ?disposition=<callId> (a notification,
+  // the popover from another page), by the popover's button on this page (window event), or found by the
+  // live feed (a pending outcome of this lead) — and ?dial=1 from the "Start calling" list
+  const { pending, enabled: dialerEnabled } = useLiveCalls()
+  const { startCall } = useStartCall()
+  const { data: callRows } = useLeadCallsQuery(id, { skip: !id })
+  const [dialerCall, setDialerCall] = useState<CallLog | null>(null)
+  // calls whose drawer this page already showed (saved, skipped or closed): never re-opened by the poll
+  const [handledCalls, setHandledCalls] = useState<string[]>([])
+  const dialled = useRef(false)
+  const requestedCallId = searchParams.get('disposition')
+  const findCall = useCallback(
+    (callId: string): CallLog | undefined => pending.find((c) => c._id === callId) ?? callRows?.data.find((c) => c._id === callId),
+    [pending, callRows]
+  )
+  // the call whose outcome is due without anyone clicking: the one in the URL, else this lead's pending one
+  const dueCall = useMemo(() => {
+    if (!lead || !canEdit || modal !== null) return null
+    const fromUrl = requestedCallId ? findCall(requestedCallId) : undefined
+    const due = fromUrl ?? pending.find((c) => c.lead?._id === lead._id && c.needsDisposition)
+    return due && isFinalStatus(due.status) && !handledCalls.includes(due._id) ? due : null
+  }, [lead, canEdit, modal, requestedCallId, findCall, pending, handledCalls])
+  const openDialer = modal === 'dialer' ? dialerCall : dueCall
+  const close = () => {
+    if (openDialer) setHandledCalls((h) => [...h, openDialer._id])
+    setModal(null)
+    setDialerCall(null)
+  }
+  // the URL parameter has done its job once the call is known (or cannot be found in the loaded calls)
+  useEffect(() => {
+    if (!requestedCallId || !lead) return
+    const call = findCall(requestedCallId)
+    if (!call && !callRows) return
+    const next = new URLSearchParams(searchParams)
+    next.delete('disposition')
+    setSearchParams(next, { replace: true })
+    if (call && !isFinalStatus(call.status)) toast.message('The call is still in progress — its outcome can be saved once it ends')
+  }, [requestedCallId, lead, callRows, findCall, searchParams, setSearchParams])
+  useEffect(() => {
+    if (searchParams.get('dial') !== '1' || !lead || dialled.current) return
+    const next = new URLSearchParams(searchParams)
+    next.delete('dial')
+    setSearchParams(next, { replace: true })
+    if (!dialerEnabled || !canEdit) return
+    dialled.current = true
+    void startCall(lead._id)
+  }, [searchParams, setSearchParams, lead, dialerEnabled, canEdit, startCall])
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<OpenDispositionDetail>).detail
+      if (detail?.leadId !== id) return
+      const call = findCall(detail.callId)
+      if (!call) return
+      if (!isFinalStatus(call.status)) {
+        toast.message('The call is still in progress — its outcome can be saved once it ends')
+        return
+      }
+      setDialerCall(call)
+      setModal('dialer')
+    }
+    window.addEventListener(OPEN_DISPOSITION_EVENT, onOpen)
+    return () => window.removeEventListener(OPEN_DISPOSITION_EVENT, onOpen)
+  }, [id, findCall])
 
   if (isError) {
     return (
@@ -349,7 +429,6 @@ export default function LeadDetailPage() {
     }
   }
 
-  const canEdit = can(user, 'leads', 'edit')
   const canSend = can(user, 'communications', 'create')
 
   return (
@@ -415,12 +494,7 @@ export default function LeadDetailPage() {
             <div className="mt-3 space-y-2 border-t border-slate-100 pt-3" data-testid="lead-actions">
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex flex-wrap items-center gap-2" data-testid="lead-primary-actions">
-                  {canEdit && lead.mobile && (
-                    // Disabled until a dialer is connected
-                    <Button variant="outline" size="sm" disabled title="Calling is not available yet">
-                      <Phone className="h-3.5 w-3.5" /> Call
-                    </Button>
-                  )}
+                  {canEdit && lead.mobile && <CallButton leadId={lead._id} mobile={lead.mobile} showWhenDisabled />}
                   {canEdit && (
                     <Button size="sm" onClick={() => setModal('call')}>
                       <PhoneCall className="h-3.5 w-3.5" /> Log Call / Update
@@ -523,7 +597,7 @@ export default function LeadDetailPage() {
         ) : tab === 'overview' ? (
           <OverviewTab lead={lead} compact={isCounsellor(user)} onEditCustom={canEdit ? () => setTab('discussion') : undefined} onViewNotes={() => setTab('notes')} />
         ) : tab === 'profile' ? (
-          <LeadProfileTab leadId={lead._id} />
+          <LeadProfileTab leadId={lead._id} actions={canEdit && lead.mobile ? <CallButton leadId={lead._id} mobile={lead.mobile} /> : undefined} />
         ) : tab === 'discussion' ? (
           <div className="space-y-4">
             <CounsellorDiscussion leadId={lead._id} readOnly={!canEdit} />
@@ -546,6 +620,7 @@ export default function LeadDetailPage() {
 
       {lead && modal === 'edit' && <LeadFormDrawer open onClose={close} lead={lead} />}
       {lead && (modal === 'call' || modal === 'update') && <DispositionDrawer lead={lead} mode={modal} onClose={close} />}
+      {lead && openDialer && <DispositionDrawer key={openDialer._id} lead={lead} mode="dialer" call={openDialer} onClose={close} />}
       {lead && modal === 'stage' && <ChangeStageModal open lead={lead} onClose={close} />}
       {lead && modal === 'followup' && <FollowUpFormModal leadId={lead._id} ownerId={lead.owner?._id} onClose={close} />}
       {lead && modal === 'assign' && <AssignLeadModal lead={lead} onClose={close} />}
