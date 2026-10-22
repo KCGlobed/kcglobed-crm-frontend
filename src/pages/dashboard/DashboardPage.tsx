@@ -1,11 +1,12 @@
-import { useEffect, useState, type KeyboardEvent } from 'react'
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarCheck, ChevronRight, CircleDashed, Coffee, GraduationCap, Inbox, Phone, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOff, Receipt, ThumbsDown, ThumbsUp, Timer, UserCheck, Users, type LucideIcon } from 'lucide-react'
+import { CalendarCheck, CalendarClock, ChevronRight, CircleDashed, Coffee, GraduationCap, Inbox, Phone, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOff, Receipt, ThumbsDown, ThumbsUp, Timer, UserCheck, Users, type LucideIcon } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useDashboardSummaryQuery } from '../../services/miscApi'
 import { leadsApi, useListLeadsQuery, type LeadListParams } from '../../services/leadsApi'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
 import { useMyTargetQuery } from '../../services/targetsApi'
+import { useTaskSummaryQuery } from '../../services/tasksApi'
 import { targetMood } from '../../lib/targetMood'
 import { TargetBar, TargetLine, TargetSmiley } from './TargetBanner'
 import { Card, PageHeader } from '../../components/ui/misc'
@@ -206,9 +207,22 @@ type PeriodState = ReturnType<typeof usePeriod>
  * All time, this week and today come from the summary; a custom range, which
  * the summary lacks, is counted off the list. Each card opens the list with the
  * period's bounds, so it shows exactly the leads that were counted; a zero
- * card has nothing to open and stays inert.
+ * card has nothing to open and stays inert. `children` are more cards in the
+ * same grid, after these three (the Super Admin's stage and follow-up cards).
  */
-function LeadsSection({ period: state, loading, onOpen }: { period: PeriodState; loading: boolean; onOpen: (params: ListParams) => void }) {
+function LeadsSection({
+  period: state,
+  loading,
+  onOpen,
+  unassignedLabel = 'Unassigned Leads',
+  children,
+}: {
+  period: PeriodState
+  loading: boolean
+  onOpen: (params: ListParams) => void
+  unassignedLabel?: string
+  children?: ReactNode
+}) {
   const { key, setKey, custom, setCustom, bounds, range, period, hint } = state
   const counted = key === 'custom' ? bounds : undefined
   const total = useLeadCount(counted)
@@ -241,7 +255,7 @@ function LeadsSection({ period: state, loading, onOpen }: { period: PeriodState;
           onClick={tile(figures.assigned, { assigned: 'true' })}
         />
         <KpiCard
-          label="Unassigned Leads"
+          label={unassignedLabel}
           value={figures.unassigned}
           progress={share(figures.unassigned, figures.total)}
           hint="Waiting for an owner"
@@ -250,8 +264,32 @@ function LeadsSection({ period: state, loading, onOpen }: { period: PeriodState;
           loading={busy}
           onClick={tile(figures.unassigned, { unassigned: 'true' })}
         />
+        {children}
       </div>
     </section>
+  )
+}
+
+/**
+ * The Super Admin's "Follow-ups Due" card: open follow-ups due today across every counsellor, with how many are
+ * already overdue. It is about today, not the period the lead cards are switched to; it opens the Follow-ups page
+ * (today, team view). Zero until the counts arrive.
+ */
+function FollowUpsDueCard({ onOpen }: { onOpen: () => void }) {
+  const { data, isLoading } = useTaskSummaryQuery({}, { pollingInterval: 60_000 })
+  const counts = data?.data.counts
+  const due = counts?.today ?? 0
+  const overdue = counts?.overdue ?? 0
+  return (
+    <KpiCard
+      label="Follow-ups Due"
+      value={due}
+      hint={overdue ? `Due today · ${overdue} overdue` : 'Due today'}
+      icon={CalendarClock}
+      accent="amber"
+      loading={isLoading}
+      onClick={due || overdue ? onOpen : undefined}
+    />
   )
 }
 
@@ -784,7 +822,8 @@ export default function DashboardPage() {
   // `from=dashboard` tells the list it is a dashboard drill-down, so it offers a way back
   const open = (params: ListParams) => navigate(`/app/leads?${new URLSearchParams({ ...params, from: 'dashboard' }).toString()}`)
   const openLead = (id: string) => navigate(`/app/leads/${id}`)
-  const viewAllLeads = () => navigate('/app/leads')
+  // Recent Leads' "View all" is a drill-down too: the list then shows the way back to the dashboard
+  const viewAllLeads = () => navigate('/app/leads?from=dashboard')
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
 
   /** The period's row for the stage of this name, from the (possibly counted) stage rows. */
@@ -801,6 +840,28 @@ export default function DashboardPage() {
         ]
       : undefined
   const chartHint = allTime ? 'Highest volume first' : period.hint
+
+  /** The stage behind a lead-status tile: the summary names it (it may be renamed in Masters), else the default name. */
+  const statusName = (tileKey: DashboardStatusTile['key'], fallback: string) => summary?.leadStatus.find((t) => t.key === tileKey)?.name ?? fallback
+  /** A card for the stage of this name: the period's count from the stage rows (0 when it has none), opening its leads. */
+  const stageCard = (name: string, icon: LucideIcon, accent?: 'blue' | 'red' | 'green') => {
+    const row = stageOf(name)
+    const params = row?.params
+    return (
+      <KpiCard
+        key={`stage-${name}`}
+        label={row?.name ?? name}
+        value={row?.count ?? 0}
+        progress={share(row?.count, total)}
+        hint="Leads on this stage"
+        icon={icon}
+        accent={accent}
+        color={STAGE_COLORS[name]}
+        loading={rowsLoading}
+        onClick={row?.count && params ? () => open(params) : undefined}
+      />
+    )
+  }
 
   return (
     <>
@@ -824,6 +885,17 @@ export default function DashboardPage() {
 
       {counsellor ? (
         <CounsellorCards summary={summary} period={period} loading={isLoading} onOpen={open} />
+      ) : user?.isSuperAdmin ? (
+        // Super Admin: one grid of nine cards in this order, every one following the period switch except
+        // Follow-ups Due (about today); a stage with no leads shows 0
+        <LeadsSection period={period} loading={isLoading} onOpen={open} unassignedLabel="Not Assigned Leads">
+          {stageCard('Not Connected', PhoneOff)}
+          {stageCard(statusName('notInterested', 'Not Interested'), ThumbsDown, 'red')}
+          {stageCard(statusName('interested', 'Interested'), ThumbsUp, 'blue')}
+          <FollowUpsDueCard onOpen={() => navigate('/app/tasks?view=today&who=team')} />
+          {stageCard('Registration & Fee', Receipt)}
+          {stageCard(statusName('enrolled', 'Enrolled'), GraduationCap, 'green')}
+        </LeadsSection>
       ) : (
         <>
           <LeadsSection period={period} loading={isLoading} onOpen={open} />
@@ -831,43 +903,8 @@ export default function DashboardPage() {
           {/* the status tiles and the pipeline cards together, one grid straight under the lead cards (no heading) */}
           <section className="mt-3 sm:mt-4" aria-label="Lead stages">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-              {STATUS_TILES.map(({ key: tileKey, label, icon, accent }) => {
-                // the summary names the stage behind each tile (it may be renamed in Masters); the count comes from the period's stage rows
-                const name = summary?.leadStatus.find((t) => t.key === tileKey)?.name ?? label
-                const row = stageOf(name)
-                const params = row?.params
-                return (
-                  <KpiCard
-                    key={`status-${tileKey}`}
-                    label={row?.name ?? name}
-                    value={row?.count}
-                    progress={share(row?.count, total)}
-                    hint="Leads on this stage"
-                    icon={icon}
-                    accent={accent}
-                    color={STAGE_COLORS[name]}
-                    loading={rowsLoading}
-                    onClick={row?.count && params ? () => open(params) : undefined}
-                  />
-                )
-              })}
-              {PIPELINE_CARDS.map(({ label, icon }) => {
-                const row = stageOf(label)
-                const params = row?.params
-                return (
-                  <KpiCard
-                    key={`pipeline-${label}`}
-                    label={row?.name ?? label}
-                    value={row?.count}
-                    progress={share(row?.count, total)}
-                    hint="Leads on this stage"
-                    icon={icon}
-                    color={STAGE_COLORS[label]}
-                    loading={rowsLoading}
-                    onClick={row?.count && params ? () => open(params) : undefined}
-                  />
-                )
-              })}
+              {STATUS_TILES.map(({ key: tileKey, label, icon, accent }) => stageCard(statusName(tileKey, label), icon, accent))}
+              {PIPELINE_CARDS.map(({ label, icon }) => stageCard(label, icon))}
             </div>
           </section>
         </>
