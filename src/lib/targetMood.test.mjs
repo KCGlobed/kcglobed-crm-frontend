@@ -29,10 +29,8 @@ describe('targetMood', () => {
     assert.equal(targetMood(target(0), start - DAY).label, 'Starts soon')
   })
 
-  test('the pace line spreads what remains over the days left', () => {
-    const mood = targetMood(target(4), start + 7 * DAY) // 6 left, 3 days to go
-    assert.equal(mood.pace, 'need 2/day')
-    assert.equal(mood.timeLeft, '3 days left')
-    assert.equal(targetMood(target(7), start + 9.8 * DAY).pace, '3 more today')
+  test('time left reads in days, then hours on the last day', () => {
+    assert.equal(targetMood(target(4), start + 7 * DAY).timeLeft, '3 days left')
+    assert.equal(targetMood(target(7), start + 9.75 * DAY).timeLeft, '6 hrs left')
   })
 })

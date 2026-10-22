@@ -15,8 +15,6 @@ export interface Mood {
   expected: number
   /** e.g. "4 days left", "6 hrs left", "Starts in 2 days" */
   timeLeft: string
-  /** e.g. "need 2/day", "3 more today"; empty once nothing remains */
-  pace: string
 }
 
 const HOUR = 60 * 60 * 1000
@@ -39,23 +37,20 @@ export function targetMood(t: TargetPace, now: number = Date.now()): Mood {
   const start = new Date(t.startAt).getTime()
   const end = new Date(t.endAt).getTime()
   const progress = Math.min(100, t.percent)
-  const remaining = Math.max(0, t.targetCount - t.achieved)
   const left = end - now
 
   if (t.status === 'completed' || progress >= 100) {
-    return { emoji: '🤩', label: 'Target complete!', expected: 100, timeLeft: left > 0 ? `${span(left)} left` : 'Range over', pace: '' }
+    return { emoji: '🤩', label: 'Target complete!', expected: 100, timeLeft: left > 0 ? `${span(left)} left` : 'Range over' }
   }
   if (now < start) {
-    return { emoji: '😊', label: 'Starts soon', expected: 0, timeLeft: `Starts in ${span(start - now)}`, pace: '' }
+    return { emoji: '😊', label: 'Starts soon', expected: 0, timeLeft: `Starts in ${span(start - now)}` }
   }
 
   const expected = end > start ? Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100)) : 100
-  const days = Math.max(1, Math.ceil(left / DAY))
-  const pace = remaining === 0 ? '' : left < DAY ? `${remaining} more today` : `need ${Math.ceil(remaining / days)}/day`
   const timeLeft = left > 0 ? `${span(left)} left` : 'Range over'
   const gap = progress - expected
 
-  const base = { expected: Math.round(expected), timeLeft, pace }
+  const base = { expected: Math.round(expected), timeLeft }
   if (left <= DAY && progress < 75) return { emoji: '😰', label: 'Hurry up', ...base }
   if (gap >= 10) return { emoji: '😄', label: 'Ahead', ...base }
   if (gap >= -10) return { emoji: '🙂', label: 'On track', ...base }
