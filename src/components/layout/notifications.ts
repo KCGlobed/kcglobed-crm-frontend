@@ -33,6 +33,7 @@ export const NOTIFICATION_ICONS: Record<string, { icon: typeof Bell; className: 
   bulk_done: { icon: Send, className: 'bg-emerald-50 text-emerald-700' },
   whatsapp_reply: { icon: MessageCircle, className: 'bg-emerald-50 text-emerald-700' },
   team_alert: { icon: Bell, className: 'bg-brand-50 text-brand-600' },
+  whatsapp_template: { icon: MessageCircle, className: 'bg-emerald-50 text-emerald-700' },
   export_ready: { icon: Download, className: 'bg-emerald-50 text-emerald-700' },
   integration_error: { icon: PlugZap, className: 'bg-red-50 text-red-600' },
   system: { icon: Sparkles, className: 'bg-slate-100 text-slate-500' },
@@ -45,6 +46,7 @@ export function useOpenNotification() {
     (n: CrmNotification) => {
       if (n.data?.leadId) navigate(`/app/leads/${n.data.leadId}`)
       else if (n.data?.smart) navigate(`/app/leads?smart=${n.data.smart}`)
+      else if (n.data?.templateId) navigate(`/app/admin/messaging/whatsapp/${n.data.templateId}`)
       else if (n.data?.url)
         authorizedDownload(n.data.url, 'leads-export.xlsx').catch(() => toast.error('This download link has expired'))
       else if (n.data?.errorFile)

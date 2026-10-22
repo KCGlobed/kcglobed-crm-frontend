@@ -420,6 +420,8 @@ export interface Notification {
     leadId?: string
     taskId?: string
     exportId?: string
+    /** whatsapp_template: Meta's verdict on this template */
+    templateId?: string
     url?: string
     smart?: string
     errorFile?: string
@@ -978,7 +980,21 @@ export interface MessageTemplate {
   waTemplateName?: string
   waLanguage?: string
   waCategory?: string
+  /** Meta's review status (PENDING, APPROVED, REJECTED, PAUSED …) or DRAFT: built in the CRM, not submitted yet */
   waStatus?: string
+  /** WhatsApp builder (Communication → Templates → WhatsApp): Meta's id once submitted, the content, Meta's verdict */
+  waTemplateId?: string
+  waSpec?: WhatsAppTemplateSpec
+  waRejectedReason?: string
+  /** Meta's quality rating: GREEN, YELLOW, RED or UNKNOWN */
+  waQuality?: string
+  waSubmittedAt?: string
+  /** crm = built in the builder; meta = pulled from WhatsApp Manager by the sync */
+  waSource?: 'crm' | 'meta'
+  /** the header's sample image / PDF, also the header of every message sent */
+  waHeaderAsset?: MessageAsset
+  /** the answer to a save: the changes went to Meta for review again */
+  resubmitted?: boolean
   isActive: boolean
   placeholders: string[]
   /** SMS / WhatsApp: how many values are typed or picked when sending ({#var#} markers or {{n}} parameters) */
@@ -987,6 +1003,30 @@ export interface MessageTemplate {
   attachments?: MessageAsset[]
   createdAt: string
   updatedAt: string
+}
+
+export type WhatsAppHeaderFormat = 'NONE' | 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'VIDEO' | 'LOCATION'
+/** The builder's buttons; a template synced from WhatsApp Manager can carry other types (FLOW, COPY_CODE …) */
+export type WhatsAppButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER'
+
+export interface WhatsAppTemplateButton {
+  type: WhatsAppButtonType
+  text: string
+  url?: string
+  phone?: string
+}
+
+/** A WhatsApp template's content as the builder edits it (the backend's wa_templates.py checks it against Meta's rules). */
+export interface WhatsAppTemplateSpec {
+  /** IMAGE / DOCUMENT: `assetId` is the uploaded sample (a message asset) */
+  header: { format: WhatsAppHeaderFormat; text?: string; assetId?: string }
+  body: string
+  /** one sample value per {{n}}: Meta reviews the template with them */
+  examples: string[]
+  footer?: string | null
+  buttons: WhatsAppTemplateButton[]
+  /** Authentication only: Meta's fixed passcode format */
+  auth?: { securityRecommendation: boolean; codeExpirationMinutes?: number | null; copyCodeText: string }
 }
 
 /** An image uploaded for emailers (Communication → email designer); `url` is public, for mail clients. */

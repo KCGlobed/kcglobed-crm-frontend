@@ -36,6 +36,9 @@ export interface MessagingOptions {
   bulkMax: number
   /** "meta" when the WhatsApp Cloud API is connected (template sync available); "console" only logs */
   whatsappProvider?: string
+  /** the WhatsApp builder's choices: Meta's language codes and template categories */
+  whatsappLanguages?: { value: string; label: string }[]
+  whatsappCategories?: { value: string; label: string }[]
   /** what a {#var#} value may name instead of typed text ("{first_name}"), incl. active custom lead fields */
   leadFields: { value: string; label: string }[]
 }
@@ -188,6 +191,11 @@ export const messagingApi = api.injectEndpoints({
       query: () => ({ url: '/messaging/whatsapp/sync-templates', method: 'POST' }),
       invalidatesTags: (_r, error) => (error ? [] : ['MessageTemplates', 'Automations']),
     }),
+    /** WhatsApp builder → "Submit for review": the draft goes to Meta; its verdict arrives on the webhook. */
+    submitWhatsAppTemplate: build.mutation<ApiResponse<MessageTemplate>, string>({
+      query: (id) => ({ url: `/messaging/whatsapp/templates/${id}/submit`, method: 'POST' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['MessageTemplates', 'Automations']),
+    }),
     leadMessages: build.query<ApiResponse<LeadMessage[]>, string>({
       query: (id) => `/leads/${id}/messages`,
       providesTags: ['LeadMessages'],
@@ -288,6 +296,7 @@ export const {
   useCreateCampaignMutation,
   useCancelCampaignMutation,
   useSyncWhatsAppTemplatesMutation,
+  useSubmitWhatsAppTemplateMutation,
   useWhatsAppChatQuery,
   useSendWhatsAppTextMutation,
   useLeadMessagesQuery,
