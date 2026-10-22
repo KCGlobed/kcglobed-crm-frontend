@@ -18,18 +18,23 @@ export function TargetLine({ target, mood }: { target: Target; mood: Mood }) {
   )
 }
 
-/** The mood in the banner's right corner; the tooltip spells out how it was read. */
-export function TargetSmiley({ target, mood }: { target: Target; mood: Mood }) {
+/**
+ * The mood in the banner's right corner; the tooltip spells out how it was read. Positioned absolutely by the
+ * banner so a larger smiley never makes the banner taller.
+ */
+export function TargetSmiley({ target, mood, className }: { target: Target; mood: Mood; className?: string }) {
   const title =
     target.status === 'completed'
       ? `${target.achieved} of ${target.targetCount} reached`
       : `${target.percent}% done, ${mood.expected}% expected by now`
   return (
-    <div className="flex shrink-0 flex-col items-center text-center" title={title} data-testid="banner-mood">
-      <span className="text-3xl leading-none sm:text-4xl" role="img" aria-label={mood.label}>
-        {mood.emoji}
+    <div className={cn('flex flex-col items-center text-center', className)} title={title} data-testid="banner-mood">
+      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15 shadow-lg ring-2 ring-gold-300/70 sm:h-14 sm:w-14">
+        <span className="text-3xl leading-none drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)] sm:text-4xl" role="img" aria-label={mood.label}>
+          {mood.emoji}
+        </span>
       </span>
-      <span className="mt-1 whitespace-nowrap text-[11px] font-semibold text-gold-300">{mood.label}</span>
+      <span className="mt-1 whitespace-nowrap text-xs font-bold tracking-wide text-gold-300">{mood.label}</span>
     </div>
   )
 }

@@ -808,17 +808,17 @@ export default function DashboardPage() {
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-brand-400/40 blur-3xl" />
         <div aria-hidden className="pointer-events-none absolute -bottom-24 right-16 h-48 w-48 rounded-full border border-gold-400/40" />
         <div aria-hidden className="pointer-events-none absolute -bottom-12 right-44 h-28 w-28 rounded-full border border-white/10" />
-        <div className="relative flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="flex items-center gap-2 text-xs font-medium text-gold-300">
-              <span className="h-1.5 w-1.5 rounded-full bg-gold-400" />
-              {today}
-            </p>
-            <h1 className="mt-1 truncate text-xl font-bold tracking-tight sm:text-2xl">Welcome back, {user?.name.split(' ')[0] ?? ''}</h1>
-            {myTarget && mood && <TargetLine target={myTarget} mood={mood} />}
-          </div>
-          {myTarget && mood && <TargetSmiley target={myTarget} mood={mood} />}
+        <div className={cn('relative min-w-0', myTarget && 'pr-20 sm:pr-28')}>
+          <p className="flex items-center gap-2 text-xs font-medium text-gold-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" />
+            {today}
+          </p>
+          <h1 className="mt-1 truncate text-xl font-bold tracking-tight sm:text-2xl">Welcome back, {user?.name.split(' ')[0] ?? ''}</h1>
+          {myTarget && mood && <TargetLine target={myTarget} mood={mood} />}
         </div>
+        {myTarget && mood && (
+          <TargetSmiley target={myTarget} mood={mood} className="absolute right-4 top-1/2 -translate-y-1/2 sm:right-7" />
+        )}
         {myTarget && <TargetBar target={myTarget} />}
       </section>
 
