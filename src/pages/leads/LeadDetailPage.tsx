@@ -284,8 +284,14 @@ function OverviewTab({
   )
 }
 
-/** A number we can message: 10 digits (or country-coded); a missing or masked number has fewer. */
-const hasUsableMobile = (mobile?: string | null) => (mobile ?? '').replace(/\D/g, '').length >= 10
+/**
+ * A number we can message: 10 digits (or country-coded), or one the user's role masks ("******1010") — the
+ * server always sends to the real number on record, so a masked number does not block a send.
+ */
+const hasUsableMobile = (mobile?: string | null) => {
+  const value = mobile ?? ''
+  return value.replace(/\D/g, '').length >= 10 || (value.includes('*') && value.length >= 10)
+}
 
 /**
  * The lead's profile photo (the Documents tab's "Photograph", or initials until one is uploaded) inside the

@@ -13,12 +13,14 @@ const ResetPasswordPage = lazy(() => import('../pages/auth/ResetPasswordPage'))
 const SetPasswordPage = lazy(() => import('../pages/auth/SetPasswordPage'))
 const MessagingPage = lazy(() => import('../pages/admin/messaging/MessagingPage'))
 const EmailDesignerPage = lazy(() => import('../pages/admin/messaging/EmailDesignerPage'))
+const WhatsAppTemplateBuilder = lazy(() => import('../pages/admin/messaging/WhatsAppTemplateBuilder'))
 const RoundRobinPage = lazy(() => import('../pages/admin/RoundRobinPage'))
 const DashboardPage = lazy(() => import('../pages/dashboard/DashboardPage'))
 const LeadsListPage = lazy(() => import('../pages/leads/LeadsListPage'))
 const LeadDetailPage = lazy(() => import('../pages/leads/LeadDetailPage'))
 const BulkUploadPage = lazy(() => import('../pages/leads/BulkUploadPage'))
 const TasksPage = lazy(() => import('../pages/tasks/TasksPage'))
+const TargetsPage = lazy(() => import('../pages/targets/TargetsPage'))
 const UsersPage = lazy(() => import('../pages/admin/users/UsersPage'))
 const TeamsPage = lazy(() => import('../pages/admin/teams/TeamsPage'))
 const TeamDetailPage = lazy(() => import('../pages/admin/teams/TeamDetailPage'))
@@ -88,12 +90,14 @@ export default function AppRoutes() {
         <Route path="leads/import" element={<RequirePermission module="leads" action="import"><Lazy><BulkUploadPage /></Lazy></RequirePermission>} />
         <Route path="leads/:id" element={<RequirePermission module="leads"><Lazy><LeadDetailPage /></Lazy></RequirePermission>} />
         <Route path="tasks" element={<RequirePermission module="tasks"><Lazy><TasksPage /></Lazy></RequirePermission>} />
+        <Route path="targets" element={<RequirePermission module="targets"><Lazy><TargetsPage /></Lazy></RequirePermission>} />
         <Route path="admin/users" element={<RequirePermission module="users"><Lazy><UsersPage /></Lazy></RequirePermission>} />
         <Route path="admin/teams" element={<RequirePermission module="teams"><Lazy><TeamsPage /></Lazy></RequirePermission>} />
         <Route path="admin/teams/:id" element={<RequirePermission module="teams"><Lazy><TeamDetailPage /></Lazy></RequirePermission>} />
         <Route path="admin/masters" element={<RequirePermission module="masters"><Lazy><MastersPage /></Lazy></RequirePermission>} />
         <Route path="admin/messaging" element={<RequirePermission module="communications" action="edit"><Lazy><MessagingPage /></Lazy></RequirePermission>} />
         <Route path="admin/messaging/email/:id" element={<RequirePermission module="communications" action="edit"><Lazy><EmailDesignerPage /></Lazy></RequirePermission>} />
+        <Route path="admin/messaging/whatsapp/:id" element={<RequirePermission module="communications" action="edit"><Lazy><WhatsAppTemplateBuilder /></Lazy></RequirePermission>} />
         <Route path="admin/round-robin" element={<RequirePermission module="round_robin"><Lazy><RoundRobinPage /></Lazy></RequirePermission>} />
         <Route path="admin/audit" element={<RequirePermission module="audit"><Lazy><AuditLogPage /></Lazy></RequirePermission>} />
         <Route path="admin/attendance" element={<RequirePermission module="attendance"><Lazy><AttendancePage /></Lazy></RequirePermission>} />

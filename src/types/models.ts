@@ -18,6 +18,7 @@ export type ModuleKey =
   | 'masters'
   | 'audit'
   | 'attendance'
+  | 'targets'
 
 export type ActionKey =
   | 'view'
@@ -427,6 +428,8 @@ export interface Notification {
     /** incoming_call / missed_call: the dialer call row */
     callId?: string
     exportId?: string
+    /** whatsapp_template: Meta's verdict on this template */
+    templateId?: string
     url?: string
     smart?: string
     errorFile?: string
@@ -1098,7 +1101,21 @@ export interface MessageTemplate {
   waTemplateName?: string
   waLanguage?: string
   waCategory?: string
+  /** Meta's review status (PENDING, APPROVED, REJECTED, PAUSED …) or DRAFT: built in the CRM, not submitted yet */
   waStatus?: string
+  /** WhatsApp builder (Communication → Templates → WhatsApp): Meta's id once submitted, the content, Meta's verdict */
+  waTemplateId?: string
+  waSpec?: WhatsAppTemplateSpec
+  waRejectedReason?: string
+  /** Meta's quality rating: GREEN, YELLOW, RED or UNKNOWN */
+  waQuality?: string
+  waSubmittedAt?: string
+  /** crm = built in the builder; meta = pulled from WhatsApp Manager by the sync */
+  waSource?: 'crm' | 'meta'
+  /** the header's sample image / PDF, also the header of every message sent */
+  waHeaderAsset?: MessageAsset
+  /** the answer to a save: the changes went to Meta for review again */
+  resubmitted?: boolean
   isActive: boolean
   placeholders: string[]
   /** SMS / WhatsApp: how many values are typed or picked when sending ({#var#} markers or {{n}} parameters) */
@@ -1107,6 +1124,30 @@ export interface MessageTemplate {
   attachments?: MessageAsset[]
   createdAt: string
   updatedAt: string
+}
+
+export type WhatsAppHeaderFormat = 'NONE' | 'TEXT' | 'IMAGE' | 'DOCUMENT' | 'VIDEO' | 'LOCATION'
+/** The builder's buttons; a template synced from WhatsApp Manager can carry other types (FLOW, COPY_CODE …) */
+export type WhatsAppButtonType = 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER'
+
+export interface WhatsAppTemplateButton {
+  type: WhatsAppButtonType
+  text: string
+  url?: string
+  phone?: string
+}
+
+/** A WhatsApp template's content as the builder edits it (the backend's wa_templates.py checks it against Meta's rules). */
+export interface WhatsAppTemplateSpec {
+  /** IMAGE / DOCUMENT: `assetId` is the uploaded sample (a message asset) */
+  header: { format: WhatsAppHeaderFormat; text?: string; assetId?: string }
+  body: string
+  /** one sample value per {{n}}: Meta reviews the template with them */
+  examples: string[]
+  footer?: string | null
+  buttons: WhatsAppTemplateButton[]
+  /** Authentication only: Meta's fixed passcode format */
+  auth?: { securityRecommendation: boolean; codeExpirationMinutes?: number | null; copyCodeText: string }
 }
 
 /** An image uploaded for emailers (Communication → email designer); `url` is public, for mail clients. */
@@ -1293,8 +1334,15 @@ export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_
  */
 export interface StaffAlertRow {
   _id: string
-  trigger: StaffAlertTrigger
+  /** one of the three built-in alerts; null for an alert added in the CRM (Team alerts → Add alert) */
+  trigger: StaffAlertTrigger | null
   label: string
+  /** added in the CRM: its name, the lead event it goes out on (straight away) and the lead conditions it needs */
+  custom?: boolean
+  name?: string | null
+  event?: string | null
+  eventLabel?: string | null
+  conditions?: FilterCondition[]
   /** the notification type it is filed under in the bell / Activity Log */
   notificationType: string
   isActive: boolean
@@ -1318,6 +1366,13 @@ export interface StaffAlertRow {
   ctaLabel: string
   /** one line: when it goes out */
   when: string
+  /** who gets it: the lead's counsellor (the follow-up's assignee), everyone in these roles, these users — the last
+   * two only about leads they can open */
+  notifyOwner: boolean
+  recipientRoles: string[]
+  recipientUsers: string[]
+  /** one line: "Counsellor + Support + 2 people" */
+  recipientsText: string
   updatedBy: string | null
   updatedAt: string
   createdAt: string
@@ -1340,6 +1395,13 @@ export interface StaffAlertBody {
   pushTitle?: string
   pushBody?: string
   ctaLabel?: string
+  notifyOwner?: boolean
+  recipientRoles?: string[]
+  recipientUsers?: string[]
+  /** an added alert only */
+  name?: string
+  event?: string
+  conditions?: FilterCondition[]
 }
 
 export interface StaffAlertPlaceholder {
@@ -1350,13 +1412,20 @@ export interface StaffAlertPlaceholder {
 
 export interface StaffAlertsResponse {
   items: StaffAlertRow[]
-  placeholders: Record<StaffAlertTrigger, StaffAlertPlaceholder[]>
+  /** per built-in trigger, and "custom" for an added alert */
+  placeholders: Record<string, StaffAlertPlaceholder[]>
   workingHours: { start: string; end: string; days: number[] }
   /** "webinfosys" needs a DLT sender id + template id before SMS can be switched on; "console" only logs */
   smsProvider: string
   dltTypes: string[]
   reminderOptions: number[]
   offsetRange: [number, number]
+  /** who an alert can go to: role keys (role templates + Super Admin / Admin / Counsellor) and active users */
+  recipientRoles: { value: string; label: string }[]
+  recipientUsers: { value: string; label: string; role: string }[]
+  /** Add alert: the lead events it can go out on, and the ready-made wording */
+  events?: { value: string; label: string }[]
+  customDefaults?: StaffAlertBody
 }
 
 /** The test send's outcome per channel (only the channels that are on). */
@@ -1629,4 +1698,34 @@ export interface AttendanceRow {
   breakSeconds: number
   activeBreak: { type: BreakType; label: string; note?: string; startedAt: string } | null
   incompleteBreaks: number
+}
+
+// ---------- Target Manager ----------
+
+export type TargetStatus = 'active' | 'completed' | 'cancelled' | 'expired'
+
+/** A lead owner's goal: `targetCount` leads entering `stage` between startAt and endAt. */
+export interface Target {
+  _id: string
+  assignee: { _id: string; name: string }
+  stage: { _id: string; name: string }
+  targetCount: number
+  /** leads that entered the stage in the range while owned by the assignee (live while active, frozen once closed) */
+  achieved: number
+  /** achieved ÷ targetCount × 100, can exceed 100 */
+  percent: number
+  description?: string | null
+  startAt: string
+  endAt: string
+  status: TargetStatus
+  closedAt?: string | null
+  assignedBy?: { _id: string; name: string } | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TargetOptions {
+  stages: { _id: string; name: string }[]
+  /** assignee id → their active target id: they cannot get another until it closes */
+  busyAssignees: Record<string, string>
 }

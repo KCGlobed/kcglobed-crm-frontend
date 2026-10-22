@@ -36,6 +36,9 @@ export interface MessagingOptions {
   bulkMax: number
   /** "meta" when the WhatsApp Cloud API is connected (template sync available); "console" only logs */
   whatsappProvider?: string
+  /** the WhatsApp builder's choices: Meta's language codes and template categories */
+  whatsappLanguages?: { value: string; label: string }[]
+  whatsappCategories?: { value: string; label: string }[]
   /** what a {#var#} value may name instead of typed text ("{first_name}"), incl. active custom lead fields */
   leadFields: { value: string; label: string }[]
 }
@@ -143,6 +146,16 @@ export const messagingApi = api.injectEndpoints({
       invalidatesTags: (_r, error) => (error ? [] : ['StaffAlerts']),
     }),
     /** The draft on screen (or the saved alert) to the signed-in user with sample values, on every channel it has on. */
+    /** Team alerts → Add alert: a new alert on a lead event. */
+    createStaffAlert: build.mutation<ApiResponse<StaffAlertRow>, StaffAlertBody>({
+      query: (body) => ({ url: '/notifications/alerts', method: 'POST', body }),
+      invalidatesTags: (_r, error) => (error ? [] : ['StaffAlerts']),
+    }),
+    /** An added alert only (the built-in ones are switched off instead); `key` is its id. */
+    deleteStaffAlert: build.mutation<ApiResponse<{ _id: string; name: string }>, string>({
+      query: (key) => ({ url: `/notifications/alerts/${key}`, method: 'DELETE' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['StaffAlerts']),
+    }),
     testStaffAlert: build.mutation<ApiResponse<StaffAlertTestResult>, { trigger: string; body: StaffAlertBody }>({
       query: ({ trigger, body }) => ({ url: `/notifications/alerts/${trigger}/test`, method: 'POST', body }),
     }),
@@ -176,6 +189,11 @@ export const messagingApi = api.injectEndpoints({
     /** Pulls the templates approved in WhatsApp Manager into the Templates tab. */
     syncWhatsAppTemplates: build.mutation<ApiResponse<{ total: number; created: number; updated: number; approved: number; skipped: number; removed: number }>, void>({
       query: () => ({ url: '/messaging/whatsapp/sync-templates', method: 'POST' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['MessageTemplates', 'Automations']),
+    }),
+    /** WhatsApp builder → "Submit for review": the draft goes to Meta; its verdict arrives on the webhook. */
+    submitWhatsAppTemplate: build.mutation<ApiResponse<MessageTemplate>, string>({
+      query: (id) => ({ url: `/messaging/whatsapp/templates/${id}/submit`, method: 'POST' }),
       invalidatesTags: (_r, error) => (error ? [] : ['MessageTemplates', 'Automations']),
     }),
     leadMessages: build.query<ApiResponse<LeadMessage[]>, string>({
@@ -269,6 +287,8 @@ export const {
   usePreviewAutomationAudienceMutation,
   useListStaffAlertsQuery,
   useUpdateStaffAlertMutation,
+  useCreateStaffAlertMutation,
+  useDeleteStaffAlertMutation,
   useTestStaffAlertMutation,
   useListCampaignsQuery,
   useGetCampaignQuery,
@@ -276,6 +296,7 @@ export const {
   useCreateCampaignMutation,
   useCancelCampaignMutation,
   useSyncWhatsAppTemplatesMutation,
+  useSubmitWhatsAppTemplateMutation,
   useWhatsAppChatQuery,
   useSendWhatsAppTextMutation,
   useLeadMessagesQuery,
