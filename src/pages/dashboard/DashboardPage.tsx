@@ -271,24 +271,22 @@ function LeadsSection({
 }
 
 /**
- * The Super Admin's "Follow-ups Due" card: open follow-ups due today across every counsellor, with how many are
- * already overdue. It is about today, not the period the lead cards are switched to; it opens the Follow-ups page
- * (today, team view). Zero until the counts arrive.
+ * The Super Admin's "Follow-ups Due" card: open follow-ups already past their due time, across every counsellor.
+ * It is about now, not the period the lead cards are switched to; it opens the Follow-ups page (overdue, team
+ * view). Zero until the count arrives.
  */
 function FollowUpsDueCard({ onOpen }: { onOpen: () => void }) {
   const { data, isLoading } = useTaskSummaryQuery({}, { pollingInterval: 60_000 })
-  const counts = data?.data.counts
-  const due = counts?.today ?? 0
-  const overdue = counts?.overdue ?? 0
+  const overdue = data?.data.counts.overdue ?? 0
   return (
     <KpiCard
       label="Follow-ups Due"
-      value={due}
-      hint={overdue ? `Due today · ${overdue} overdue` : 'Due today'}
+      value={overdue}
+      hint="Overdue"
       icon={CalendarClock}
       accent="amber"
       loading={isLoading}
-      onClick={due || overdue ? onOpen : undefined}
+      onClick={overdue ? onOpen : undefined}
     />
   )
 }
@@ -887,12 +885,12 @@ export default function DashboardPage() {
         <CounsellorCards summary={summary} period={period} loading={isLoading} onOpen={open} />
       ) : user?.isSuperAdmin ? (
         // Super Admin: one grid of nine cards in this order, every one following the period switch except
-        // Follow-ups Due (about today); a stage with no leads shows 0
+        // Follow-ups Due (overdue right now); a stage with no leads shows 0
         <LeadsSection period={period} loading={isLoading} onOpen={open} unassignedLabel="Not Assigned Leads">
           {stageCard('Not Connected', PhoneOff)}
           {stageCard(statusName('notInterested', 'Not Interested'), ThumbsDown, 'red')}
           {stageCard(statusName('interested', 'Interested'), ThumbsUp, 'blue')}
-          <FollowUpsDueCard onOpen={() => navigate('/app/tasks?view=today&who=team')} />
+          <FollowUpsDueCard onOpen={() => navigate('/app/tasks?view=overdue&who=team')} />
           {stageCard('Registration & Fee', Receipt)}
           {stageCard(statusName('enrolled', 'Enrolled'), GraduationCap, 'green')}
         </LeadsSection>
