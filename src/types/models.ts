@@ -324,6 +324,8 @@ export interface Lead {
   ownerActive?: boolean | null
   /** calls logged on the lead (manual + dialer), for the list's "No. of Call Attempts" column */
   callsCount?: number
+  /** only with the WhatsApp quick filter: the lead's unread replies and last WhatsApp message */
+  whatsapp?: LeadWhatsAppChat
   profileValues?: Record<string, unknown>
   discussionValues?: Record<string, unknown>
 }
@@ -1253,6 +1255,20 @@ export interface WhatsAppChat {
   /** replies that were unread before this fetch (they are marked read by it) */
   unread: number
   messages: WhatsAppChatMessage[]
+}
+
+/** A lead's WhatsApp chat on the leads list (the WhatsApp quick filter): unread replies and the last message. */
+export interface LeadWhatsAppChat {
+  unread: number
+  last?: { body: string; direction: 'in' | 'out'; status: string; sentBy?: string; template?: string; at: string }
+}
+
+/** The WhatsApp quick filter's red badge: leads with unread replies (and the replies), leads with a chat, replied. */
+export interface WhatsAppSummary {
+  all: number
+  replied: number
+  unread: number
+  unreadMessages: number
 }
 
 export interface MessagePreview {
