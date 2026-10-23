@@ -2,7 +2,7 @@ import { Lightbulb } from 'lucide-react'
 import { FormField, Input, Select } from '../../components/ui/fields'
 import type { DispositionStage } from '../../types/models'
 import { taskTypeLabel, toLocalInput } from '../tasks/taskMeta'
-import type { StageValue } from './stageForm'
+import { offersFollowUp, type StageValue } from './stageForm'
 
 /**
  * Stage + sub-stage picker (Lead Stages sheet) with the counsellor action for
@@ -64,9 +64,9 @@ export function StageFields({
           </p>
         </div>
       )}
-      {stage?.requiresFollowUp && (
+      {offersFollowUp(stage) && (
         <div className="grid gap-2 rounded-lg border border-brand-100 bg-brand-50/40 p-3 sm:grid-cols-[1.3fr_1fr]">
-          <FormField label="Next Follow-up" required error={errors.followUpAt}>
+          <FormField label="Next Follow-up (optional)" required={!!stage?.requiresFollowUp} error={errors.followUpAt}>
             <Input
               type="datetime-local"
               min={toLocalInput(new Date())}

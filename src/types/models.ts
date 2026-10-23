@@ -863,6 +863,9 @@ export interface DispositionStage {
   type: 'open' | 'converted' | 'lost'
   color?: string
   locked: boolean
+  /** the picker offers an (optional) next follow-up for this stage */
+  allowsFollowUp?: boolean
+  /** false everywhere since the follow-up became optional (kept for older servers) */
   requiresFollowUp: boolean
   requiresReason: boolean
   subStages: { _id: string; name: string; counsellorAction?: string | null }[]
