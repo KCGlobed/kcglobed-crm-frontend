@@ -13,6 +13,7 @@ import { isFinalStatus, statusLabel, statusTone } from '../../features/telephony
 import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
 import type { CallLog, Lead } from '../../types/models'
 import { taskTypeLabel, toLocalInput } from '../tasks/taskMeta'
+import { offersFollowUp } from './stageForm'
 import { CallProofField, type ProofValue } from './CallProofField'
 
 /**
@@ -50,7 +51,8 @@ export function DispositionDrawer({
   const [stageId, setStageId] = useState(lead.stage?._id ?? '')
   const [subStage, setSubStage] = useState('')
   const [reason, setReason] = useState('')
-  const [followUpAt, setFollowUpAt] = useState(() => toLocalInput(new Date(Date.now() + 24 * 3600_000)))
+  // optional: empty until a date is picked, and no follow-up is created then
+  const [followUpAt, setFollowUpAt] = useState('')
   const [followUpType, setFollowUpType] = useState('follow_up_call')
   const [followUpNote, setFollowUpNote] = useState('')
   const [note, setNote] = useState('')
@@ -100,8 +102,8 @@ export function DispositionDrawer({
       reason: reason || undefined,
       note: note || undefined,
       interaction: mode === 'dialer' ? 'call' : mode,
-      ...(stage?.requiresFollowUp
-        ? { followUpAt: followUpAt ? new Date(followUpAt).toISOString() : null, followUpType, followUpNote: followUpNote || undefined }
+      ...(offersFollowUp(stage) && followUpAt
+        ? { followUpAt: new Date(followUpAt).toISOString(), followUpType, followUpNote: followUpNote || undefined }
         : {}),
       ...(mode === 'call'
         ? { call: { status: callStatus, durationSeconds: duration, screenshotId: screenshot?.id, recordingId: recording?.id ?? null } }
@@ -282,11 +284,11 @@ export function DispositionDrawer({
               <Input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} />
             </FormField>
           )}
-          {stage?.requiresFollowUp && (
+          {offersFollowUp(stage) && (
             <div className="space-y-2 rounded-lg border border-brand-100 bg-brand-50/40 p-3">
-              <p className="text-xs font-semibold text-brand-800">Next follow-up (required for open stages)</p>
+              <p className="text-xs font-semibold text-brand-800">Next follow-up (optional)</p>
               <div className="grid gap-2 sm:grid-cols-[1.3fr_1fr]">
-                <FormField label="Date & Time" required error={errors.followUpAt}>
+                <FormField label="Date & Time" error={errors.followUpAt}>
                   <Input
                     type="datetime-local"
                     min={toLocalInput(new Date())}

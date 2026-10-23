@@ -17,6 +17,7 @@ import { Checkbox, FormField, Input, Select } from '../../components/ui/fields'
 import { formatDate, parseApiError } from '../../lib/utils'
 import type { Lead } from '../../types/models'
 import { taskTypeLabel, toLocalInput } from '../tasks/taskMeta'
+import { offersFollowUp } from '../leads/stageForm'
 
 /**
  * Deactivating a lead stage that still has leads on it: instead of a bare
@@ -34,7 +35,8 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
   const [targetId, setTargetId] = useState('')
   const [subStageId, setSubStageId] = useState('')
   const [reason, setReason] = useState('')
-  const [followUpAt, setFollowUpAt] = useState(() => toLocalInput(new Date(Date.now() + 24 * 3600_000)))
+  // optional: empty until a date is picked, and the moved leads get no follow-up then
+  const [followUpAt, setFollowUpAt] = useState('')
   const [followUpType, setFollowUpType] = useState('follow_up_call')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -58,7 +60,6 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
     if (!target) local.stage = 'Select the stage to move the leads to'
     else if (subStages.length && !subStageId) local.subStage = 'Select a sub-stage'
     if (target?.requiresReason && !subStages.length && !reason.trim()) local.reason = `A reason is required for "${target.name}"`
-    if (target?.requiresFollowUp && !followUpAt) local.followUpAt = 'A next follow-up date-time is required for this stage'
     if (Object.keys(local).length) return setErrors(local)
     if (!count) return toast.error('Select at least one lead')
     try {
@@ -66,7 +67,7 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
         ...(allMatching ? { selectAll: true, filters: { stage: stage._id } } : { leadIds: selected }),
         stage: targetId,
         subStage: subStageId || null,
-        ...(target?.requiresFollowUp ? { followUpAt: new Date(followUpAt).toISOString(), followUpType } : {}),
+        ...(offersFollowUp(target) && followUpAt ? { followUpAt: new Date(followUpAt).toISOString(), followUpType } : {}),
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       }).unwrap()
       toast.success(res.message)
@@ -208,9 +209,9 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
                   <Input value={reason} onChange={(e) => setReason(e.target.value)} aria-invalid={!!errors.reason} />
                 </FormField>
               )}
-              {target?.requiresFollowUp && (
+              {offersFollowUp(target) && (
                 <>
-                  <FormField label="Next follow-up (all moved leads)" required error={errors.followUpAt}>
+                  <FormField label="Next follow-up for all moved leads (optional)" error={errors.followUpAt}>
                     <Input
                       type="datetime-local"
                       min={toLocalInput(new Date())}
