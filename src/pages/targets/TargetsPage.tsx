@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Pencil, Plus, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import dayjs from 'dayjs'
@@ -68,6 +68,11 @@ export default function TargetsPage() {
   const user = useCurrentUser()
   const canCreate = can(user, 'targets', 'create')
   const canEdit = can(user, 'targets', 'edit')
+  const canOpenLeads = can(user, 'leads', 'view')
+  const navigate = useNavigate()
+  // a row opens the lead list narrowed to the leads that target counted
+  const openLeads = (t: Target) =>
+    navigate(`/app/leads?${new URLSearchParams({ target: t._id, target_label: `${t.assignee.name} · ${t.stage.name}` }).toString()}`)
   const { query, setParam } = useListParams({ sort_by: 'createdAt', sort_order: 'desc' }, ['status', 'search'])
   const [, setSearchParams] = useSearchParams()
   const tab: Tab = TABS.find((t) => t.key === query.status)?.key ?? 'active'
@@ -115,7 +120,7 @@ export default function TargetsPage() {
             align: 'right' as const,
             render: (t: Target) =>
               t.status === 'active' ? (
-                <div className="flex justify-end gap-1">
+                <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                   <Button variant="ghost" size="sm" title="Edit target" onClick={() => setEditing(t)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
@@ -133,7 +138,7 @@ export default function TargetsPage() {
     <>
       <PageHeader
         title="Target Manager"
-        description="Targets for leads to reach a stage within a date range. Progress counts the leads the assignee owned when they reached the stage; a target completes automatically at 100%."
+        description="Targets for leads to reach a stage within a date range. Progress counts the leads the assignee owned when they reached the stage; a target completes automatically at 100%. Click a target to see its leads."
         actions={
           canCreate ? (
             <Button size="sm" onClick={() => setEditing('new')}>
@@ -156,6 +161,7 @@ export default function TargetsPage() {
         columns={columns}
         rows={list.data?.data}
         rowKey={(t) => t._id}
+        onRowClick={canOpenLeads ? openLeads : undefined}
         loading={list.isLoading || list.isFetching}
         error={list.isError}
         errorMessage={list.isError ? parseApiError(list.error).message : undefined}

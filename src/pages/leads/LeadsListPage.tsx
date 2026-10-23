@@ -37,8 +37,9 @@ import { LeadRowActions } from './LeadRowActions'
 import { startQueue } from '../../features/telephony/callQueue'
 import { useTelephonyEnabled } from '../../features/telephony/useLiveCalls'
 
-/** URL params that are not lead filters: paging, sorting, and the dashboard's `from` marker */
-const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order', 'from']
+/** URL params that are not lead filters: paging, sorting, the dashboard's `from` marker and the name a
+ * Target Manager link carries for its chip */
+const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order', 'from', 'target_label']
 // HIDDEN for now: filter fields the backend offers but the panel leaves out.
 // - tag: no screen assigns tags to leads yet
 const HIDDEN_FILTER_FIELDS = ['tag']
@@ -80,6 +81,7 @@ function linkedFilterChips(params: URLSearchParams, fields: FilterField[] | unde
   if (status) chips.push({ key: 'status', text: `Status: ${label('status', status) ?? status}` })
   if (params.get('assigned') === 'true') chips.push({ key: 'assigned', text: 'Assigned to a Counsellor' })
   if (params.get('unassigned') === 'true') chips.push({ key: 'unassigned', text: 'Unassigned' })
+  if (params.get('target')) chips.push({ key: 'target', text: `Target: ${params.get('target_label') || 'selected target'}` })
   return chips
 }
 
@@ -457,7 +459,12 @@ export default function LeadsListPage() {
                 type="button"
                 aria-label={`Remove filter ${c.text}`}
                 title="Remove"
-                onClick={() => setParam(c.key, undefined)}
+                onClick={() => {
+                  const next = new URLSearchParams(params)
+                  next.delete(c.key)
+                  if (c.key === 'target') next.delete('target_label')
+                  replaceParams(next)
+                }}
                 className="rounded-full p-0.5 text-brand-500 hover:bg-brand-100 hover:text-brand-800"
               >
                 <X className="h-3 w-3" />
