@@ -24,6 +24,8 @@ export interface PushMessage {
   url?: string
   leadId?: string
   taskId?: string
+  /** incoming_call / missed_call: the dialer call */
+  callId?: string
 }
 
 export function pushPermission(): PushState {
@@ -130,6 +132,9 @@ export function toastClassFor(type?: string): string {
       return 'crm-toast crm-toast-followup'
     case 'task_overdue':
       return 'crm-toast crm-toast-overdue'
+    case 'incoming_call':
+    case 'missed_call':
+      return 'crm-toast crm-toast-call'
     default:
       return 'crm-toast'
   }

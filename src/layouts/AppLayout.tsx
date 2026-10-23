@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Header } from '../components/layout/Header'
 import { PushNotifications } from '../components/layout/PushNotifications'
+import { CallPopover } from '../features/telephony/CallPopover'
 import { Sidebar } from '../components/layout/Sidebar'
 import { useSessionSync } from '../features/auth/useSessionSync'
 
@@ -34,6 +35,7 @@ export default function AppLayout() {
   return (
     <div className="flex h-screen overflow-hidden bg-white">
       <PushNotifications />
+      <CallPopover />
       <Sidebar
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}

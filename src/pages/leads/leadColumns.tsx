@@ -90,8 +90,8 @@ const ALL_LEAD_COLUMNS: LeadColumn[] = [
         '—'
       ),
   },
-  // placeholder until call attempts are counted per lead: every row shows a dash for now
-  { key: 'callAttempts', header: 'No. of Call Attempts', exportKeys: [], align: 'center', render: () => text(null) },
+  // calls logged on the lead (manual + dialer); a dash until the backend sends the count
+  { key: 'callAttempts', header: 'No. of Call Attempts', exportKeys: [], align: 'center', render: (l) => text(l.callsCount ?? null) },
   {
     key: 'owner',
     header: 'Owner',

@@ -1,12 +1,17 @@
 import { useState } from 'react'
-import { Lightbulb, Lock } from 'lucide-react'
+import { Lightbulb, Lock, PhoneIncoming, PhoneOutgoing } from 'lucide-react'
 import { toast } from 'sonner'
 import { useDispositionOptionsQuery, useSaveDispositionMutation } from '../../services/leadsApi'
+import { useDismissCallMutation } from '../../services/telephonyApi'
 import { Drawer } from '../../components/ui/Drawer'
 import { Button } from '../../components/ui/Button'
+import { Badge } from '../../components/ui/Badge'
 import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
-import { parseApiError } from '../../lib/utils'
-import type { Lead } from '../../types/models'
+import { formatHms } from '../../lib/durations'
+import { formatDateTime, parseApiError } from '../../lib/utils'
+import { isFinalStatus, statusLabel, statusTone } from '../../features/telephony/callState'
+import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
+import type { CallLog, Lead } from '../../types/models'
 import { taskTypeLabel, toLocalInput } from '../tasks/taskMeta'
 import { CallProofField, type ProofValue } from './CallProofField'
 
@@ -18,10 +23,29 @@ import { CallProofField, type ProofValue } from './CallProofField'
  * time (mandatory, so the duration can be checked) and the recording
  * (optional). Counsellor Discussion and
  * Call Result are intentionally not part of this form — the discussion lives in its own tab.
+ *
+ * `dialer` mode: the outcome of a call the dialer (Smartflo) placed or received — status, talk time and
+ * recording come from the dialer, so no duration or screenshot is asked; the stage / disposition is
+ * saved onto that call row (call.callId). Skip leaves the call without an outcome.
  */
-export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: 'call' | 'update'; onClose: () => void }) {
+export function DispositionDrawer({
+  lead,
+  mode,
+  call,
+  onClose,
+}: {
+  lead: Lead
+  mode: 'call' | 'update' | 'dialer'
+  /** the dialer call being dispositioned (mode 'dialer') */
+  call?: CallLog
+  onClose: () => void
+}) {
   const { data } = useDispositionOptionsQuery()
   const [save, { isLoading }] = useSaveDispositionMutation()
+  const [dismiss, { isLoading: skipping }] = useDismissCallMutation()
+  const dialer = mode === 'dialer' ? (call ?? null) : null
+  // the dialer has not reported this call yet (webhook pending): the counsellor may type the duration
+  const manualDuration = !!dialer && !isFinalStatus(dialer.status)
   const stages = data?.data.stages ?? []
   const [stageId, setStageId] = useState(lead.stage?._id ?? '')
   const [subStage, setSubStage] = useState('')
@@ -52,15 +76,21 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
   const part = (value: string, max: number) => (value.trim() === '' ? 0 : /^\d+$/.test(value.trim()) && Number(value) <= max ? Number(value) : NaN)
   const duration = part(hours, 6) * 3600 + part(minutes, 59) * 60 + part(seconds, 59)
   const durationProblem =
-    mode !== 'call'
-      ? undefined
-      : !durationEntered
+    mode === 'call'
+      ? !durationEntered
         ? 'Enter the call duration'
         : Number.isNaN(duration)
           ? 'Use whole numbers: hours up to 6, minutes and seconds 0–59'
           : duration > 6 * 3600
             ? 'A call can be at most 6 hours'
             : undefined
+      : manualDuration && durationEntered
+        ? Number.isNaN(duration)
+          ? 'Use whole numbers: hours up to 6, minutes and seconds 0–59'
+          : duration > 6 * 3600
+            ? 'A call can be at most 6 hours'
+            : undefined
+        : undefined
 
   const onSave = async () => {
     if (durationProblem) return
@@ -69,17 +99,19 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
       subStage: subStage || null,
       reason: reason || undefined,
       note: note || undefined,
-      interaction: mode,
+      interaction: mode === 'dialer' ? 'call' : mode,
       ...(stage?.requiresFollowUp
         ? { followUpAt: followUpAt ? new Date(followUpAt).toISOString() : null, followUpType, followUpNote: followUpNote || undefined }
         : {}),
       ...(mode === 'call'
         ? { call: { status: callStatus, durationSeconds: duration, screenshotId: screenshot?.id, recordingId: recording?.id ?? null } }
-        : {}),
+        : dialer
+          ? { call: { callId: dialer._id, ...(manualDuration && durationEntered ? { durationSeconds: duration } : {}) } }
+          : {}),
     }
     try {
       await save({ id: lead._id, body }).unwrap()
-      toast.success(mode === 'call' ? 'Call logged' : 'Lead updated')
+      toast.success(mode === 'call' ? 'Call logged' : mode === 'dialer' ? 'Call outcome saved' : 'Lead updated')
       onClose()
     } catch (err) {
       const parsed = parseApiError(err)
@@ -88,19 +120,35 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
     }
   }
 
+  const onSkip = async () => {
+    if (!dialer) return
+    try {
+      await dismiss(dialer._id).unwrap()
+      toast.message('Call left without an outcome')
+      onClose()
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    }
+  }
+
   return (
     <Drawer
       open
       onClose={onClose}
-      title={mode === 'call' ? 'Log call' : 'Update lead'}
+      title={mode === 'call' ? 'Log call' : mode === 'dialer' ? 'Call outcome' : 'Update lead'}
       description={`${lead.firstName} ${lead.lastName ?? ''} · ${lead.leadNo} · now ${lead.stage?.name ?? '—'}`}
       footer={
         <>
+          {dialer?.needsDisposition && (
+            <Button variant="ghost" className="mr-auto" onClick={onSkip} loading={skipping} data-testid="skip-outcome">
+              Skip
+            </Button>
+          )}
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={onSave} loading={isLoading} disabled={!stageId || !!durationProblem || proofMissing}>
-            Save Disposition
+          <Button onClick={onSave} loading={isLoading} disabled={!stageId || !!durationProblem || proofMissing} data-testid="save-outcome">
+            {mode === 'dialer' ? 'Save Outcome' : 'Save Disposition'}
           </Button>
         </>
       }
@@ -116,6 +164,46 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
         }}
       >
         <div className="space-y-3">
+          {dialer && (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs" data-testid="dialer-call-summary">
+              <div className="flex flex-wrap items-center gap-2">
+                {dialer.direction === 'inbound' ? (
+                  <PhoneIncoming className="h-4 w-4 text-emerald-600" aria-label="Inbound call" />
+                ) : (
+                  <PhoneOutgoing className="h-4 w-4 text-brand-600" aria-label="Outbound call" />
+                )}
+                <span className="font-medium text-slate-700">{dialer.direction === 'inbound' ? 'Incoming call' : 'Outbound call'}</span>
+                <Badge tone={statusTone(dialer.status)}>{statusLabel(dialer.status)}</Badge>
+                {isFinalStatus(dialer.status) && (
+                  <span className="font-mono text-sm font-semibold tabular-nums text-slate-800">{formatHms(dialer.durationSeconds)}</span>
+                )}
+              </div>
+              <p className="mt-1 text-slate-500">
+                {formatDateTime(dialer.startedAt ?? dialer.createdAt)}
+                {dialer.customerNumber ? ` · ${dialer.customerNumber}` : ''}
+                {dialer.hangupCause ? ` · ${dialer.hangupCause.toLowerCase().replace(/_/g, ' ')}` : ''}
+              </p>
+              {(dialer.recording || dialer.recordingUrl) && (
+                <RecordingPlayer callId={dialer._id} proofId={dialer.recording?._id} fileName={dialer.recording?.fileName} fallbackUrl={dialer.recordingUrl} className="mt-2" />
+              )}
+              {manualDuration && (
+                <FormField
+                  label="Talk time"
+                  className="mt-3 border-t border-slate-200 pt-3"
+                  error={errors['call.durationSeconds'] ?? durationProblem}
+                  hint="The dialer has not reported this call yet — enter the talk time if you know it, or leave it blank"
+                >
+                  <div className="flex items-center gap-1">
+                    <Input className="!w-16" type="number" min={0} placeholder="hh" value={hours} onChange={(e) => setHours(e.target.value)} />
+                    <span className="text-slate-400">:</span>
+                    <Input className="!w-16" type="number" min={0} max={59} placeholder="mm" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+                    <span className="text-slate-400">:</span>
+                    <Input className="!w-16" type="number" min={0} max={59} placeholder="ss" value={seconds} onChange={(e) => setSeconds(e.target.value)} />
+                  </div>
+                </FormField>
+              )}
+            </div>
+          )}
           {mode === 'call' && (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
               <FormField
@@ -220,7 +308,7 @@ export function DispositionDrawer({ lead, mode, onClose }: { lead: Lead; mode: '
               <Input placeholder="Follow-up note (optional)" value={followUpNote} onChange={(e) => setFollowUpNote(e.target.value)} maxLength={500} />
             </div>
           )}
-          <FormField label={mode === 'call' ? 'Call Note' : 'Note'}>
+          <FormField label={mode === 'update' ? 'Note' : 'Call Note'}>
             <Textarea rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
           </FormField>
         </div>
