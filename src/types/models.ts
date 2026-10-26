@@ -1515,6 +1515,18 @@ export interface ExportJob {
   downloadUrl?: string | null
 }
 
+/** A bulk upload running in the background (options.background): polled until done (with the result) or failed. */
+export interface ImportJob {
+  _id: string
+  status: 'queued' | 'running' | 'done' | 'failed'
+  fileName: string
+  error?: string | null
+  result?: ImportResult | null
+  createdAt: string
+  startedAt?: string | null
+  finishedAt?: string | null
+}
+
 export interface BulkAssignResult {
   total: number
   perCounsellor: { _id: string; name: string; count: number }[]
