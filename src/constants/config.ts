@@ -6,6 +6,7 @@
  * dev proxy reads this file at start-up.
  */
 const BACKEND: { PROD_URL?: string; BASE_URL?: string } = {
+  // PROD_URL: 'https://crm-backend.gccschool.com',
   PROD_URL: 'https://crm-stage-backend.gccschool.com',
   // BASE_URL: 'http://localhost:4000',
 }
