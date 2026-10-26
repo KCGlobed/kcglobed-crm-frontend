@@ -11,7 +11,7 @@ import { stageChanged, stagePayload, stageValueOf, validateStage, type StageValu
 /**
  * Stage + sub-stage picker (Lead Stages sheet); shows the counsellor action for
  * the pick. System stages (Untouched, Re-enquired, Application Submitted) are
- * set by the CRM only. Open stages also need the next follow-up (Go-live GL-19).
+ * set by the CRM only. Open stages can also get a next follow-up (optional).
  */
 export function ChangeStageModal({ lead, open, onClose }: { lead: Lead; open: boolean; onClose: () => void }) {
   const { data } = useDispositionOptionsQuery()

@@ -337,9 +337,10 @@ export default function LeadDetailPage() {
   const navigate = useNavigate()
   const user = useCurrentUser()
   const admin = isAdminLike(user)
-  const [tab, setTab] = useState('overview')
-  const [modal, setModal] = useState<'edit' | 'assign' | 'delete' | 'call' | 'update' | 'dialer' | 'stage' | 'followup' | 'note' | 'sms' | 'email' | 'whatsapp' | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
+  // ?tab=whatsapp (a WhatsApp reply notification) opens straight on that tab
+  const [tab, setTab] = useState(() => searchParams.get('tab') || 'overview')
+  const [modal, setModal] = useState<'edit' | 'assign' | 'delete' | 'call' | 'update' | 'dialer' | 'stage' | 'followup' | 'note' | 'sms' | 'email' | 'whatsapp' | null>(null)
 
   const { data, isLoading, isError, error, refetch } = useGetLeadQuery(id, { skip: !id })
   const [deleteLead, { isLoading: deleting }] = useDeleteLeadMutation()

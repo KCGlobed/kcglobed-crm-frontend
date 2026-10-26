@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { AlertTriangle, BellRing, CalendarClock, ChevronDown, Filter, Mail, MessageSquareText, Pencil, Send, Trash2, UserPlus, X, Zap, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, BellRing, CalendarClock, ChevronDown, Filter, Mail, MessageCircle, MessageSquareText, Pencil, Send, Trash2, UserPlus, X, Zap, type LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { useCurrentUser } from '../../../app/hooks'
 import { Button } from '../../../components/ui/Button'
@@ -25,6 +25,7 @@ const ICON: Record<StaffAlertTrigger, LucideIcon> = {
   follow_up_reminder: CalendarClock,
   lead_untouched: AlertTriangle,
   lead_assigned: UserPlus,
+  whatsapp_reply: MessageCircle,
 }
 const DAY = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 /** the text fields a placeholder can be inserted into (the `name` attribute of each box) */
@@ -333,6 +334,9 @@ function StaffAlertDrawer({ alert, isNew, options, onClose }: { alert: StaffAler
             <Checkbox checked={form.notifyOwner} onChange={(e) => setWho('notifyOwner', e.target.checked)} />
             {alert.trigger === 'follow_up_reminder' ? "The follow-up's counsellor" : "The lead's counsellor"}
           </label>
+          {alert.trigger === 'whatsapp_reply' && (
+            <p className="-mt-1.5 text-[11px] text-slate-500">A reply on an unassigned lead goes to the Admins when nobody else is chosen.</p>
+          )}
           <div className="space-y-1.5">
             <p className="text-xs font-medium text-slate-600">Everyone in these roles</p>
             <p className="text-[11px] text-slate-500">To reach only some people in a role, leave the role off and add them under These people.</p>

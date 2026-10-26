@@ -22,6 +22,7 @@ import type {
   StaffAlertsResponse,
   WhatsAppChat,
   WhatsAppChatMessage,
+  WhatsAppSummary,
 } from '../types/models'
 
 export interface MessagingOptions {
@@ -240,6 +241,11 @@ export const messagingApi = api.injectEndpoints({
       invalidatesTags: (_r, error, { id }) =>
         error ? [] : [{ type: 'WhatsAppChat', id }, 'LeadMessages', { type: 'LeadTimeline', id }, { type: 'Lead', id }],
     }),
+    /** The WhatsApp quick filter's red badge: leads with unread replies among the leads the user can open. */
+    whatsAppSummary: build.query<ApiResponse<WhatsAppSummary>, void>({
+      query: () => '/messaging/whatsapp/summary',
+      providesTags: ['WhatsAppSummary'],
+    }),
 
     metaForms: build.query<ApiResponse<{ fields: { value: string; label: string }[]; forms: MetaFormMappingRow[] }>, void>({
       query: () => '/integrations/meta/forms',
@@ -298,6 +304,7 @@ export const {
   useSyncWhatsAppTemplatesMutation,
   useSubmitWhatsAppTemplateMutation,
   useWhatsAppChatQuery,
+  useWhatsAppSummaryQuery,
   useSendWhatsAppTextMutation,
   useLeadMessagesQuery,
   usePreviewLeadMessageMutation,

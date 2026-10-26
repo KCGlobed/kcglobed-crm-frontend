@@ -324,6 +324,8 @@ export interface Lead {
   ownerActive?: boolean | null
   /** calls logged on the lead (manual + dialer), for the list's "No. of Call Attempts" column */
   callsCount?: number
+  /** only with the WhatsApp quick filter: the lead's unread replies and last WhatsApp message */
+  whatsapp?: LeadWhatsAppChat
   profileValues?: Record<string, unknown>
   discussionValues?: Record<string, unknown>
 }
@@ -861,6 +863,9 @@ export interface DispositionStage {
   type: 'open' | 'converted' | 'lost'
   color?: string
   locked: boolean
+  /** the picker offers an (optional) next follow-up for this stage */
+  allowsFollowUp?: boolean
+  /** false everywhere since the follow-up became optional (kept for older servers) */
   requiresFollowUp: boolean
   requiresReason: boolean
   subStages: { _id: string; name: string; counsellorAction?: string | null }[]
@@ -1255,6 +1260,20 @@ export interface WhatsAppChat {
   messages: WhatsAppChatMessage[]
 }
 
+/** A lead's WhatsApp chat on the leads list (the WhatsApp quick filter): unread replies and the last message. */
+export interface LeadWhatsAppChat {
+  unread: number
+  last?: { body: string; direction: 'in' | 'out'; status: string; sentBy?: string; template?: string; at: string }
+}
+
+/** The WhatsApp quick filter's red badge: leads with unread replies (and the replies), leads with a chat, replied. */
+export interface WhatsAppSummary {
+  all: number
+  replied: number
+  unread: number
+  unreadMessages: number
+}
+
 export interface MessagePreview {
   channel: 'sms' | 'email'
   template: MessageTemplate
@@ -1326,7 +1345,7 @@ export interface AutomationBody {
   isActive?: boolean
 }
 
-export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_assigned'
+export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_assigned' | 'whatsapp_reply'
 
 /**
  * Communication → Automation → Counsellor alerts: the wording, channels and windows of the three staff-facing

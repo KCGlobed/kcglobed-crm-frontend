@@ -35,6 +35,7 @@ export const NOTIFICATION_ICONS: Record<string, { icon: typeof Bell; className: 
   bulk_done: { icon: Send, className: 'bg-emerald-50 text-emerald-700' },
   whatsapp_reply: { icon: MessageCircle, className: 'bg-emerald-50 text-emerald-700' },
   team_alert: { icon: Bell, className: 'bg-brand-50 text-brand-600' },
+  whatsapp_unknown: { icon: MessageCircle, className: 'bg-amber-50 text-amber-700' },
   whatsapp_template: { icon: MessageCircle, className: 'bg-emerald-50 text-emerald-700' },
   export_ready: { icon: Download, className: 'bg-emerald-50 text-emerald-700' },
   integration_error: { icon: PlugZap, className: 'bg-red-50 text-red-600' },
@@ -48,8 +49,11 @@ export function useOpenNotification() {
   const navigate = useNavigate()
   return useCallback(
     (n: CrmNotification) => {
+      // a WhatsApp reply opens the lead's chat; a message from a number not in the CRM, its Activity Log entries
+      if (n.type === 'whatsapp_reply' && n.data?.leadId) navigate(`/app/leads/${n.data.leadId}?tab=whatsapp`)
+      else if (n.type === 'whatsapp_unknown') navigate('/app/admin/audit?tab=communications&action=whatsapp_unknown_reply')
       // a dialer call: the lead page opens its outcome drawer once the call has ended
-      if (n.data?.leadId && n.data?.callId) navigate(`/app/leads/${n.data.leadId}?disposition=${n.data.callId}`)
+      else if (n.data?.leadId && n.data?.callId) navigate(`/app/leads/${n.data.leadId}?disposition=${n.data.callId}`)
       else if (n.data?.leadId) navigate(`/app/leads/${n.data.leadId}`)
       else if (n.data?.smart) navigate(`/app/leads?smart=${n.data.smart}`)
       else if (n.data?.templateId) navigate(`/app/admin/messaging/whatsapp/${n.data.templateId}`)

@@ -1,7 +1,9 @@
 import type { DispositionStage, Lead } from '../../types/models'
-import { toLocalInput } from '../tasks/taskMeta'
 
-/** What the stage picker holds: the pick plus the follow-up an open stage needs (GL-19). */
+/** Whether the picker offers a next follow-up for this stage (optional; open stages only). */
+export const offersFollowUp = (stage?: DispositionStage) => !!stage && (stage.allowsFollowUp ?? stage.requiresFollowUp)
+
+/** What the stage picker holds: the pick plus an optional next follow-up (empty = none). */
 export interface StageValue {
   stageId: string
   subStageId: string
@@ -16,7 +18,7 @@ export function stageValueOf(lead: StageOf): StageValue {
   return {
     stageId: lead.stage?.isSystem ? '' : (lead.stage?._id ?? ''),
     subStageId: lead.subStage ?? '',
-    followUpAt: toLocalInput(new Date(Date.now() + 24 * 3600_000)),
+    followUpAt: '',
     followUpType: 'follow_up_call',
   }
 }
@@ -43,7 +45,7 @@ export function stagePayload(value: StageValue, stages: DispositionStage[]): Rec
   return {
     stage: value.stageId,
     subStage: value.subStageId || null,
-    ...(stage?.requiresFollowUp ? { followUpAt: new Date(value.followUpAt).toISOString(), followUpType: value.followUpType } : {}),
+    ...(offersFollowUp(stage) && value.followUpAt ? { followUpAt: new Date(value.followUpAt).toISOString(), followUpType: value.followUpType } : {}),
   }
 }
 
