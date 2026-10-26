@@ -11,7 +11,6 @@
  * To point any mode somewhere else for one run, set VITE_BACKEND_URL in the shell or
  * in a git-ignored .env.local, e.g. `VITE_BACKEND_URL=http://192.168.1.5:4000 npm run dev`.
  */
-<<<<<<< HEAD
 export const BACKEND_URLS = {
   production: 'https://crm-backend.gccschool.com',
   staging: 'https://crm-stage-backend.gccschool.com',
@@ -29,12 +28,6 @@ export function backendUrlFor(mode: string | undefined, override?: string): stri
     BACKEND_URLS[mode as keyof typeof BACKEND_URLS] ||
     (mode === 'development' ? BACKEND_URLS.staging : BACKEND_URLS.production)
   return url.replace(/\/+$/, '')
-=======
-const BACKEND: { PROD_URL?: string; BASE_URL?: string } = {
-  // PROD_URL: 'https://crm-backend.gccschool.com',
-  PROD_URL: 'https://crm-stage-backend.gccschool.com',
-  // BASE_URL: 'http://localhost:4000',
->>>>>>> e46a00709c745e3d84bbc47adccb21f2d2c9b2ed
 }
 
 // `import.meta.env` is undefined when vite.config.ts imports this file under Node; the
@@ -49,3 +42,4 @@ export const BACKEND_URL = backendUrlFor(env.MODE, env.VITE_BACKEND_URL)
  * BACKEND_URL, so the refresh cookie stays same-site; a build calls BACKEND_URL directly.
  */
 export const API_BASE_URL = env.DEV ? '/api/v1' : `${BACKEND_URL}/api/v1`
+
