@@ -324,8 +324,6 @@ export interface Lead {
   ownerActive?: boolean | null
   /** calls logged on the lead (manual + dialer), for the list's "No. of Call Attempts" column */
   callsCount?: number
-  /** only with the WhatsApp quick filter: the lead's unread replies and last WhatsApp message */
-  whatsapp?: LeadWhatsAppChat
   profileValues?: Record<string, unknown>
   discussionValues?: Record<string, unknown>
 }
@@ -897,8 +895,10 @@ export interface CallLog {
   dialerRefId?: string | null
   dialerCallId?: string | null
   dialerMeta?: Record<string, unknown>
-  /** proof of the call: the screenshot of the call time (required since call proofs), the recording (optional) */
+  /** proof of the call: the screenshot(s) of the call time (required since call proofs), the recording (optional) */
   screenshot?: CallProofFile | null
+  /** every screenshot, in upload order (`screenshot` is the first) */
+  screenshots?: CallProofFile[]
   recording?: CallProofFile | null
   createdAt: string
 }
@@ -1021,6 +1021,8 @@ export interface AttendanceCallRow {
   stage?: string | null
   subStage?: string | null
   screenshot: CallProofFile | null
+  /** every screenshot, in upload order (`screenshot` is the first) */
+  screenshots?: CallProofFile[]
   recording: CallProofFile | null
 }
 
@@ -1261,19 +1263,6 @@ export interface WhatsAppChat {
 }
 
 /** A lead's WhatsApp chat on the leads list (the WhatsApp quick filter): unread replies and the last message. */
-export interface LeadWhatsAppChat {
-  unread: number
-  last?: { body: string; direction: 'in' | 'out'; status: string; sentBy?: string; template?: string; at: string }
-}
-
-/** The WhatsApp quick filter's red badge: leads with unread replies (and the replies), leads with a chat, replied. */
-export interface WhatsAppSummary {
-  all: number
-  replied: number
-  unread: number
-  unreadMessages: number
-}
-
 export interface MessagePreview {
   channel: 'sms' | 'email'
   template: MessageTemplate
@@ -1587,6 +1576,16 @@ export interface DashboardSummary {
     inboundAnswered?: number
     inboundMissed?: number
     avgTalkSeconds?: number
+    /** the counsellor's Today's Activity: outbound calls (logged or dialer) and how they ended */
+    dialCalls?: number
+    dialConnected?: number
+    dialNotConnected?: number
+    /** signed-in time today */
+    loggedInSeconds?: number
+    /** different numbers dialled today, of them reached (a call connected), and dialled more than once */
+    uniqueNumbers?: number
+    numbersReached?: number
+    multipleAttempts?: number
   }
 }
 

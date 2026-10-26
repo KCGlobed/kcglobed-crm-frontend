@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Download, FileAudio, Image as ImageIcon, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, FileAudio, Image as ImageIcon, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import dayjs from 'dayjs'
 import { authorizedDownload, useAuthorizedObjectUrl } from '../../../lib/download'
@@ -68,7 +68,13 @@ export function CallProofsTab({ filters, setParam }: { filters: Record<string, u
       header: 'Proof',
       render: (c) => (
         <div className="flex flex-wrap gap-1">
-          {c.screenshot ? <Badge tone="blue">Screenshot</Badge> : c.source === 'dialer' ? <Badge tone="slate">Dialer log</Badge> : <Badge tone="slate">No screenshot</Badge>}
+          {c.screenshot ? (
+            <Badge tone="blue">{c.screenshots && c.screenshots.length > 1 ? `${c.screenshots.length} screenshots` : 'Screenshot'}</Badge>
+          ) : c.source === 'dialer' ? (
+            <Badge tone="slate">Dialer log</Badge>
+          ) : (
+            <Badge tone="slate">No screenshot</Badge>
+          )}
           {c.recording && <Badge tone="violet">Recording</Badge>}
         </div>
       ),
@@ -116,7 +122,11 @@ export function CallProofsTab({ filters, setParam }: { filters: Record<string, u
 }
 
 function CallProofPreview({ call, onClose }: { call: AttendanceCallRow; onClose: () => void }) {
-  const shot = useAuthorizedObjectUrl(call.screenshot ? proofPath(call, call.screenshot) : null)
+  // every screenshot of the call (older rows carry only the first one)
+  const shots = call.screenshots?.length ? call.screenshots : call.screenshot ? [call.screenshot] : []
+  const [index, setIndex] = useState(0)
+  const shown = shots[index] ?? null
+  const shot = useAuthorizedObjectUrl(shown ? proofPath(call, shown) : null)
   const rec = useAuthorizedObjectUrl(call.recording ? proofPath(call, call.recording) : null)
   const download = (proof: CallProofFile) =>
     authorizedDownload(`${proofPath(call, proof)}?download=1`, proof.fileName).catch((e) => toast.error(parseApiError(e).message))
@@ -130,19 +140,35 @@ function CallProofPreview({ call, onClose }: { call: AttendanceCallRow; onClose:
       size="xl"
     >
       <div className="grid gap-5 md:grid-cols-[1fr_15rem]">
-        <div className="flex min-h-72 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-          {!call.screenshot ? (
-            <p className="flex items-center gap-2 text-sm text-slate-400">
-              <ImageIcon className="h-4 w-4" /> No screenshot
-            </p>
-          ) : shot.loading ? (
-            <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-          ) : shot.error ? (
-            <p className="text-sm text-red-600">{shot.error}</p>
-          ) : (
-            <a href={shot.url} target="_blank" rel="noreferrer" title="Open full size">
-              <img src={shot.url} alt="Call screenshot" className="max-h-[65vh] w-auto object-contain" />
-            </a>
+        <div className="space-y-2">
+          <div className="flex min-h-72 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+            {!shown ? (
+              <p className="flex items-center gap-2 text-sm text-slate-400">
+                <ImageIcon className="h-4 w-4" /> No screenshot
+              </p>
+            ) : shot.loading ? (
+              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            ) : shot.error ? (
+              <p className="text-sm text-red-600">{shot.error}</p>
+            ) : (
+              <a href={shot.url} target="_blank" rel="noreferrer" title="Open full size">
+                <img src={shot.url} alt={`Call screenshot ${index + 1}`} className="max-h-[65vh] w-auto object-contain" />
+              </a>
+            )}
+          </div>
+          {shots.length > 1 && (
+            <div className="flex items-center justify-center gap-3 text-xs text-slate-600" data-testid="screenshot-pager">
+              <Button variant="ghost" size="sm" aria-label="Previous screenshot" disabled={index === 0} onClick={() => setIndex((i) => Math.max(0, i - 1))}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="tabular-nums">
+                Screenshot {index + 1} of {shots.length}
+                {shown ? <span className="text-slate-400"> · {shown.fileName}</span> : null}
+              </span>
+              <Button variant="ghost" size="sm" aria-label="Next screenshot" disabled={index >= shots.length - 1} onClick={() => setIndex((i) => Math.min(shots.length - 1, i + 1))}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
 
@@ -173,9 +199,9 @@ function CallProofPreview({ call, onClose }: { call: AttendanceCallRow; onClose:
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {call.screenshot && (
-              <Button variant="outline" size="sm" onClick={() => download(call.screenshot!)}>
-                <Download className="h-3.5 w-3.5" /> Screenshot
+            {shown && (
+              <Button variant="outline" size="sm" onClick={() => download(shown)}>
+                <Download className="h-3.5 w-3.5" /> {shots.length > 1 ? `Screenshot ${index + 1}` : 'Screenshot'}
               </Button>
             )}
             {call.recording && (
