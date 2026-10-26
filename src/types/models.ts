@@ -1467,7 +1467,9 @@ export interface CampaignRow {
   counts: { selected?: number; final?: number; excluded?: { optedOut: number; invalid: number; duplicate: number } }
   createdBy?: string
   createdAt: string
-  report: Record<'queued' | 'sent' | 'delivered' | 'failed' | 'bounced', number>
+  report: Record<'queued' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'cancelled', number>
+  /** 'sending' with nothing going out for 10 min: its run died with a server restart — Resume or Stop it. */
+  stalled?: boolean
   failures?: { lead: string; name: string; to: string; reason: string }[]
 }
 

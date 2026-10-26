@@ -48,7 +48,8 @@ const ACTIVITY_ACTIONS = [
 ]
 const COMMUNICATION_ACTIONS = [
   'message_send', 'message_sent', 'message_delivered', 'message_failed', 'message_received', 'whatsapp_unknown_reply', 'opt_out',
-  'message_schedule', 'message_schedule_cancel', 'bulk_send', 'bulk_send_now', 'bulk_send_done', 'bulk_send_cancel',
+  'message_schedule', 'message_schedule_cancel', 'bulk_send', 'bulk_send_now', 'bulk_send_done', 'bulk_send_pause', 'bulk_send_resume',
+  'bulk_send_cancel',
   'template_create', 'template_update', 'automation_create', 'automation_update', 'automation_delete', 'staff_alert_update', 'staff_alert_test',
   'staff_alert_create', 'staff_alert_delete', 'whatsapp_template_sync', 'whatsapp_template_submit', 'whatsapp_template_edit',
   'saved_text_create', 'saved_text_update', 'saved_text_delete', 'asset_upload', 'asset_delete', 'email_test',
@@ -74,7 +75,7 @@ function communicationKind(entry: AuditLogEntry): 'message' | 'campaign' | null 
 function actionTone(action: string): BadgeTone {
   if (['delete', 'deactivate', 'message_failed', 'bulk_send_cancel', 'message_schedule_cancel', 'opt_out'].includes(action)) return 'red'
   if (['create', 'message_delivered', 'bulk_send_done'].includes(action)) return 'green'
-  if (action === 'message_schedule') return 'amber'
+  if (action === 'message_schedule' || action === 'bulk_send_pause') return 'amber'
   if (action === 'message_received' || action === 'whatsapp_unknown_reply') return 'violet'
   if (action.startsWith('message_')) return 'blue'
   if (action.startsWith('bulk_send')) return 'cyan'

@@ -183,9 +183,19 @@ export const messagingApi = api.injectEndpoints({
       query: (body) => ({ url: '/messaging/campaigns', method: 'POST', body }),
       invalidatesTags: (_r, error, { preview }) => (error || preview ? [] : ['Campaigns', 'Notifications']),
     }),
+    /** Cancels a scheduled bulk send, or Stops one that is sending / paused (what is still queued never goes out). */
     cancelCampaign: build.mutation<ApiResponse<CampaignRow>, string>({
       query: (id) => ({ url: `/messaging/campaigns/${id}/cancel`, method: 'POST' }),
       invalidatesTags: ['Campaigns'],
+    }),
+    pauseCampaign: build.mutation<ApiResponse<CampaignRow>, string>({
+      query: (id) => ({ url: `/messaging/campaigns/${id}/pause`, method: 'POST' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['Campaigns']),
+    }),
+    /** A paused bulk send, or one a server restart left stalled: sends only the recipients still queued. */
+    resumeCampaign: build.mutation<ApiResponse<CampaignRow>, string>({
+      query: (id) => ({ url: `/messaging/campaigns/${id}/resume`, method: 'POST' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['Campaigns']),
     }),
     /** Pulls the templates approved in WhatsApp Manager into the Templates tab. */
     syncWhatsAppTemplates: build.mutation<ApiResponse<{ total: number; created: number; updated: number; approved: number; skipped: number; removed: number }>, void>({
@@ -301,6 +311,8 @@ export const {
   useCampaignRecipientsQuery,
   useCreateCampaignMutation,
   useCancelCampaignMutation,
+  usePauseCampaignMutation,
+  useResumeCampaignMutation,
   useSyncWhatsAppTemplatesMutation,
   useSubmitWhatsAppTemplateMutation,
   useWhatsAppChatQuery,
