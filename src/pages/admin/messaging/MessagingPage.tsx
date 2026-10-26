@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Mail, MessageCircle, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { Mail, MessageCircle, Pause, Play, Plus, RefreshCw, Square, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useCancelCampaignMutation,
@@ -9,9 +9,12 @@ import {
   useListCampaignsQuery,
   useListMessageTemplatesQuery,
   useMessagingOptionsQuery,
+  usePauseCampaignMutation,
+  useResumeCampaignMutation,
   useSaveMessageTemplateMutation,
   useSyncWhatsAppTemplatesMutation,
 } from '../../../services/messagingApi'
+import { statusTone } from '../../../lib/status'
 import { useCurrentUser } from '../../../app/hooks'
 import { ConfirmDialog } from '../../../components/ui/feedback'
 import { PageHeader, Tabs } from '../../../components/ui/misc'
@@ -332,19 +335,22 @@ function TemplatesTab() {
   )
 }
 
+/** A 'sending' bulk send whose run died with a server restart shows as 'stalled' (Resume or Stop moves it on). */
+const campaignState = (c: CampaignRow) => (c.status === 'sending' && c.stalled ? 'stalled' : c.status)
+
 function CampaignReport({ id, onClose }: { id: string; onClose: () => void }) {
   const { data } = useGetCampaignQuery(id, { pollingInterval: 5000 })
   const c = data?.data
   return (
-    <Modal open onClose={onClose} size="lg" title={c?.name ?? 'Campaign'} description={c ? `${c.channel.toUpperCase()} · ${c.template} · ${c.status}` : undefined}>
+    <Modal open onClose={onClose} size="lg" title={c?.name ?? 'Campaign'} description={c ? `${c.channel.toUpperCase()} · ${c.template} · ${campaignState(c)}` : undefined}>
       {!c ? (
         <Skeleton className="h-32 w-full" />
       ) : (
         <div className="space-y-3">
-          <div className="grid grid-cols-5 gap-2">
-            {(['queued', 'sent', 'delivered', 'failed', 'bounced'] as const).map((k) => (
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {(['queued', 'sent', 'delivered', 'failed', 'bounced', 'cancelled'] as const).map((k) => (
               <div key={k} className="rounded-lg border border-slate-200 p-2 text-center">
-                <p className="text-lg font-semibold text-slate-800">{c.report[k]}</p>
+                <p className="text-lg font-semibold text-slate-800">{c.report[k] ?? 0}</p>
                 <p className="text-[11px] capitalize text-slate-500">{k}</p>
               </div>
             ))}
@@ -377,8 +383,20 @@ function CampaignReport({ id, onClose }: { id: string; onClose: () => void }) {
 
 function CampaignsTab() {
   const { data, isLoading } = useListCampaignsQuery(undefined, { pollingInterval: 15000 })
-  const [cancel] = useCancelCampaignMutation()
+  const [cancel, { isLoading: cancelling }] = useCancelCampaignMutation()
+  const [pause] = usePauseCampaignMutation()
+  const [resume, { isLoading: resuming }] = useResumeCampaignMutation()
   const [open, setOpen] = useState<string | null>(null)
+  // Stop and Resume ask first: one cancels the rest for good, the other sends to everyone still queued
+  const [confirm, setConfirm] = useState<{ kind: 'stop' | 'resume'; campaign: CampaignRow } | null>(null)
+  const act = async (call: () => { unwrap: () => Promise<unknown> }, done: string) => {
+    try {
+      await call().unwrap()
+      toast.success(done)
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    }
+  }
   if (isLoading) return <Skeleton className="h-40 w-full" />
   if (!data?.data.length)
     return <EmptyState title="No bulk sends yet" description="Select leads on the lead list, then Bulk SMS or Bulk Email." />
@@ -399,11 +417,18 @@ function CampaignsTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {data.data.map((c) => (
+            {data.data.map((c) => {
+              const state = campaignState(c)
+              return (
               <tr key={c._id} className="cursor-pointer hover:bg-slate-50" onClick={() => setOpen(c._id)}>
                 <td className="px-4 py-2 font-medium text-slate-800">{c.name}</td>
                 <td className="px-4 py-2">
-                  <Badge tone={c.status === 'done' ? 'green' : c.status === 'cancelled' ? 'slate' : 'blue'}>{c.status}</Badge>
+                  <Badge
+                    tone={statusTone(state)}
+                    title={state === 'stalled' ? 'Nothing has gone out for over 10 minutes — the send stopped with a server restart. Resume or Stop it.' : undefined}
+                  >
+                    {state}
+                  </Badge>
                 </td>
                 <td className="px-4 py-2 text-xs text-slate-500">{formatDateTime(c.scheduledAt)}</td>
                 <td className="px-4 py-2 text-xs text-slate-700">
@@ -412,18 +437,56 @@ function CampaignsTab() {
                 <td className="px-4 py-2 text-xs text-red-600">{c.report.failed + c.report.bounced || ''}</td>
                 <td className="px-4 py-2 text-xs text-slate-500">{c.createdBy}</td>
                 <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                  {c.status === 'scheduled' && (
-                    <Button variant="ghost" size="sm" className="text-red-600" onClick={() => cancel(c._id)}>
-                      Cancel
-                    </Button>
-                  )}
+                  <div className="flex justify-end gap-1">
+                    {state === 'scheduled' && (
+                      <Button variant="ghost" size="sm" className="text-red-600" onClick={() => act(() => cancel(c._id), 'Bulk send cancelled')}>
+                        Cancel
+                      </Button>
+                    )}
+                    {state === 'sending' && (
+                      <Button variant="ghost" size="sm" title="Pause sending" onClick={() => act(() => pause(c._id), 'Bulk send paused')}>
+                        <Pause className="h-3.5 w-3.5" /> Pause
+                      </Button>
+                    )}
+                    {(state === 'paused' || state === 'stalled') && (
+                      <Button variant="ghost" size="sm" title="Send to the leads still queued" onClick={() => setConfirm({ kind: 'resume', campaign: c })}>
+                        <Play className="h-3.5 w-3.5" /> Resume
+                      </Button>
+                    )}
+                    {(state === 'sending' || state === 'paused' || state === 'stalled') && (
+                      <Button variant="ghost" size="sm" className="text-red-600" title="Stop for good" onClick={() => setConfirm({ kind: 'stop', campaign: c })}>
+                        <Square className="h-3.5 w-3.5" /> Stop
+                      </Button>
+                    )}
+                  </div>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>
       {open && <CampaignReport id={open} onClose={() => setOpen(null)} />}
+      <ConfirmDialog
+        open={!!confirm}
+        onClose={() => setConfirm(null)}
+        onConfirm={async () => {
+          if (!confirm) return
+          const id = confirm.campaign._id
+          if (confirm.kind === 'stop') await act(() => cancel(id), 'Bulk send stopped')
+          else await act(() => resume(id), 'Bulk send resumed')
+          setConfirm(null)
+        }}
+        title={confirm?.kind === 'stop' ? 'Stop Bulk Send' : 'Resume Bulk Send'}
+        message={
+          confirm?.kind === 'stop'
+            ? `Stop "${confirm.campaign.name}"? The ${confirm.campaign.report.queued} message(s) still queued are cancelled and never sent. Messages that already went out stay as they are. This cannot be undone.`
+            : `Resume "${confirm?.campaign.name}"? The ${confirm?.campaign.report.queued ?? 0} message(s) still queued go out now — only those, so nobody gets it twice. Bulk sends run between 9 am and 9 pm.`
+        }
+        confirmLabel={confirm?.kind === 'stop' ? 'Stop sending' : 'Resume sending'}
+        danger={confirm?.kind === 'stop'}
+        loading={cancelling || resuming}
+      />
     </>
   )
 }
