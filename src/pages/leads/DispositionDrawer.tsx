@@ -20,8 +20,8 @@ import { CallProofField, type ProofValue } from './CallProofField'
  * "Log Call / Update" (GL-16..20, GL-40): stage + disposition, a mandatory
  * future follow-up for every open stage, a reason for closing stages, an
  * optional note and, for a call, its duration (mandatory: talk time is summed
- * from it; 00:00:00 for a call that didn't connect), a screenshot of the call
- * time (mandatory, so the duration can be checked) and the recording
+ * from it; 00:00:00 for a call that didn't connect), the screenshot(s) of the call
+ * time (at least one, so the duration can be checked; several for a call spanning screens) and the recording
  * (optional). Counsellor Discussion and
  * Call Result are intentionally not part of this form — the discussion lives in its own tab.
  *
@@ -63,12 +63,12 @@ export function DispositionDrawer({
   const [seconds, setSeconds] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   // proof of the call, uploaded as soon as it is picked (or pasted)
-  const [screenshot, setScreenshot] = useState<ProofValue | null>(null)
-  const [recording, setRecording] = useState<ProofValue | null>(null)
+  const [screenshots, setScreenshots] = useState<ProofValue[]>([])
+  const [recording, setRecording] = useState<ProofValue[]>([])
   const [shotBusy, setShotBusy] = useState(false)
   const [recBusy, setRecBusy] = useState(false)
   const [pasted, setPasted] = useState<File | null>(null)
-  const proofMissing = mode === 'call' && (!screenshot || shotBusy || recBusy)
+  const proofMissing = mode === 'call' && (!screenshots.length || shotBusy || recBusy)
 
   const stage = stages.find((s) => s._id === stageId)
   const subStagePick = stage?.subStages.find((s) => s._id === subStage)
@@ -106,7 +106,7 @@ export function DispositionDrawer({
         ? { followUpAt: new Date(followUpAt).toISOString(), followUpType, followUpNote: followUpNote || undefined }
         : {}),
       ...(mode === 'call'
-        ? { call: { status: callStatus, durationSeconds: duration, screenshotId: screenshot?.id, recordingId: recording?.id ?? null } }
+        ? { call: { status: callStatus, durationSeconds: duration, screenshotIds: screenshots.map((s) => s.id), recordingId: recording[0]?.id ?? null } }
         : dialer
           ? { call: { callId: dialer._id, ...(manualDuration && durationEntered ? { durationSeconds: duration } : {}) } }
           : {}),
@@ -226,11 +226,11 @@ export function DispositionDrawer({
                 <CallProofField
                   kind="screenshot"
                   required
-                  value={screenshot}
-                  onChange={setScreenshot}
+                  value={screenshots}
+                  onChange={setScreenshots}
                   onBusy={setShotBusy}
                   pasted={pasted}
-                  error={errors['call.screenshotId']}
+                  error={errors['call.screenshotId'] ?? errors['call.screenshotIds']}
                 />
                 <CallProofField kind="recording" value={recording} onChange={setRecording} onBusy={setRecBusy} error={errors['call.recordingId']} />
               </div>

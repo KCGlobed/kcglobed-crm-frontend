@@ -1,6 +1,6 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarCheck, CalendarClock, ChevronRight, CircleDashed, Coffee, GraduationCap, Inbox, Phone, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOff, Receipt, ThumbsDown, ThumbsUp, Timer, UserCheck, Users, type LucideIcon } from 'lucide-react'
+import { CalendarCheck, CalendarClock, ChevronRight, CircleDashed, Clock, Coffee, GraduationCap, Hash, Inbox, Phone, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOff, PhoneOutgoing, Receipt, Repeat, ThumbsDown, ThumbsUp, Timer, UserCheck, Users, type LucideIcon } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useDashboardSummaryQuery } from '../../services/miscApi'
 import { leadsApi, useListLeadsQuery, type LeadListParams } from '../../services/leadsApi'
@@ -369,6 +369,12 @@ function CounsellorCards({ summary, period: state, loading, onOpen }: { summary?
   const counted = useLeadCount(key === 'custom' ? bounds : undefined)
   const total = period ? period.total : counted.count
   const activity = summary?.activityToday
+  const dialCalls = activity?.dialCalls ?? 0
+  const inbound = activity?.inbound ?? 0
+  const loggedIn = activity?.loggedInSeconds ?? 0
+  const unique = activity?.uniqueNumbers ?? 0
+  /** a card's bar: its share (0–100) of the row's total; empty when the total is 0 */
+  const pct = (part: number | undefined, whole: number) => (whole ? Math.min(100, Math.round(((part ?? 0) / whole) * 100)) : 0)
   return (
     <>
       <section aria-label="My Leads">
@@ -397,31 +403,24 @@ function CounsellorCards({ summary, period: state, loading, onOpen }: { summary?
 
       <section className="mt-5" aria-label="Today's Activity">
         <SectionHeading title="Today's Activity" hint="" />
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-          {/* straight from the summary's activityToday; 0 until the backend sends it */}
-          <KpiCard label="Total Calls Today" value={activity?.calls ?? 0} progress={activity?.calls ? 100 : 0} hint="Calls placed" icon={PhoneCall} accent="cyan" loading={loading} />
-          <KpiCard label="Total Talk time Today" value={formatHms(activity?.talktimeSeconds)} progress={activity?.talktimeSeconds ? 100 : 0} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
-          <KpiCard label="Total Break Time Today" value={formatHms(activity?.breakSeconds)} progress={activity?.breakSeconds ? 100 : 0} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
-          {/* inbound calls come from the dialer (apps.telephony); 0 until it is connected */}
-          <KpiCard label="Inbound Total" value={activity?.inbound ?? 0} progress={activity?.inbound ? 100 : 0} hint="Calls received today" icon={PhoneIncoming} accent="blue" loading={loading} />
-          <KpiCard
-            label="Inbound Received"
-            value={activity?.inboundAnswered ?? 0}
-            progress={activity?.inbound ? Math.round(((activity.inboundAnswered ?? 0) / activity.inbound) * 100) : 0}
-            hint="Answered"
-            icon={Phone}
-            accent="green"
-            loading={loading}
-          />
-          <KpiCard
-            label="Inbound Missed"
-            value={activity?.inboundMissed ?? 0}
-            progress={activity?.inbound ? Math.round(((activity.inboundMissed ?? 0) / activity.inbound) * 100) : 0}
-            hint="Not answered"
-            icon={PhoneMissed}
-            accent="red"
-            loading={loading}
-          />
+        {/* 4 rows × 3: dial calls, inbound calls, time, numbers — straight from the summary's activityToday (0 when
+            it has no figure yet); each bar is the card's share of its row's first card */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4" data-testid="todays-activity">
+          <KpiCard label="Total Dial Calls" value={dialCalls} progress={dialCalls ? 100 : 0} hint="Outgoing calls today" icon={PhoneOutgoing} accent="blue" loading={loading} />
+          <KpiCard label="Connected" value={activity?.dialConnected ?? 0} progress={pct(activity?.dialConnected, dialCalls)} hint="Dial calls answered" icon={PhoneCall} accent="green" loading={loading} />
+          <KpiCard label="Not Connected" value={activity?.dialNotConnected ?? 0} progress={pct(activity?.dialNotConnected, dialCalls)} hint="No answer, busy or failed" icon={PhoneOff} accent="red" loading={loading} />
+
+          <KpiCard label="Inbound Calls Today" value={inbound} progress={inbound ? 100 : 0} hint="Calls received today" icon={PhoneIncoming} accent="cyan" loading={loading} />
+          <KpiCard label="Inbound Received" value={activity?.inboundAnswered ?? 0} progress={pct(activity?.inboundAnswered, inbound)} hint="Answered" icon={Phone} accent="green" loading={loading} />
+          <KpiCard label="Inbound Missed" value={activity?.inboundMissed ?? 0} progress={pct(activity?.inboundMissed, inbound)} hint="Not answered" icon={PhoneMissed} accent="red" loading={loading} />
+
+          <KpiCard label="Total Time" value={formatHms(loggedIn)} progress={loggedIn ? 100 : 0} hint="Signed in today" icon={Clock} accent="blue" loading={loading} />
+          <KpiCard label="Talk Time" value={formatHms(activity?.talktimeSeconds)} progress={pct(activity?.talktimeSeconds, loggedIn)} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
+          <KpiCard label="Break Time" value={formatHms(activity?.breakSeconds)} progress={pct(activity?.breakSeconds, loggedIn)} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
+
+          <KpiCard label="Unique Numbers Dialled" value={unique} progress={unique ? 100 : 0} hint="Different numbers called" icon={Hash} accent="blue" loading={loading} />
+          <KpiCard label="Numbers Reached" value={activity?.numbersReached ?? 0} progress={pct(activity?.numbersReached, unique)} hint="Connected at least once" icon={UserCheck} accent="green" loading={loading} />
+          <KpiCard label="Multiple Dial Attempts" value={activity?.multipleAttempts ?? 0} progress={pct(activity?.multipleAttempts, unique)} hint="Numbers dialled more than once" icon={Repeat} accent="amber" loading={loading} />
         </div>
       </section>
     </>
@@ -461,15 +460,42 @@ function allStagesByCount(stages: Stage[], byStage: DashboardSummary['byStage'])
 }
 
 /**
- * The conversion funnel's stage steps, in order, after "Total Leads". `names` are the
- * master stage names a step matches, first preferred (the stage may be named either way).
+ * The conversion funnel's steps, in order, after "Total Leads". Each counts the leads now at that point: on a
+ * Masters stage named one of `stages` (first match wins), else — when no such stage exists — on one of the
+ * sub-stages named in `subStages`, under any stage. A step that matches nothing in Masters shows 0. Names are
+ * compared without case, spaces or punctuation ("Program Fees – Payment Stages" = "program fees payment stages").
  */
-const FUNNEL_STAGES: { label: string; names: string[] }[] = [
-  { label: 'Interested', names: ['Interested'] },
-  { label: 'Prospects (Hot)', names: ['Prospects (Hot)', 'Prospects'] },
-  { label: 'Registration Fees Done', names: ['Registration Fees Done', 'Registration & Fee'] },
-  { label: 'Enrolled', names: ['Enrolled'] },
+const FUNNEL_STEPS: { label: string; stages: string[]; subStages?: string[] }[] = [
+  { label: 'Interested', stages: ['Interested'] },
+  { label: 'Interview Preparation', stages: ['Interview Preparation'], subStages: ['Interview Preparation'] },
+  // the interview took place: appeared, then cleared or rejected
+  { label: 'Interview Done', stages: ['Interview Done'], subStages: ['Interview Done', 'Interview Appeared', 'Interview Cleared', 'Interview Rejected'] },
+  { label: 'Registration Fees', stages: ['Registration Fees', 'Registration Fees Done', 'Registration & Fee'] },
+  { label: 'Banking/Payment', stages: ['Banking/Payment', 'Banking', 'Payment', 'Program Fees – Payment Stages', 'Program Fees Payment'] },
+  { label: 'Enrolment', stages: ['Enrolment', 'Enrollment', 'Enrolled'] },
 ]
+
+/** A Masters name for matching: lower case, every run of spaces or punctuation one space. */
+const nameKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+
+/** Where a funnel step counts from: a stage (its count comes with the stage rows), or sub-stages (counted off the list), or nothing. */
+type FunnelSource = { kind: 'stage'; stageId: string } | { kind: 'sub'; params: ListParams } | { kind: 'none' }
+
+/** Each funnel step's source in these Masters: the first stage name that exists, else the named sub-stages that exist. */
+function funnelSources(stages: Stage[]): FunnelSource[] {
+  const active = stages.filter((s) => s.isActive !== false)
+  return FUNNEL_STEPS.map((step): FunnelSource => {
+    for (const name of step.stages) {
+      const stage = active.find((s) => nameKey(s.name) === nameKey(name))
+      if (stage) return { kind: 'stage', stageId: stage._id }
+    }
+    const wanted = new Set((step.subStages ?? []).map(nameKey))
+    const subs = active.flatMap((s) => (s.subStages ?? []).filter((sub) => sub.isActive && wanted.has(nameKey(sub.name))).map((sub) => ({ stage: s, sub })))
+    if (subs.length === 1) return { kind: 'sub', params: { stage: subs[0].stage._id, sub_stage: subs[0].sub._id } }
+    if (subs.length > 1) return { kind: 'sub', params: { filters: JSON.stringify([{ field: 'subStage', op: 'any_of', value: subs.map((s) => s.sub._id) }]) } }
+    return { kind: 'none' }
+  })
+}
 
 interface FunnelStep {
   label: string
@@ -479,11 +505,11 @@ interface FunnelStep {
 }
 
 /** the bands' fills, top to bottom: the brand purple, lighter at the mouth and deepest at the bottom, all dark enough for white text */
-const BAND_FILLS = ['#7f5fbb', '#6a48aa', '#5f3d9e', '#4b2d87', '#3d1f73']
+const BAND_FILLS = ['#8466be', '#7a5bb6', '#6f4fae', '#6544a5', '#5a3a99', '#4b2d87', '#3d1f73']
 const FUNNEL_INK = '#FFFFFF'
 
 /** the bands' shares of the funnel's height, top to bottom; Total Leads gets the tall one */
-const BAND_SHARES = [90, 50, 50, 50, 50]
+const BAND_SHARES = [76, 50, 50, 50, 50, 50, 50]
 /** how wide the cone's mouth may be, as a share of its height, so a wide card gets a slim funnel in the middle rather than a bowl */
 const FUNNEL_ASPECT = 1.1
 /** how wide the cone's bottom is, as a share of its top */
@@ -549,9 +575,9 @@ function useElementSize() {
 
 /**
  * Conversion funnel: a cone filling the card, one band per step from Total Leads at the
- * wide mouth down to Enrolled, shaded from lighter to deep purple on the way down. Its
- * count (the summary's figure, or 0) and name sit inside in white. A band with leads
- * opens their list.
+ * wide mouth down to Enrolment, shaded from lighter to deep purple on the way down. Its
+ * count (0 when Masters has nothing for the step) and name sit inside in white. A band
+ * with leads opens their list.
  */
 function FunnelCard({ steps, hint, loading, onOpen }: { steps: FunnelStep[] | undefined; hint?: string; loading: boolean; onOpen: (params: ListParams) => void }) {
   const [measure, { width, height }] = useElementSize()
@@ -562,7 +588,7 @@ function FunnelCard({ steps, hint, loading, onOpen }: { steps: FunnelStep[] | un
       actions={hint && <span className="text-xs text-slate-500">{hint}</span>}
       // the card stretches to its row's height (at least min-h-80 on its own), and the funnel fills its body
       className="flex flex-col"
-      bodyClassName="relative flex min-h-80 flex-1 items-center justify-center"
+      bodyClassName="relative flex min-h-96 flex-1 items-center justify-center"
     >
       {loading && <Skeleton className="mx-auto h-64 w-5/6" />}
       {!loading && !steps && <p className="py-6 text-center text-xs text-slate-400">No Data Yet</p>}
@@ -640,10 +666,10 @@ function FunnelDrawing({
             )}
             <path d={outline} fill={fill} />
             <path d={outline} fill={`url(#${FUNNEL_SHADE})`} stroke="#fff" strokeWidth={1.5} strokeLinejoin="round" />
-            <text x={cx} y={mid - 2} textAnchor="middle" fontSize={first ? 24 : 17} fontWeight={700} fill={FUNNEL_INK}>
+            <text x={cx} y={mid - 2} textAnchor="middle" fontSize={first ? 24 : 15} fontWeight={700} fill={FUNNEL_INK}>
               {figure}
             </text>
-            <text x={cx} y={mid + (first ? 16 : 12)} textAnchor="middle" fontSize={first ? 12.5 : 11} fontWeight={500} fill={FUNNEL_INK}>
+            <text x={cx} y={mid + (first ? 16 : 11)} textAnchor="middle" fontSize={first ? 12.5 : 10.5} fontWeight={500} fill={FUNNEL_INK}>
               {step.label}
             </text>
           </g>
@@ -821,6 +847,11 @@ export default function DashboardPage() {
   const customTotal = useLeadCount(key === 'custom' ? bounds : undefined)
   const total = allTime ? summary?.totals.total : key === 'custom' ? customTotal.count : period.period?.total
   const rowsLoading = isLoading || mastersLoading || (!allTime && (!stages || (!counsellor && (!sources || !owners))))
+  // the funnel's sub-stage steps are counted off the list (the summary has stage rows only), within the period
+  const sourcesOfFunnel = masters ? funnelSources(masters.data.stages) : undefined
+  const subParams = sourcesOfFunnel?.flatMap((s) => (s.kind === 'sub' ? [{ ...s.params, ...(bounds ?? {}) }] : []))
+  const subCounts = useLeadCounts(subParams?.length ? subParams : undefined)
+  const funnelLoading = rowsLoading || (!!subParams?.length && !subCounts)
 
   if (isError) {
     return (
@@ -842,14 +873,24 @@ export default function DashboardPage() {
 
   /** The period's row for the stage of this name, from the (possibly counted) stage rows. */
   const stageOf = (name: string) => stages?.find((s) => s.name.trim().toLowerCase() === name.trim().toLowerCase())
-  // Total Leads, then each funnel stage with the count and drill-down of its stage row
+  // Total Leads, then each funnel step: a stage's count and drill-down from its (period) row, a sub-stage step's from
+  // the list count, 0 for a step Masters has nothing for
+  let subIndex = 0
   const funnel: FunnelStep[] | undefined =
-    stages && total !== undefined
+    stages && total !== undefined && sourcesOfFunnel && !funnelLoading
       ? [
           { label: 'Total Leads', count: total, params: range },
-          ...FUNNEL_STAGES.map(({ label, names }) => {
-            const row = names.map(stageOf).find(Boolean)
-            return { label, count: row?.count ?? 0, params: row?.params }
+          ...FUNNEL_STEPS.map(({ label }, i): FunnelStep => {
+            const source = sourcesOfFunnel[i]
+            if (source.kind === 'stage') {
+              const row = stages.find((s) => s.id === source.stageId)
+              return { label, count: row?.count ?? 0, params: { stage: source.stageId, ...(bounds ?? {}) } }
+            }
+            if (source.kind === 'sub') {
+              const count = subCounts?.[subIndex++] ?? 0
+              return { label, count, params: { ...source.params, ...(bounds ?? {}) } }
+            }
+            return { label, count: 0 }
           }),
         ]
       : undefined
@@ -931,7 +972,7 @@ export default function DashboardPage() {
         {!counsellor && <DistributionCard title="Lead Source Analytics" hint={chartHint} items={sources} loading={rowsLoading} onOpen={open} />}
         {!counsellor && <DistributionCard title="Leads by Counsellor" hint={chartHint} items={owners} loading={rowsLoading} onOpen={open} />}
         <DistributionCard title="Stage Distribution" hint={chartHint} items={stages} loading={rowsLoading} onOpen={open} />
-        {counsellor && <FunnelCard steps={funnel} hint={allTime ? 'All time' : period.hint} loading={rowsLoading} onOpen={open} />}
+        {counsellor && <FunnelCard steps={funnel} hint={allTime ? 'All time' : period.hint} loading={funnelLoading} onOpen={open} />}
       </div>
 
       {counsellor ? (
@@ -939,7 +980,7 @@ export default function DashboardPage() {
       ) : (
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <RecentLeadsCard leads={summary?.recentLeads} loading={isLoading} onOpenLead={openLead} onViewAll={viewAllLeads} />
-          <FunnelCard steps={funnel} hint={allTime ? 'All time' : period.hint} loading={rowsLoading} onOpen={open} />
+          <FunnelCard steps={funnel} hint={allTime ? 'All time' : period.hint} loading={funnelLoading} onOpen={open} />
         </div>
       )}
     </>
