@@ -324,8 +324,6 @@ export interface Lead {
   ownerActive?: boolean | null
   /** calls logged on the lead (manual + dialer), for the list's "No. of Call Attempts" column */
   callsCount?: number
-  /** only with the WhatsApp quick filter: the lead's unread replies and last WhatsApp message */
-  whatsapp?: LeadWhatsAppChat
   profileValues?: Record<string, unknown>
   discussionValues?: Record<string, unknown>
 }
@@ -897,8 +895,10 @@ export interface CallLog {
   dialerRefId?: string | null
   dialerCallId?: string | null
   dialerMeta?: Record<string, unknown>
-  /** proof of the call: the screenshot of the call time (required since call proofs), the recording (optional) */
+  /** proof of the call: the screenshot(s) of the call time (required since call proofs), the recording (optional) */
   screenshot?: CallProofFile | null
+  /** every screenshot, in upload order (`screenshot` is the first) */
+  screenshots?: CallProofFile[]
   recording?: CallProofFile | null
   createdAt: string
 }
@@ -1021,6 +1021,8 @@ export interface AttendanceCallRow {
   stage?: string | null
   subStage?: string | null
   screenshot: CallProofFile | null
+  /** every screenshot, in upload order (`screenshot` is the first) */
+  screenshots?: CallProofFile[]
   recording: CallProofFile | null
 }
 
@@ -1261,19 +1263,6 @@ export interface WhatsAppChat {
 }
 
 /** A lead's WhatsApp chat on the leads list (the WhatsApp quick filter): unread replies and the last message. */
-export interface LeadWhatsAppChat {
-  unread: number
-  last?: { body: string; direction: 'in' | 'out'; status: string; sentBy?: string; template?: string; at: string }
-}
-
-/** The WhatsApp quick filter's red badge: leads with unread replies (and the replies), leads with a chat, replied. */
-export interface WhatsAppSummary {
-  all: number
-  replied: number
-  unread: number
-  unreadMessages: number
-}
-
 export interface MessagePreview {
   channel: 'sms' | 'email'
   template: MessageTemplate
@@ -1515,6 +1504,18 @@ export interface ExportJob {
   downloadUrl?: string | null
 }
 
+/** A bulk upload running in the background (options.background): polled until done (with the result) or failed. */
+export interface ImportJob {
+  _id: string
+  status: 'queued' | 'running' | 'done' | 'failed'
+  fileName: string
+  error?: string | null
+  result?: ImportResult | null
+  createdAt: string
+  startedAt?: string | null
+  finishedAt?: string | null
+}
+
 export interface BulkAssignResult {
   total: number
   perCounsellor: { _id: string; name: string; count: number }[]
@@ -1589,6 +1590,16 @@ export interface DashboardSummary {
     inboundAnswered?: number
     inboundMissed?: number
     avgTalkSeconds?: number
+    /** the counsellor's Today's Activity: outbound calls (logged or dialer) and how they ended */
+    dialCalls?: number
+    dialConnected?: number
+    dialNotConnected?: number
+    /** signed-in time today */
+    loggedInSeconds?: number
+    /** different numbers dialled today, of them reached (a call connected), and dialled more than once */
+    uniqueNumbers?: number
+    numbersReached?: number
+    multipleAttempts?: number
   }
 }
 
@@ -1749,4 +1760,109 @@ export interface TargetOptions {
   stages: { _id: string; name: string }[]
   /** assignee id → their active target id: they cannot get another until it closes */
   busyAssignees: Record<string, string>
+}
+
+// ---------- Reports ----------
+
+export type ReportColumnType = 'text' | 'number' | 'duration' | 'percent'
+export type ReportPeriodKey = 'today' | 'yesterday' | 'last_7_days' | 'last_week' | 'this_month' | 'last_month'
+
+export interface ReportColumn {
+  key: string
+  label: string
+  type: ReportColumnType
+  /** a duration shown in minutes in the Excel file (on screen every duration is HH:MM:SS) */
+  short: boolean
+  align: 'left' | 'center' | 'right'
+}
+
+/** A report in the registry: its columns (typed, formatted the same on screen, in Excel and CSV) and periods. */
+export interface ReportDefinition {
+  key: string
+  name: string
+  category: string
+  description: string
+  /** a one-day report (the EOD): one date, scheduled for today or yesterday */
+  oneDay: boolean
+  /** a leading "Sr. No." column */
+  numbered: boolean
+  defaultPeriod: ReportPeriodKey
+  periods: { value: ReportPeriodKey; label: string }[]
+  columns: ReportColumn[]
+  notes: string[]
+}
+
+export type ReportRow = Record<string, string | number | null>
+
+export interface ReportSummaryItem {
+  label: string
+  value: number
+  type: ReportColumnType
+}
+
+/** Durations in seconds, percents as 0–100, counts as numbers. */
+export interface ReportResult {
+  report: ReportDefinition
+  dateFrom: string
+  dateTo: string
+  periodLabel: string
+  rows: ReportRow[]
+  totals: ReportRow | null
+  summary: ReportSummaryItem[]
+}
+
+export type ReportFrequency = 'daily' | 'weekly' | 'monthly'
+export type ReportRunStatus = 'running' | 'sent' | 'retry' | 'failed'
+export type ReportRunTrigger = 'schedule' | 'manual' | 'resend'
+
+/** "Email report X for period P to these people every day / week / month at HH:MM (IST)". */
+export interface ReportSchedule {
+  _id: string
+  name: string
+  reportKey: string
+  reportName: string
+  period: ReportPeriodKey
+  periodLabel: string
+  params: Record<string, unknown>
+  frequency: ReportFrequency
+  /** HH:MM, IST */
+  sendTime: string
+  /** daily: the days it goes out; weekly: [the day] — 0 = Monday */
+  weekdays: number[]
+  monthDay: number | null
+  recipients: string[]
+  cc: string[]
+  isActive: boolean
+  owner: { _id: string; name?: string; email?: string } | null
+  nextRunAt: string | null
+  lastRunAt: string | null
+  lastStatus: ReportRunStatus | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** One generation + email of a report: what went out, to whom, the file, and why it failed. */
+export interface ReportRun {
+  _id: string
+  schedule: string | null
+  reportKey: string
+  name: string
+  trigger: ReportRunTrigger
+  scheduledFor: string | null
+  params: Record<string, unknown>
+  periodLabel: string
+  recipients: string[]
+  cc: string[]
+  status: ReportRunStatus
+  attempts: number
+  nextAttemptAt: string | null
+  error: string | null
+  rowCount: number
+  summary: ReportSummaryItem[]
+  hasFile: boolean
+  fileName: string | null
+  triggeredBy: { _id: string; name?: string } | null
+  startedAt: string | null
+  finishedAt: string | null
+  createdAt: string
 }

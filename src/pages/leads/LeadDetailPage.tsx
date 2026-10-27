@@ -31,6 +31,7 @@ import { Tabs } from '../../components/ui/misc'
 import { cn, formatDateTime, fullName, initials, parseApiError, timeAgo } from '../../lib/utils'
 import { useAuthorizedObjectUrl } from '../../lib/download'
 import { LeadFormDrawer } from './LeadFormDrawer'
+import { ExportLeadButton } from './ExportLeadButton'
 import { formatCustomValue } from './leadColumns'
 import { LeadTimeline } from './LeadTimeline'
 import { LeadNotes } from './LeadNotes'
@@ -539,31 +540,35 @@ export default function LeadDetailPage() {
                   )}
                 </div>
               </div>
-              {canSend && (
-                <div className="flex flex-wrap items-center gap-2" data-testid="lead-messaging-actions">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!hasUsableMobile(lead.mobile)}
-                    title={hasUsableMobile(lead.mobile) ? 'Send a DLT-approved SMS to this lead' : 'No valid mobile number'}
-                    onClick={() => setModal('sms')}
-                  >
-                    <MessageSquareText className="h-3.5 w-3.5" /> Send SMS
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setModal('email')}>
-                    <Mail className="h-3.5 w-3.5" /> Send Email
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!hasUsableMobile(lead.mobile)}
-                    title={hasUsableMobile(lead.mobile) ? 'Send an approved WhatsApp template to this lead' : 'No valid mobile number'}
-                    onClick={() => setModal('whatsapp')}
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" /> Send WhatsApp
-                  </Button>
-                </div>
-              )}
+              {/* the send buttons need communications.create; Export Details only needs to see the lead */}
+              <div className="flex flex-wrap items-center gap-2" data-testid="lead-messaging-actions">
+                {canSend && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!hasUsableMobile(lead.mobile)}
+                      title={hasUsableMobile(lead.mobile) ? 'Send a DLT-approved SMS to this lead' : 'No valid mobile number'}
+                      onClick={() => setModal('sms')}
+                    >
+                      <MessageSquareText className="h-3.5 w-3.5" /> Send SMS
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setModal('email')}>
+                      <Mail className="h-3.5 w-3.5" /> Send Email
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!hasUsableMobile(lead.mobile)}
+                      title={hasUsableMobile(lead.mobile) ? 'Send an approved WhatsApp template to this lead' : 'No valid mobile number'}
+                      onClick={() => setModal('whatsapp')}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" /> Send WhatsApp
+                    </Button>
+                  </>
+                )}
+                <ExportLeadButton leadId={lead._id} />
+              </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-3 lg:grid-cols-6">
               <HeaderFact label="Owner">{lead.owner?.name ?? 'Unassigned'}</HeaderFact>
