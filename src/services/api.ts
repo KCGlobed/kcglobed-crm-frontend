@@ -118,6 +118,9 @@ const crmApi = createApi({
     'LiveCalls',
     'Telephony',
     'Targets',
+    'Reports',
+    'ReportSchedules',
+    'ReportRuns',
   ],
   endpoints: () => ({}),
 })

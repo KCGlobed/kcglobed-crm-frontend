@@ -1761,3 +1761,108 @@ export interface TargetOptions {
   /** assignee id → their active target id: they cannot get another until it closes */
   busyAssignees: Record<string, string>
 }
+
+// ---------- Reports ----------
+
+export type ReportColumnType = 'text' | 'number' | 'duration' | 'percent'
+export type ReportPeriodKey = 'today' | 'yesterday' | 'last_7_days' | 'last_week' | 'this_month' | 'last_month'
+
+export interface ReportColumn {
+  key: string
+  label: string
+  type: ReportColumnType
+  /** a duration shown in minutes in the Excel file (on screen every duration is HH:MM:SS) */
+  short: boolean
+  align: 'left' | 'center' | 'right'
+}
+
+/** A report in the registry: its columns (typed, formatted the same on screen, in Excel and CSV) and periods. */
+export interface ReportDefinition {
+  key: string
+  name: string
+  category: string
+  description: string
+  /** a one-day report (the EOD): one date, scheduled for today or yesterday */
+  oneDay: boolean
+  /** a leading "Sr. No." column */
+  numbered: boolean
+  defaultPeriod: ReportPeriodKey
+  periods: { value: ReportPeriodKey; label: string }[]
+  columns: ReportColumn[]
+  notes: string[]
+}
+
+export type ReportRow = Record<string, string | number | null>
+
+export interface ReportSummaryItem {
+  label: string
+  value: number
+  type: ReportColumnType
+}
+
+/** Durations in seconds, percents as 0–100, counts as numbers. */
+export interface ReportResult {
+  report: ReportDefinition
+  dateFrom: string
+  dateTo: string
+  periodLabel: string
+  rows: ReportRow[]
+  totals: ReportRow | null
+  summary: ReportSummaryItem[]
+}
+
+export type ReportFrequency = 'daily' | 'weekly' | 'monthly'
+export type ReportRunStatus = 'running' | 'sent' | 'retry' | 'failed'
+export type ReportRunTrigger = 'schedule' | 'manual' | 'resend'
+
+/** "Email report X for period P to these people every day / week / month at HH:MM (IST)". */
+export interface ReportSchedule {
+  _id: string
+  name: string
+  reportKey: string
+  reportName: string
+  period: ReportPeriodKey
+  periodLabel: string
+  params: Record<string, unknown>
+  frequency: ReportFrequency
+  /** HH:MM, IST */
+  sendTime: string
+  /** daily: the days it goes out; weekly: [the day] — 0 = Monday */
+  weekdays: number[]
+  monthDay: number | null
+  recipients: string[]
+  cc: string[]
+  isActive: boolean
+  owner: { _id: string; name?: string; email?: string } | null
+  nextRunAt: string | null
+  lastRunAt: string | null
+  lastStatus: ReportRunStatus | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** One generation + email of a report: what went out, to whom, the file, and why it failed. */
+export interface ReportRun {
+  _id: string
+  schedule: string | null
+  reportKey: string
+  name: string
+  trigger: ReportRunTrigger
+  scheduledFor: string | null
+  params: Record<string, unknown>
+  periodLabel: string
+  recipients: string[]
+  cc: string[]
+  status: ReportRunStatus
+  attempts: number
+  nextAttemptAt: string | null
+  error: string | null
+  rowCount: number
+  summary: ReportSummaryItem[]
+  hasFile: boolean
+  fileName: string | null
+  triggeredBy: { _id: string; name?: string } | null
+  startedAt: string | null
+  finishedAt: string | null
+  createdAt: string
+}
