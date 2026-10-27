@@ -3,6 +3,9 @@ name: Deploy Frontend
 # Branch -> environment:
 #   main -> production (GitHub Environment "production")
 #   dev  -> staging    (GitHub Environment "staging")
+# The build passes the same name as the Vite mode, which picks the backend URL in
+# src/constants/config.ts (main -> crm-backend, dev -> crm-stage-backend), so
+# nothing is edited when dev is merged into main.
 # A manual run (workflow_dispatch) follows the same rule for the branch it is run from.
 #
 # Secrets are read from the selected GitHub Environment (Settings -> Environments);
@@ -48,7 +51,8 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build
+        # mode = production | staging -> backend URL (see src/constants/config.ts)
+        run: npm run build -- --mode "$DEPLOY_ENV"
         env:
           CI: false
 
