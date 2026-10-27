@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   CalendarClock,
   ClipboardList,
   Clock3,
@@ -30,6 +31,7 @@ export const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
       { label: 'Leads', path: '/app/leads', module: 'leads', icon: ClipboardList },
       { label: 'Follow-ups', path: '/app/tasks', module: 'tasks', icon: CalendarClock },
       { label: 'Target Manager', path: '/app/targets', module: 'targets', icon: Target },
+      { label: 'Reports', path: '/app/reports', module: 'reports', icon: BarChart3 },
     ],
   },
   {
