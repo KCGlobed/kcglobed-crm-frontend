@@ -48,8 +48,9 @@ export function DispositionDrawer({
   // the dialer has not reported this call yet (webhook pending): the counsellor may type the duration
   const manualDuration = !!dialer && !isFinalStatus(dialer.status)
   const stages = data?.data.stages ?? []
+  // the lead's current stage and sub-stage to start with
   const [stageId, setStageId] = useState(lead.stage?._id ?? '')
-  const [subStage, setSubStage] = useState('')
+  const [subStage, setSubStage] = useState(lead.subStage ?? '')
   const [reason, setReason] = useState('')
   // optional: empty until a date is picked, and no follow-up is created then
   const [followUpAt, setFollowUpAt] = useState('')
@@ -72,6 +73,8 @@ export function DispositionDrawer({
 
   const stage = stages.find((s) => s._id === stageId)
   const subStagePick = stage?.subStages.find((s) => s._id === subStage)
+  // the sub-stage in effect: only one the chosen stage offers (the lead's may since have been switched off)
+  const subStageId = subStagePick?._id ?? ''
 
   // the call's duration: required, whole numbers, minutes and seconds 0–59, at most 6 hours
   const durationEntered = [hours, minutes, seconds].some((v) => v.trim() !== '')
@@ -98,7 +101,7 @@ export function DispositionDrawer({
     if (durationProblem) return
     const body: Record<string, unknown> = {
       stage: stageId,
-      subStage: subStage || null,
+      subStage: subStageId || null,
       reason: reason || undefined,
       note: note || undefined,
       interaction: mode === 'dialer' ? 'call' : mode,
@@ -261,7 +264,7 @@ export function DispositionDrawer({
           )}
           {!!stage?.subStages.length && (
             <FormField label={stage.requiresReason ? 'Reason (sub-stage)' : 'Sub-stage (disposition)'} required error={errors.subStage}>
-              <Select value={subStage} onChange={(e) => setSubStage(e.target.value)} aria-invalid={!!errors.subStage}>
+              <Select value={subStageId} onChange={(e) => setSubStage(e.target.value)} aria-invalid={!!errors.subStage}>
                 <option value="">Choose…</option>
                 {stage.subStages.map((s) => (
                   <option key={s._id} value={s._id}>

@@ -31,9 +31,9 @@ export function PersonalStep({
   const [save] = useSaveLeadProfileStepMutation({ fixedCacheKey: PROFILE_STEP_SAVE })
   const p = profile.personal ?? {}
   const g = profile.guardian ?? {}
-  // the candidate's mobile, once on the lead, is shown but not editable here (an empty one can still be filled in);
-  // the email can be changed — the server runs the duplicate check and updates the lead
+  // the candidate's mobile and email, once on the lead, are shown but not editable here; an empty one can still be filled in
   const mobileLocked = !!p.mobile
+  const emailLocked = !!p.email
   const {
     register,
     control,
@@ -91,8 +91,14 @@ export function PersonalStep({
             <FormField label="Last Name" required error={pe?.lastName?.message}>
               <Input maxLength={50} aria-invalid={!!pe?.lastName} {...register('personal.lastName')} />
             </FormField>
-            <FormField label="Email ID" required error={pe?.email?.message}>
-              <Input type="email" aria-invalid={!!pe?.email} {...register('personal.email')} />
+            <FormField label="Email ID" required error={pe?.email?.message} hint={emailLocked ? "Can't be changed once set" : undefined}>
+              <Input
+                type="email"
+                aria-invalid={!!pe?.email}
+                readOnly={emailLocked}
+                className={emailLocked ? READ_ONLY_FIELD : undefined}
+                {...register('personal.email')}
+              />
             </FormField>
             <FormField label="Mobile Number" required error={pe?.mobile?.message} hint={mobileLocked ? "Can't be changed once set" : '10 digits'}>
               <Input
