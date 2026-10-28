@@ -1334,17 +1334,42 @@ export interface AutomationBody {
   isActive?: boolean
 }
 
-export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_assigned' | 'whatsapp_reply'
+/** The four counsellor alerts the editor special-cases; any other string is a rule key the server lists (?scope=all). */
+export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_assigned' | 'whatsapp_reply' | (string & {})
+export type StaffAlertKind = 'builtin' | 'custom' | 'account'
+/** What the Notifications tab may do with a row; a field false hides its control. */
+export interface StaffAlertCapabilities {
+  toggle: boolean
+  push: boolean
+  email: boolean
+  sms: boolean
+  /** there is a person it is about (the counsellor, the assignee …) who may be told */
+  owner: boolean
+  recipients: boolean
+  conditions: boolean
+  delete: boolean
+  test: boolean
+}
 
 /**
- * Communication → Automation → Counsellor alerts: the wording, channels and windows of the three staff-facing
- * alerts (follow-up reminder, untouched lead, new lead assigned). The texts use {{Placeholders}}.
+ * An alert rule (Communication → Notifications; the four counsellor alerts also under Automation → Team alerts):
+ * its wording, channels, recipients and — for the untouched-lead alert — windows. The texts use {{Placeholders}}.
  */
 export interface StaffAlertRow {
   _id: string
-  /** one of the three built-in alerts; null for an alert added in the CRM (Team alerts → Add alert) */
+  /** a built-in rule's key; null for an alert added in the CRM (Team alerts → Add alert) */
   trigger: StaffAlertTrigger | null
   label: string
+  /** ?scope=all only: what kind of row, where it sits, when it fires, what may be changed */
+  kind?: StaffAlertKind
+  group?: string
+  groupLabel?: string
+  description?: string
+  capabilities?: StaffAlertCapabilities
+  /** always shown in the bell (false for an account email) */
+  bell?: boolean
+  /** who "notifyOwner" means: "Counsellor", "Previous counsellor", "The person who exported" … */
+  subjectLabel?: string
   /** added in the CRM: its name, the lead event it goes out on (straight away) and the lead conditions it needs */
   custom?: boolean
   name?: string | null
@@ -1434,6 +1459,8 @@ export interface StaffAlertsResponse {
   /** Add alert: the lead events it can go out on, and the ready-made wording */
   events?: { value: string; label: string }[]
   customDefaults?: StaffAlertBody
+  /** the Notifications tab's sections, in order */
+  groups?: { key: string; label: string }[]
 }
 
 /** The test send's outcome per channel (only the channels that are on). */
@@ -1582,6 +1609,8 @@ export interface DashboardSummary {
     calls?: number
     talktimeSeconds?: number
     breakSeconds?: number
+    /** the part of breakSeconds that was Pause Break (campus visit, training, calibration) */
+    pauseSeconds?: number
     /** dialer figures (apps.telephony): connected calls, connect rate %, inbound / outbound counts, average talk time */
     connected?: number
     connectRate?: number
@@ -1662,7 +1691,7 @@ export interface RoundRobinStatus {
 
 /* ------------------------------------------------------------------ Punch Break & Attendance */
 
-export type BreakType = 'tea' | 'lunch' | 'bio' | 'other'
+export type BreakType = 'tea' | 'lunch' | 'bio' | 'pause' | 'other'
 /** active: running · completed: ended by the employee · incomplete: still open when its day ended, left out of every total */
 export type BreakStatus = 'active' | 'completed' | 'incomplete'
 
@@ -1671,7 +1700,7 @@ export interface BreakEntry {
   type: BreakType
   /** "Lunch Break" */
   label: string
-  /** the reason given for an "other" break */
+  /** the reason given for a pause (Campus Visit, Training Session or typed) or an "other" break */
   note?: string
   /** IST date the break started on (YYYY-MM-DD) */
   day: string

@@ -29,6 +29,7 @@ import { formatDateTime, parseApiError } from '../../../lib/utils'
 import type { CampaignRow, MessageTemplate } from '../../../types/models'
 import { AutomationsTab } from './AutomationsTab'
 import { CallingTab } from './CallingTab'
+import { NotificationsTab } from './NotificationsTab'
 import { TextsTab } from './TextsTab'
 
 function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onClose: () => void }) {
@@ -495,6 +496,7 @@ function CampaignsTab() {
 const PAGE_TABS: { key: string; label: string; hint: string; superAdminOnly?: boolean }[] = [
   { key: 'templates', label: 'Templates', hint: 'The SMS, email and WhatsApp messages you can send to leads.' },
   { key: 'automations', label: 'Automation', hint: 'Messages that go out on their own, and the alerts your team gets.' },
+  { key: 'notifications', label: 'Notifications', hint: 'Every alert and email the CRM sends — to your team, to new accounts and to leads — with its channels, wording and on/off switch.' },
   { key: 'campaigns', label: 'Bulk sends', hint: 'Messages sent to many leads at once, with how each one went.' },
   { key: 'texts', label: 'Texts', hint: 'Saved values — a link, a date, a venue — to fill in template variables.' },
   // the dialer (Smartflo) set-up: Super Admin only
@@ -519,6 +521,8 @@ export default function MessagingPage() {
           <TemplatesTab />
         ) : tab === 'automations' ? (
           <AutomationsTab />
+        ) : tab === 'notifications' ? (
+          <NotificationsTab />
         ) : tab === 'texts' ? (
           <TextsTab />
         ) : tab === 'calling' ? (
