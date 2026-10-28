@@ -243,6 +243,11 @@ export const leadsApi = api.injectEndpoints({
     uploadCallProof: build.mutation<ApiResponse<CallProofFile>, FormData>({
       query: (body) => ({ url: '/calls/proofs', method: 'POST', body }),
     }),
+    // Lead page → Recent Calls → Re-upload: the kinds sent replace the call's screenshots / recording
+    replaceCallProofs: build.mutation<ApiResponse<CallLog>, { callId: string; leadId: string; screenshotIds?: string[]; recordingId?: string }>({
+      query: ({ callId, screenshotIds, recordingId }) => ({ url: `/calls/${callId}/proofs`, method: 'PUT', body: { screenshotIds, recordingId } }),
+      invalidatesTags: (_r, error, { leadId }) => (error ? [] : [{ type: 'LeadCalls', id: leadId }, { type: 'LeadTimeline', id: leadId }, 'Attendance']),
+    }),
     profileOptions: build.query<ApiResponse<{ states: string[]; citiesByState: Record<string, string[]> }>, void>({
       query: () => '/leads/profile-options',
     }),
@@ -357,6 +362,7 @@ export const {
   useUploadLeadDocumentMutation,
   useDeleteLeadDocumentMutation,
   useUploadCallProofMutation,
+  useReplaceCallProofsMutation,
   useProfileOptionsQuery,
   useImportPreviewMutation,
   useValidateImportMutation,
