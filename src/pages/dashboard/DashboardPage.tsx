@@ -377,7 +377,7 @@ function CounsellorCards({
     <>
       <section aria-label="My Leads">
         <PeriodSectionHeader
-          title="My Leads"
+          title="My Leads / Stage Distribution"
           value={key}
           onChange={setKey}
           custom={custom}
@@ -411,7 +411,7 @@ function CounsellorCards({
       </section>
 
       <section className="mt-5" aria-label="Today's Activity">
-        <SectionHeading title="Today's Activity" hint="" />
+        <SectionHeading title="Today's Activity / Calls Distribution" hint="" />
         {/* 4 rows × 3: dial calls, inbound calls, time, numbers — straight from the summary's activityToday (0 when
             it has no figure yet); each bar is the card's share of its row's total */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4" data-testid="todays-activity">
