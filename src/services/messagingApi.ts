@@ -135,9 +135,10 @@ export const messagingApi = api.injectEndpoints({
     >({
       query: (body) => ({ url: '/messaging/automations/preview', method: 'POST', body }),
     }),
-    /** Communication → Automation → Counsellor alerts: the three staff-facing alerts' wording, channels and windows. */
-    listStaffAlerts: build.query<ApiResponse<StaffAlertsResponse>, void>({
-      query: () => '/notifications/alerts',
+    /** The alert rules with their wording, channels and recipients. No argument: the four counsellor alerts + the added
+     * ones (Automation → Team alerts); `{ scope: 'all' }`: every rule incl. the account emails (Communication → Notifications). */
+    listStaffAlerts: build.query<ApiResponse<StaffAlertsResponse>, { scope?: 'all' } | void>({
+      query: (arg) => ({ url: '/notifications/alerts', params: arg && arg.scope ? { scope: arg.scope } : {} }),
       providesTags: ['StaffAlerts'],
     }),
     /** Edits the fields sent; `{ isActive }` alone switches the alert on or off. */

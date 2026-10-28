@@ -1,6 +1,6 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CalendarCheck, CalendarClock, ChevronRight, CircleDashed, Clock, Coffee, GraduationCap, Hash, Inbox, Phone, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOff, PhoneOutgoing, Percent, Receipt, Repeat, ThumbsDown, ThumbsUp, Timer, UserCheck, Users, type LucideIcon } from 'lucide-react'
+import { CalendarCheck, CalendarClock, ChevronRight, CircleDashed, Clock, Coffee, GraduationCap, Hash, Inbox, Phone, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOff, PhoneOutgoing, Pause, Receipt, Repeat, ThumbsDown, ThumbsUp, Timer, UserCheck, Users, type LucideIcon } from 'lucide-react'
 import dayjs from 'dayjs'
 import { useDashboardSummaryQuery } from '../../services/miscApi'
 import { leadsApi, useListLeadsQuery, type LeadListParams } from '../../services/leadsApi'
@@ -373,8 +373,6 @@ function CounsellorCards({
   const unique = activity?.uniqueNumbers ?? 0
   /** a card's bar: its share (0–100) of the row's total; empty when the total is 0 */
   const pct = (part: number | undefined, whole: number) => (whole ? Math.min(100, Math.round(((part ?? 0) / whole) * 100)) : 0)
-  // the share of today's dial attempts that connected
-  const connectionRate = pct(activity?.dialConnected, dialCalls)
   return (
     <>
       <section aria-label="My Leads">
@@ -429,10 +427,10 @@ function CounsellorCards({
           <KpiCard label="Talk Time" value={formatHms(activity?.talktimeSeconds)} progress={pct(activity?.talktimeSeconds, loggedIn)} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
           <KpiCard label="Break Time" value={formatHms(activity?.breakSeconds)} progress={pct(activity?.breakSeconds, loggedIn)} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
 
-          {/* the numbers row: distinct numbers out of the attempts, every attempt, and the attempts that connected */}
+          {/* the numbers row: distinct numbers out of the attempts, every attempt, and today's Pause Break time */}
           <KpiCard label="Unique Numbers Dialled" value={unique} progress={pct(unique, dialCalls)} hint="Distinct numbers called today" icon={Hash} accent="blue" loading={loading} />
           <KpiCard label="Total Dial Attempts" value={dialCalls} progress={dialCalls ? 100 : 0} hint="Outgoing attempts, repeats included" icon={Repeat} accent="amber" loading={loading} />
-          <KpiCard label="Call Connection Rate" value={`${connectionRate}%`} progress={connectionRate} hint="Dial attempts connected" icon={Percent} accent="green" loading={loading} />
+          <KpiCard label="Pause Break" value={formatHms(activity?.pauseSeconds)} progress={pct(activity?.pauseSeconds, loggedIn)} hint="Campus visit, training, calibration" icon={Pause} accent="amber" loading={loading} />
         </div>
       </section>
     </>

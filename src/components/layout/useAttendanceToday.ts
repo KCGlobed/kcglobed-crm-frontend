@@ -31,7 +31,9 @@ export function useBreakActions() {
 
   const start = async (type: BreakType, note?: string): Promise<boolean> => {
     try {
-      const res = await startBreak({ type, ...(type === 'other' ? { note } : {}) }).unwrap()
+      // the reason of a pause or an other break; the server drops it for the types that don't take one
+      const reason = note?.trim()
+      const res = await startBreak({ type, ...(reason ? { note: reason } : {}) }).unwrap()
       toast.success(`${res.data.label} started at ${clockTime(res.data.startedAt)}`)
       return true
     } catch (err) {
