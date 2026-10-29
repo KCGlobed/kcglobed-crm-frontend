@@ -26,8 +26,10 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
   // the dashboard's drill-downs open the leads list with ?from=dashboard: offer the way back
   const backToDashboard = pathname === '/app/leads' && new URLSearchParams(search).get('from') === 'dashboard'
 
+  // z-25: above the pages' own sticky bars (z-20, e.g. the leads list's "N selected" bar), so the bell and profile
+  // menus are not covered by them; still under the mobile sidebar (z-30/40) and every modal (z-50)
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/85 px-3 backdrop-blur-md sm:px-4">
+    <header className="sticky top-0 z-25 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/85 px-3 backdrop-blur-md sm:px-4">
       <button
         type="button"
         className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
