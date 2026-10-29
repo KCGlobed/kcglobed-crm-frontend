@@ -1722,14 +1722,16 @@ export interface BreaksToday {
   breaks: BreakEntry[]
   /** completed seconds per type */
   byType: Record<BreakType, number>
-  /** completed breaks only */
+  /** completed breaks only, the pause left out */
   totalSeconds: number
+  /** completed pause time (campus visit, training, call calibration): shown apart, never part of totalSeconds */
+  pauseSeconds: number
 }
 
 /** The top bar for the signed-in employee: today's logged-in time plus the Punch Break state. */
 export interface AttendanceToday extends BreaksToday {
   firstLoginAt: string | null
-  /** signed-in time today as of the response; keeps running while `live` */
+  /** signed-in time today as of the response, minus time on a pause; keeps running while `live` and not pausing */
   loggedInSeconds: number
   live: boolean
 }
@@ -1744,9 +1746,9 @@ export interface AttendanceRow {
   loginAt?: string
   /** sign-out of the day's last session */
   logoutAt?: string
-  /** signed-in time that day: the sessions added up (overlaps counted once), the same figure as the employee's
-   * logged-in timer; running while online; counted up to the last activity when the logout is missing.
-   * null when there was no sign-in */
+  /** signed-in time that day: the sessions added up (overlaps counted once) minus time on a pause, the same
+   * figure as the employee's logged-in timer; running while online; counted up to the last activity when the
+   * logout is missing. null when there was no sign-in */
   loginSeconds: number | null
   /** the day's last session never signed out: flagged, never guessed */
   logoutMissing: boolean
@@ -1756,7 +1758,10 @@ export interface AttendanceRow {
   calls: number
   talktimeSeconds: number
   breaks: Record<BreakType, number>
+  /** every type but the pause */
   breakSeconds: number
+  /** the pause on its own: neither break time nor part of loginSeconds */
+  pauseSeconds: number
   activeBreak: { type: BreakType; label: string; note?: string; startedAt: string } | null
   incompleteBreaks: number
 }

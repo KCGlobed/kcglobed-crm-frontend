@@ -37,9 +37,9 @@ const TABS: { key: Tab; label: string }[] = [
 ]
 const DESCRIPTIONS: Record<Tab, string> = {
   consolidated: 'Login and logout, talk time and break-wise time for every employee, one row per working day (IST).',
-  login: 'First sign-in, last sign-out and the time signed in (sessions added up, as on the employee\'s timer). A day whose last session never signed out is flagged and counted only up to the last activity.',
+  login: 'First sign-in, last sign-out and the time signed in (sessions added up, as on the employee\'s timer, minus time on a Pause Break). A day whose last session never signed out is flagged and counted only up to the last activity.',
   talk: 'Calls logged and the sum of their durations, per employee per day.',
-  breaks: 'Completed break time by type. A break still running is shown on its own; one left open past its day is counted as incomplete.',
+  breaks: 'Completed break time by type. Pause Break (campus visit, training, call calibration) is listed on its own and is not part of the total. A break still running is shown on its own; one left open past its day is counted as incomplete.',
   entries: 'Every break punched, with its start, end and duration, for auditing.',
   calls: 'Every logged call with the duration the counsellor entered, its call screenshot and recording. Preview to compare the duration with the screenshot.',
 }
@@ -157,7 +157,9 @@ export default function AttendancePage() {
     align: 'right',
     render: (r) => (
       <div className="flex flex-col items-end gap-0.5">
-        <span className="whitespace-nowrap text-xs font-semibold tabular-nums text-slate-800">{formatHms(r.breakSeconds)}</span>
+        <span className="whitespace-nowrap text-xs font-semibold tabular-nums text-slate-800" title="Pause Break is not included">
+          {formatHms(r.breakSeconds)}
+        </span>
         {r.activeBreak && (
           <span className="whitespace-nowrap text-[11px] font-medium text-amber-700" title={`Since ${clock(r.activeBreak.startedAt)}`}>
             On {r.activeBreak.label} · {formatHms(secondsSince(r.activeBreak.startedAt, now))}

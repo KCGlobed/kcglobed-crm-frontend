@@ -10,16 +10,19 @@ export const clockTime = (iso?: string | null) => (iso ? dayjs(iso).format('h:mm
 /**
  * Today's attendance for the signed-in employee, with live timers: the logged-in time and the running break
  * both tick every second. They add the time since the response arrived to the server's figures, so a PC
- * clock that is off doesn't skew them; the poll (every minute and on focus) keeps two tabs in step.
+ * clock that is off doesn't skew them; the poll (every minute and on focus) keeps two tabs in step. During a
+ * pause (campus visit, training, call calibration) the logged-in time stands still: the server takes that time
+ * off, so the timer must not add it either.
  */
 export function useAttendanceToday() {
   const { data, fulfilledTimeStamp } = useAttendanceTodayQuery(undefined, { pollingInterval: 60_000, refetchOnFocus: true })
   const today = data?.data
   const now = useNow(1000, !!today)
   const since = fulfilledTimeStamp ? Math.max(0, (now - fulfilledTimeStamp) / 1000) : 0
+  const pausing = today?.active?.type === 'pause'
   return {
     today,
-    loggedInSeconds: today ? today.loggedInSeconds + (today.live ? since : 0) : 0,
+    loggedInSeconds: today ? today.loggedInSeconds + (today.live && !pausing ? since : 0) : 0,
     breakSeconds: today?.active ? (today.active.elapsedSeconds ?? 0) + since : 0,
   }
 }
