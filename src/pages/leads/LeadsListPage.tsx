@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Bookmark, Check, CheckCheck, Download, FileText, Filter, Info, Mail, MessageCircle, MessageSquareText, PhoneCall, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
+import { Bookmark, Check, CheckCheck, Download, FileText, Filter, Headset, Info, Mail, MessageCircle, MessageSquareText, PhoneCall, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useDeleteSavedFilterMutation,
@@ -38,6 +38,8 @@ import { LeadRowActions } from './LeadRowActions'
 import { listTimeLabel } from './chatTime'
 import { startQueue } from '../../features/telephony/callQueue'
 import { useTelephonyEnabled } from '../../features/telephony/useLiveCalls'
+import { useQueueForDialerMutation } from '../../services/telephonyApi'
+
 
 /** URL params that are not lead filters: paging, sorting, the dashboard's `from` marker and the name a
  * Target Manager link carries for its chip */
@@ -130,9 +132,12 @@ export default function LeadsListPage() {
   // bulk select for everyone who has a bulk action: assign needs leads.reassign, bulk SMS / email / WhatsApp needs the
   // same send permission as a single send (a counsellor only ever sees and selects their own leads)
   const canSendBulk = can(user, 'communications', 'create')
-  const canBulk = can(user, 'leads', 'reassign') || canSendBulk
   // click-to-dial: a Call action per row and "Start calling" through the list (the dialer must be set up)
-  const { enabled: dialerEnabled } = useTelephonyEnabled()
+  const { enabled: dialerEnabled, status: telephonyStatus } = useTelephonyEnabled()
+  // auto-dialer: the selected leads become their owner's next progressive calls (each owner's own campaign)
+  const canAutoDial = !!telephonyStatus?.myDialer?.enabled || !!user?.isSuperAdmin
+  const canBulk = can(user, 'leads', 'reassign') || canSendBulk || canAutoDial
+  const [queueForDialer, { isLoading: queueing }] = useQueueForDialerMutation()
   const canCall = dialerEnabled && can(user, 'leads', 'edit')
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -237,6 +242,31 @@ export default function LeadsListPage() {
 
   const hasFilters = Object.keys(filters).length > 0
   const clearAll = () => replaceParams(new URLSearchParams())
+
+  const onAutoDialFirst = async () => {
+    try {
+      // called one by one, top to bottom as the list shows them
+      const rank = new Map(pageIds.map((id, i) => [id, i]))
+      const leadIds = [...selected].sort((a, b) => (rank.get(a) ?? pageIds.length) - (rank.get(b) ?? pageIds.length))
+      const res = await queueForDialer({ leadIds }).unwrap()
+      const { queued, skipped, mine } = res.data
+      const reasons = [...new Set(skipped.map((s) => s.reason))].join(', ')
+      if (mine) {
+        // the counsellor's own leads: the Progressive calling panel calls them one at a time, in this order
+        toast.success(`${mine} lead${mine === 1 ? '' : 's'} queued — calling them one by one.`)
+      }
+      if (queued > (mine ?? 0)) {
+        const others = queued - (mine ?? 0)
+        toast.success(
+          `${others} lead${others === 1 ? '' : 's'} queued for their owners — it starts when they press Start.`
+        )
+      }
+      if (skipped.length) toast.warning(`${skipped.length} skipped: ${reasons}`)
+      if (queued) clearSelection()
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    }
+  }
 
   const selection: LeadSelection = {
     allMatching,
@@ -540,6 +570,18 @@ export default function LeadsListPage() {
             </button>
           )}
           <div className="ml-auto flex flex-wrap gap-2">
+            {canAutoDial && (
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={queueing}
+                disabled={allMatching}
+                title={allMatching ? 'Select the leads on this page (up to 500) to call them one by one' : 'Your dialer calls these leads one after the other — the next starts when a call ends'}
+                onClick={onAutoDialFirst}
+              >
+                <Headset className="h-3.5 w-3.5" /> Progressive call
+              </Button>
+            )}
             {can(user, 'leads', 'reassign') && (
               <Button size="sm" onClick={() => setBulkAction('assign')}>
                 <UserPlus className="h-3.5 w-3.5" /> Assign

@@ -43,6 +43,7 @@ import { authorizedDownload } from '../../../lib/download'
 import { formatHms } from '../../../lib/durations'
 import { cn, formatDateTime, parseApiError } from '../../../lib/utils'
 import { RecordingPlayer } from '../../../features/telephony/RecordingPlayer'
+import { AutoDialerCard } from './AutoDialerCard'
 import { statusLabel, statusTone } from '../../../features/telephony/callState'
 import type { LiveCall, TelephonyAgentRow, TelephonyEventRow, TelephonyStatus, TelephonyTemplate } from '../../../types/models'
 
@@ -640,6 +641,7 @@ export function CallingTab() {
         <TestCallCard status={status} />
       </div>
       <AgentsCard />
+      <AutoDialerCard />
       <RoutingCard status={status} />
       <EventsCard />
       <CallLogCard />

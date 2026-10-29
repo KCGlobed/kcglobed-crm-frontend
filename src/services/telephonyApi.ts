@@ -2,8 +2,17 @@ import { api } from './api'
 import type {
   ApiListResponse,
   ApiResponse,
+  DialerAgentDoc,
+  DialerConfig,
+  DialerOverview,
+  DialerProgress,
+  DialerQueueResult,
+  DialerRingOn,
+  MyDialer,
   LiveCall,
+  LiveCallLead,
   LiveCallsPayload,
+  SoftphoneLogin,
   TelephonyAgentRow,
   TelephonyEventRow,
   TelephonyNumberRow,
@@ -59,6 +68,16 @@ export const telephonyApi = api.injectEndpoints({
       query: (id) => ({ url: `/telephony/calls/${id}/dismiss`, method: 'POST' }),
       invalidatesTags: ['LiveCalls'],
     }),
+    logPhoneCall: build.mutation<
+      ApiResponse<LiveCall | null>,
+      { leadId?: string; number?: string; direction: 'inbound' | 'outbound'; startedAt: string; answeredAt: string | null; endedAt: string }
+    >({
+      query: (body) => ({ url: '/telephony/calls/phone-log', method: 'POST', body }),
+      invalidatesTags: (res) => ['LiveCalls', ...(res?.data?.lead ? [{ type: 'LeadCalls' as const, id: res.data.lead._id }] : [])],
+    }),
+    pickupCall: build.mutation<ApiResponse<{ callId: string; intercom: string }>, string>({
+      query: (id) => ({ url: `/telephony/calls/${id}/pickup`, method: 'POST' }),
+    }),
     attachLead: build.mutation<ApiResponse<LiveCall>, { callId: string; leadId: string }>({
       query: ({ callId, leadId }) => ({ url: `/telephony/calls/${callId}/attach-lead`, method: 'POST', body: { leadId } }),
       invalidatesTags: (_r, error, { leadId }) =>
@@ -104,6 +123,69 @@ export const telephonyApi = api.injectEndpoints({
       query: (params) => ({ url: '/telephony/calls', params: cleanParams({ ...params }) }),
       providesTags: ['LiveCalls'],
     }),
+    // ---- auto-dialer (apps.telephony.dialer)
+    dialerOverview: build.query<ApiResponse<DialerOverview>, void>({
+      query: () => '/telephony/dialer',
+      providesTags: ['Telephony'],
+    }),
+    saveDialerConfig: build.mutation<ApiResponse<DialerConfig>, Partial<DialerConfig>>({
+      query: (body) => ({ url: '/telephony/dialer/config', method: 'PUT', body }),
+      invalidatesTags: ['Telephony'],
+    }),
+    setupDialer: build.mutation<ApiResponse<DialerConfig>, void>({
+      query: () => ({ url: '/telephony/dialer/setup', method: 'POST' }),
+      invalidatesTags: ['Telephony'],
+    }),
+    applyDialerSettings: build.mutation<ApiResponse<{ updated: number; failed: { userId: string; name: string; error: string }[] }>, void>({
+      query: () => ({ url: '/telephony/dialer/apply-settings', method: 'POST' }),
+      invalidatesTags: ['Telephony'],
+    }),
+    syncDialer: build.mutation<ApiResponse<Record<string, unknown>>, void>({
+      query: () => ({ url: '/telephony/dialer/sync', method: 'POST' }),
+      invalidatesTags: ['Telephony'],
+    }),
+    dialerAgentAction: build.mutation<
+      ApiResponse<DialerAgentDoc>,
+      { userId: string; action: 'enable' | 'disable' | 'reset-password' | 'route-number'; didId?: string }
+    >({
+      query: ({ userId, action, didId }) => ({ url: `/telephony/dialer/agents/${userId}/${action}`, method: 'POST', body: didId ? { didId } : {} }),
+      invalidatesTags: ['Telephony'],
+    }),
+    myDialer: build.query<ApiResponse<MyDialer>, void>({
+      query: () => '/telephony/dialer/me',
+      providesTags: ['Telephony'],
+    }),
+    dialerSession: build.mutation<
+      ApiResponse<MyDialer>,
+      {
+        action: 'start' | 'next' | 'stop' | 'break' | 'resume' | 'logout' | 'ring-on' | 'hangup'
+        breakCode?: string
+        ringOn?: DialerRingOn
+        ringAgain?: boolean
+      }
+    >({
+      query: ({ action, ...body }) => ({ url: `/telephony/dialer/me/${action}`, method: 'POST', body }),
+      invalidatesTags: ['Telephony'],
+    }),
+    mySoftphone: build.query<ApiResponse<SoftphoneLogin>, void>({
+      query: () => '/telephony/dialer/me/phone',
+      keepUnusedDataFor: 0,
+    }),
+    softphoneCaller: build.query<ApiResponse<{ lead: LiveCallLead | null }>, string>({
+      query: (number) => ({ url: '/telephony/dialer/me/caller', params: { number } }),
+    }),
+    queueForDialer: build.mutation<ApiResponse<DialerQueueResult>, { leadIds: string[] }>({
+      query: (body) => ({ url: '/telephony/dialer/queue', method: 'POST', body }),
+      invalidatesTags: ['Telephony'],
+    }),
+    dialerProgress: build.query<ApiResponse<DialerProgress>, void>({
+      query: () => '/telephony/dialer/me/progress',
+      providesTags: ['Telephony'],
+    }),
+    clearDialerProgress: build.mutation<ApiResponse<DialerProgress>, void>({
+      query: () => ({ url: '/telephony/dialer/me/progress', method: 'DELETE' }),
+      invalidatesTags: ['Telephony'],
+    }),
   }),
 })
 
@@ -114,6 +196,8 @@ export const {
   useHangupCallMutation,
   useDismissCallMutation,
   useAttachLeadMutation,
+  usePickupCallMutation,
+  useLogPhoneCallMutation,
   useTelephonyEventsQuery,
   useRetryTelephonyEventMutation,
   useTelephonyAgentsQuery,
@@ -123,4 +207,18 @@ export const {
   useApplyTelephonyRoutingMutation,
   useTestCallMutation,
   useTelephonyCallsQuery,
+  useDialerOverviewQuery,
+  useSaveDialerConfigMutation,
+  useSetupDialerMutation,
+  useApplyDialerSettingsMutation,
+  useSyncDialerMutation,
+  useDialerAgentActionMutation,
+  useMyDialerQuery,
+  useLazyMyDialerQuery,
+  useQueueForDialerMutation,
+  useDialerProgressQuery,
+  useClearDialerProgressMutation,
+  useDialerSessionMutation,
+  useLazyMySoftphoneQuery,
+  useLazySoftphoneCallerQuery,
 } = telephonyApi
