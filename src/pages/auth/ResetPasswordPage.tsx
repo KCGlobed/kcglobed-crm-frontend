@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useResetPasswordMutation } from '../../services/authApi'
 import { AuthShell } from '../../components/layout/AuthShell'
 import { Button } from '../../components/ui/Button'
-import { FormField, Input } from '../../components/ui/fields'
+import { FormField, PasswordInput } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 
 const schema = z
@@ -55,10 +55,10 @@ export default function ResetPasswordPage() {
             )}
           </div>
           <FormField label="New password" error={errors.password?.message} required>
-            <Input type="password" {...register('password')} />
+            <PasswordInput autoComplete="new-password" {...register('password')} />
           </FormField>
           <FormField label="Confirm password" error={errors.confirm?.message} required>
-            <Input type="password" {...register('confirm')} />
+            <PasswordInput autoComplete="new-password" {...register('confirm')} />
           </FormField>
           <Button type="submit" className="w-full" loading={isLoading} disabled={!token}>
             Reset password

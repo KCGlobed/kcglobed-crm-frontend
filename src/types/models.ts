@@ -895,9 +895,9 @@ export interface CallLog {
   dialerRefId?: string | null
   dialerCallId?: string | null
   dialerMeta?: Record<string, unknown>
-  /** proof of the call: the screenshot(s) of the call time (required since call proofs), the recording (optional) */
+  /** proof of the call: the screenshot of the call time (required since call proofs), the recording (optional) */
   screenshot?: CallProofFile | null
-  /** every screenshot, in upload order (`screenshot` is the first) */
+  /** every screenshot, in upload order (`screenshot` is the first): one per call now; calls logged earlier may carry several */
   screenshots?: CallProofFile[]
   recording?: CallProofFile | null
   createdAt: string

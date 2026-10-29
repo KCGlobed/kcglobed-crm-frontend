@@ -9,7 +9,7 @@ import { useAppDispatch } from '../../app/hooks'
 import { setCredentials } from '../../features/auth/authSlice'
 import { AuthShell } from '../../components/layout/AuthShell'
 import { Button } from '../../components/ui/Button'
-import { FormField, Input } from '../../components/ui/fields'
+import { FormField, Input, PasswordInput } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 
 const schema = z.object({
@@ -74,8 +74,7 @@ export default function LoginPage() {
             />
           </FormField>
           <FormField label="Password" error={errors.password?.message} required>
-            <Input
-              type="password"
+            <PasswordInput
               placeholder="••••••••"
               autoComplete="current-password"
               aria-invalid={!!errors.password}
