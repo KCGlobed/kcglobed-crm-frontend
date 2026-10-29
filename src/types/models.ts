@@ -1741,8 +1741,8 @@ export interface DashboardSummary {
   byOwner: { _id: string; name: string; count: number }[]
   /** the eight newest leads in scope */
   recentLeads: DashboardRecentLead[]
-  /** the signed-in employee's day: calls they logged, the sum of those calls' durations, and their completed breaks
-   * (absent for Super Admin) */
+  /** the signed-in employee's day: calls they logged, the sum of those calls' durations, and their breaks (a running
+   * one up to now) (absent for Super Admin) */
   activityToday?: {
     calls?: number
     talktimeSeconds?: number
@@ -1763,6 +1763,8 @@ export interface DashboardSummary {
     dialNotConnected?: number
     /** signed-in time today */
     loggedInSeconds?: number
+    /** Active Time: signed-in time off breaks (a running one up to now), pauses and calls */
+    activeSeconds?: number
     /** different numbers dialled today, of them reached (a call connected), and dialled more than once */
     uniqueNumbers?: number
     numbersReached?: number
