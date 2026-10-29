@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useCurrentUser } from '../../../app/hooks'
 import { Badge, StatusBadge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { DataTable, type Column } from '../../../components/ui/DataTable'
 import { DateRangeFilter } from '../../../components/ui/DateRangeFilter'
+import { ConfirmDialog } from '../../../components/ui/feedback'
 import { Select } from '../../../components/ui/fields'
 import { FilterBar, SearchInput } from '../../../components/ui/misc'
 import { Modal } from '../../../components/ui/Modal'
@@ -11,7 +15,7 @@ import type { ListQueryParams } from '../../../hooks/useListParams'
 import type { BadgeTone } from '../../../lib/status'
 import { formatDateTime, parseApiError } from '../../../lib/utils'
 import { useListUsersQuery } from '../../../services/adminApi'
-import { useNotificationLogQuery } from '../../../services/miscApi'
+import { useClearNotificationLogMutation, useNotificationLogQuery } from '../../../services/miscApi'
 import type { NotificationLogRow } from '../../../types/models'
 
 /**
@@ -63,6 +67,20 @@ export function NotificationsLog({ query, setParam, setFilters, hasFilters, rese
   const { data: people } = useListUsersQuery({ page_size: 100, sort_by: 'name', sort_order: 'asc' })
   const { data, isLoading, isFetching, isError, error, refetch } = useNotificationLogQuery({ ...query, tab: undefined })
   const [selected, setSelected] = useState<NotificationLogRow | null>(null)
+  // Super Admin's Clear All: empties this log only — nobody's bell or View All changes
+  const superAdmin = !!useCurrentUser()?.isSuperAdmin
+  const [clearLog, { isLoading: clearingLog }] = useClearNotificationLogMutation()
+  const [clearing, setClearing] = useState(false)
+  const onClearAll = async () => {
+    try {
+      const res = await clearLog().unwrap()
+      const n = res.data.cleared
+      toast.success(n ? `${n} notification${n === 1 ? '' : 's'} cleared from the log` : 'Nothing to clear')
+      setClearing(false)
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    }
+  }
 
   const columns: Column<NotificationLogRow>[] = [
     { key: 'createdAt', header: 'When', render: (r) => <span className="text-xs text-slate-500">{formatDateTime(r.createdAt)}</span> },
@@ -108,11 +126,18 @@ export function NotificationsLog({ query, setParam, setFilters, hasFilters, rese
     <>
       <FilterBar
         end={
-          hasFilters ? (
-            <Button variant="ghost" size="sm" onClick={resetFilters}>
-              Reset
-            </Button>
-          ) : undefined
+          <>
+            {hasFilters && (
+              <Button variant="ghost" size="sm" onClick={resetFilters}>
+                Reset
+              </Button>
+            )}
+            {superAdmin && !!data?.data.length && (
+              <Button variant="outline" size="sm" onClick={() => setClearing(true)} title="Empty this log — nobody's bell changes">
+                <Trash2 className="h-3.5 w-3.5" /> Clear All
+              </Button>
+            )}
+          </>
         }
       >
         <SearchInput className="w-full sm:w-64" value={query.search ?? ''} onSearch={(v) => setParam('search', v)} placeholder="Alert text, lead, user…" />
@@ -162,6 +187,16 @@ export function NotificationsLog({ query, setParam, setFilters, hasFilters, rese
       <Modal open={!!selected} onClose={() => setSelected(null)} title="Notification" description={selected?.title} size="lg">
         {selected && <NotificationDetail row={selected} />}
       </Modal>
+      <ConfirmDialog
+        open={clearing}
+        onClose={() => setClearing(false)}
+        onConfirm={onClearAll}
+        title="Clear the notification log?"
+        message="Every notification listed here leaves this log. The users keep them in their own bell and View All."
+        confirmLabel="Clear All"
+        danger
+        loading={clearingLog}
+      />
     </>
   )
 }

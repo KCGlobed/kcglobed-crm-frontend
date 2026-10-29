@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useCurrentUser } from '../../app/hooks'
 import { can } from '../../constants/permissions'
@@ -7,10 +8,12 @@ import {
   BellRing,
   CheckCheck,
   Mail,
+  Trash2,
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
+  useClearAllNotificationsMutation,
   useListNotificationsQuery,
   useMarkAllNotificationsReadMutation,
   useMarkNotificationReadMutation,
@@ -31,6 +34,7 @@ import {
   type PushState,
 } from '../../lib/push'
 import { Switch } from '../ui/fields'
+import { ConfirmDialog } from '../ui/feedback'
 import { parseApiError } from '../../lib/utils'
 import { cn, timeAgo } from '../../lib/utils'
 import type { Notification as CrmNotification } from '../../types/models'
@@ -96,7 +100,7 @@ export function NotificationsBell() {
   const openNotification = useOpenNotification()
   // 10 s, plus at once when the tab regains focus: a new lead, follow-up or alert shows as a toast
   // within that time even without real push
-  const { data } = useListNotificationsQuery({ page: 1 }, { pollingInterval: 10000, refetchOnFocus: true })
+  const { data } = useListNotificationsQuery({ page: 1, hideCleared: true }, { pollingInterval: 10000, refetchOnFocus: true })
   const { data: pushStatus } = usePushStatusQuery()
   const [permission, setPermission] = useState<PushState>(pushPermission)
   const [pushToken, setPushToken] = useState(storedPushToken)
@@ -149,6 +153,19 @@ export function NotificationsBell() {
   const markReadById = useCallback((id: string) => void markRead(id), [markRead])
   useFreshNotifications(data?.data.items, openNotification, markReadById, pushOn && pushStatus?.data.provider === 'fcm', pushEnabled)
   const [markAll] = useMarkAllNotificationsReadMutation()
+  // Clear All: every notification leaves this list only — View All and the Activity Log still show them
+  const [clearAll, { isLoading: clearingAll }] = useClearAllNotificationsMutation()
+  const [clearing, setClearing] = useState(false)
+  const onClearAll = async () => {
+    try {
+      const res = await clearAll().unwrap()
+      const n = res.data.cleared
+      toast.success(n ? `${n} notification${n === 1 ? '' : 's'} cleared` : 'Nothing to clear')
+      setClearing(false)
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    }
+  }
   const navigate = useNavigate()
   // "View All": admins get the Activity Log's Notifications tab (every user's alerts); everyone else their own full list
   const viewAllPath = can(useCurrentUser(), 'audit') ? '/app/admin/audit?tab=notifications' : '/app/notifications'
@@ -208,6 +225,16 @@ export function NotificationsBell() {
                 {unread > 0 && (
                   <button type="button" className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-medium text-brand-600 hover:underline" onClick={() => markAll()}>
                     <CheckCheck className="h-3 w-3" /> Mark All Read
+                  </button>
+                )}
+                {items.length > 0 && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-medium text-red-600 hover:underline"
+                    onClick={() => setClearing(true)}
+                    title="Remove every notification from this list"
+                  >
+                    <Trash2 className="h-3 w-3" /> Clear All
                   </button>
                 )}
                 <button
@@ -309,6 +336,21 @@ export function NotificationsBell() {
             </div>
           </div>
         </>
+      )}
+      {/* rendered into <body>, as HeaderTimers does: the top bar's backdrop blur would otherwise make it the frame
+          for this fixed overlay, pinning the dialog under the bar instead of centring it on the window */}
+      {createPortal(
+        <ConfirmDialog
+          open={clearing}
+          onClose={() => setClearing(false)}
+          onConfirm={onClearAll}
+          title="Clear the bell?"
+          message="The notifications leave this list. You can still find them under View All."
+          confirmLabel="Clear All"
+          danger
+          loading={clearingAll}
+        />,
+        document.body
       )}
     </div>
   )
