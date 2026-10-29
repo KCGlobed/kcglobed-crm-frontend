@@ -329,6 +329,20 @@ export const leadsApi = api.injectEndpoints({
       },
       invalidatesTags: (_r, error) => (error ? [] : [{ type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }]),
     }),
+    // the HOD's (or the Super Admin's) new order for the members they manage, top first
+    setRoundRobinSequence: build.mutation<ApiResponse<RoundRobinStatus>, string[]>({
+      query: (order) => ({ url: '/leads/round-robin/sequence', method: 'PUT', body: { order } }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+          dispatch(leadsApi.util.updateQueryData('roundRobinStatus', undefined, (draft) => {
+            draft.data = data.data
+          }))
+        } catch {
+          // the page shows the error
+        }
+      },
+    }),
   }),
 })
 
@@ -377,4 +391,5 @@ export const {
   useRoundRobinStatusQuery,
   useUpdateRoundRobinSettingsMutation,
   useSetRoundRobinUserMutation,
+  useSetRoundRobinSequenceMutation,
 } = leadsApi
