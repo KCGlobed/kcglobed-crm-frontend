@@ -957,6 +957,144 @@ export interface TelephonyStatus {
   agents?: { mapped: number; total: number }
   counters?: { eventsToday: number; unmatched: number; recordingErrors: number }
   routing?: TelephonyRouting | null
+  /** the auto-dialer: this user has a Smartflo agent panel (the Dialer button) */
+  myDialer?: { enabled: boolean }
+}
+
+/** A counsellor's own Smartflo dialer set-up (Calling tab → Auto-dialer, and the Dialer drawer). */
+export interface DialerAgentDoc {
+  userId: string
+  name: string
+  enabled: boolean
+  loginId?: string | null
+  password?: string | null
+  hasPassword: boolean
+  listId?: string | null
+  listName?: string | null
+  campaignId?: string | null
+  campaignName?: string | null
+  queueId?: string | null
+  didId?: string | null
+  didNumber?: string | null
+  didRouted: boolean
+  leads: Record<string, number>
+  lastError?: string | null
+  updatedAt?: string | null
+}
+
+export interface DialerConfig {
+  syncEnabled: boolean
+  /** a caller to the main number reaches the counsellor they last spoke to (Smartflo sticky agent, 10 days) */
+  stickyAgent?: boolean
+  /** a counsellor's Smartflo list holds only the leads they queued (Progressive call) — no one else is dialled */
+  queuedOnly?: boolean
+  stageIds: string[]
+  retries: number
+  retryAfterMinutes: number
+  wrapUpSeconds: number
+  ringTimeout: number
+  /** progressive call: rounds of calling the unanswered again once every lead was called */
+  redialRounds?: number
+  traversal: '1' | '2' | '3'
+  roleId?: string | null
+  dispositionListId?: string | null
+  breakListId?: string | null
+}
+
+export interface DialerOverview {
+  config: DialerConfig
+  agents: { userId: string; name: string; mobile?: string | null; telephonyAgentId?: string | null; dialer: DialerAgentDoc | null }[]
+  totals: Record<string, number>
+  lastRunAt?: string | null
+  fullAt?: string | null
+  stages: { _id: string; name: string }[]
+  panelUrl: string
+  errors: { leadId: string; error?: string | null; status: string }[]
+}
+
+export type DialerRingOn = 'laptop' | 'mobile' | 'both'
+
+/** The counsellor's dialer session as the CRM last set / heard it (Smartflo's "Session Call Answered" → ready). */
+export interface DialerSession {
+  state?: 'calling_you' | 'ready' | 'on_break' | 'stopped' | 'logged_out'
+  breakCode?: string | null
+  breakName?: string | null
+  startedAt?: string | null
+  lastError?: string | null
+  updatedAt?: string | null
+}
+
+export type MyDialer = Partial<DialerAgentDoc> & {
+  enabled: boolean
+  panelUrl: string
+  session?: DialerSession
+  breakCodes?: { id: string; name: string }[]
+  ringOn?: DialerRingOn
+}
+
+/** GET /telephony/dialer/me/phone — the counsellor's own Smartflo softphone extension, registered by the CRM's phone. */
+export interface SoftphoneLogin {
+  user: string
+  password: string
+  host: string
+  socket: string
+  displayName: string
+}
+
+export interface DialerQueueResult {
+  queued: number
+  skipped: { _id: string; leadNo: string; reason: string }[]
+  sent: { added?: number; removed?: number; failed?: number; rateLimited?: boolean }
+  /** how many of them are the caller's own (their Dialer starts on them) */
+  mine?: number
+}
+
+export type DialerProgressStatus =
+  | 'adding'
+  | 'waiting'
+  | 'calling'
+  | 'connected'
+  | 'dialled'
+  | 'answered'
+  | 'not_answered'
+  | 'busy'
+  | 'failed'
+  | 'error'
+  | 'skipped'
+
+/** GET /telephony/dialer/me/progress — the counsellor's last "Auto-dial first", lead by lead. */
+export interface DialerProgress {
+  run: {
+    at: string
+    total: number
+    counts: Partial<Record<DialerProgressStatus, number>>
+    done: boolean
+    leads: {
+      _id: string
+      name: string
+      leadNo: string
+      status: DialerProgressStatus
+      label: string
+      durationSeconds?: number | null
+      attempts?: number | null
+      callId?: string | null
+      error?: string | null
+      /** 2 and up: called again because the earlier round went unanswered */
+      round?: number
+      /** on the call now: when they picked up (the live timer runs from it) */
+      answeredAt?: string | null
+    }[]
+    round?: number
+    rounds?: number
+    /** the wrap-up time between calls (admin setting) */
+    wrapUpSeconds?: number
+    /** the lead the CRM calls next (the first not called yet in this round) */
+    next?: string | null
+    /** false: queued for this counsellor by someone else — it starts on their Start */
+    auto?: boolean
+    /** Smartflo's dialer state for the counsellor: wrap-up holds the next call */
+    agent?: { onDisposition: boolean; onCall: boolean; lineUp: boolean; status?: string | null; wrapUpEndsAt?: string | null } | null
+  } | null
 }
 
 export interface TelephonyEventRow {

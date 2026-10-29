@@ -56,6 +56,7 @@ import { formatHms } from '../../lib/durations'
 import { CallButton } from '../../features/telephony/CallButton'
 import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
 import { OPEN_DISPOSITION_EVENT, type OpenDispositionDetail } from '../../features/telephony/events'
+import { usePhone } from '../../features/telephony/softphone'
 import { isFinalStatus, statusLabel, statusTone } from '../../features/telephony/callState'
 import { useLiveCalls, useStartCall } from '../../features/telephony/useLiveCalls'
 import type { CallLog, CustomFieldDef, Lead, LeadMessage } from '../../types/models'
@@ -412,6 +413,9 @@ export default function LeadDetailPage() {
   // the popover from another page), by the popover's button on this page (window event), or found by the
   // live feed (a pending outcome of this lead) — and ?dial=1 from the "Start calling" list
   const { pending, enabled: dialerEnabled } = useLiveCalls()
+  // on a call in the CRM phone: the lead page stays as it is; the outcome opens once the call ends
+  const phone = usePhone()
+  const onPhone = !!(phone.ringing || phone.inCall)
   const { startCall } = useStartCall()
   const { data: callRows } = useLeadCallsQuery(id, { skip: !id })
   const [dialerCall, setDialerCall] = useState<CallLog | null>(null)
@@ -425,11 +429,11 @@ export default function LeadDetailPage() {
   )
   // the call whose outcome is due without anyone clicking: the one in the URL, else this lead's pending one
   const dueCall = useMemo(() => {
-    if (!lead || !canEdit || modal !== null) return null
+    if (!lead || !canEdit || modal !== null || onPhone) return null
     const fromUrl = requestedCallId ? findCall(requestedCallId) : undefined
     const due = fromUrl ?? pending.find((c) => c.lead?._id === lead._id && c.needsDisposition)
     return due && isFinalStatus(due.status) && !handledCalls.includes(due._id) ? due : null
-  }, [lead, canEdit, modal, requestedCallId, findCall, pending, handledCalls])
+  }, [lead, canEdit, modal, onPhone, requestedCallId, findCall, pending, handledCalls])
   const openDialer = modal === 'dialer' ? dialerCall : dueCall
   const close = () => {
     if (openDialer) setHandledCalls((h) => [...h, openDialer._id])
