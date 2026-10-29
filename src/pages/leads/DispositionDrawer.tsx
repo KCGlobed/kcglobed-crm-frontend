@@ -20,9 +20,8 @@ import { CallProofField, type ProofValue } from './CallProofField'
  * "Log Call / Update" (GL-16..20, GL-40): stage + disposition, a mandatory
  * future follow-up for every open stage, a reason for closing stages, an
  * optional note and, for a call, its duration (mandatory: talk time is summed
- * from it; 00:00:00 for a call that didn't connect), the screenshot(s) of the call
- * time (at least one, so the duration can be checked; several for a call spanning screens) and the recording
- * (optional). Counsellor Discussion and
+ * from it; 00:00:00 for a call that didn't connect), the screenshot of the call
+ * time (one, so the duration can be checked) and the recording (optional). Counsellor Discussion and
  * Call Result are intentionally not part of this form — the discussion lives in its own tab.
  *
  * `dialer` mode: the outcome of a call the dialer (Smartflo) placed or received — status, talk time and

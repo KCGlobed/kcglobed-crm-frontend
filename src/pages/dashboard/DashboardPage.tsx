@@ -14,7 +14,7 @@ import { DateRangeFilter } from '../../components/ui/DateRangeFilter'
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/feedback'
 import { StageBadge } from '../../components/ui/Badge'
 import { STAGE_COLORS, stageColor } from '../../lib/stageColors'
-import { KpiCard } from '../../components/ui/KpiCard'
+import { KpiCard, type KpiAccent } from '../../components/ui/KpiCard'
 import { useAppDispatch, useCurrentUser } from '../../app/hooks'
 import { isCounsellor } from '../../lib/roles'
 import { cn, fullName, timeAgo } from '../../lib/utils'
@@ -250,7 +250,7 @@ function LeadsSection({
           progress={share(figures.assigned, figures.total)}
           hint="Have a counsellor"
           icon={UserCheck}
-          accent="green"
+          accent="azure"
           loading={busy}
           onClick={tile(figures.assigned, { assigned: 'true' })}
         />
@@ -260,7 +260,7 @@ function LeadsSection({
           progress={share(figures.unassigned, figures.total)}
           hint="Waiting for an owner"
           icon={Inbox}
-          accent="amber"
+          accent="slate"
           loading={busy}
           onClick={tile(figures.unassigned, { unassigned: 'true' })}
         />
@@ -284,7 +284,7 @@ function FollowUpsDueCard({ onOpen }: { onOpen: () => void }) {
       value={overdue}
       hint="Overdue"
       icon={CalendarClock}
-      accent="amber"
+      accent="orange"
       loading={isLoading}
       onClick={overdue ? onOpen : undefined}
     />
@@ -348,7 +348,7 @@ function CounsellorCards({
     : range
   const busy = loading || stagesLoading || !stages
   /** a card for a stage row: its count (0 when the stage has no row), opening its leads */
-  const stageCard = (name: string, icon: LucideIcon, accent?: 'red' | 'amber') => {
+  const stageCard = (name: string, icon: LucideIcon, accent?: KpiAccent) => {
     const row = stageOf(name)
     const params = row?.params
     return (
@@ -400,12 +400,13 @@ function CounsellorCards({
             progress={share(connected, total)}
             hint="Leads on this stage"
             icon={PhoneCall}
-            accent="green"
+            accent="leaf"
             loading={busy}
             onClick={connected ? () => onOpen(connectedParams) : undefined}
           />
+          {/* Not Connected takes its palette amber; Untouched, outside the palette, a blue of its own */}
           {stageCard(NOT_CONNECTED_STAGE, PhoneOff, 'red')}
-          {stageCard(UNTOUCHED_STAGE, CircleDashed, 'amber')}
+          {stageCard(UNTOUCHED_STAGE, CircleDashed, 'azure')}
           {MY_LEADS_STAGES.map((s) => stageCard(s.name, s.icon))}
         </div>
       </section>
@@ -413,24 +414,25 @@ function CounsellorCards({
       <section className="mt-5" aria-label="Today's Activity">
         <SectionHeading title="Today's Activity / Calls Distribution" hint="" />
         {/* 4 rows × 3: dial calls, inbound calls, time, numbers — straight from the summary's activityToday (0 when
-            it has no figure yet); each bar is the card's share of its row's total */}
+            it has no figure yet); each bar is the card's share of its row's total. Every card has a hue of its own
+            (all mid-tone, see KpiCard), so no two look alike */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4" data-testid="todays-activity">
           <KpiCard label="Total Dial Calls" value={dialCalls} progress={dialCalls ? 100 : 0} hint="Outgoing calls today" icon={PhoneOutgoing} accent="blue" loading={loading} />
           <KpiCard label="Connected" value={activity?.dialConnected ?? 0} progress={pct(activity?.dialConnected, dialCalls)} hint="Dial calls answered" icon={PhoneCall} accent="green" loading={loading} />
           <KpiCard label="Not Connected" value={activity?.dialNotConnected ?? 0} progress={pct(activity?.dialNotConnected, dialCalls)} hint="No answer, busy or failed" icon={PhoneOff} accent="red" loading={loading} />
 
-          <KpiCard label="Inbound Calls Today" value={inbound} progress={inbound ? 100 : 0} hint="Calls received today" icon={PhoneIncoming} accent="cyan" loading={loading} />
-          <KpiCard label="Inbound Received" value={activity?.inboundAnswered ?? 0} progress={pct(activity?.inboundAnswered, inbound)} hint="Answered" icon={Phone} accent="green" loading={loading} />
-          <KpiCard label="Inbound Missed" value={activity?.inboundMissed ?? 0} progress={pct(activity?.inboundMissed, inbound)} hint="Not answered" icon={PhoneMissed} accent="red" loading={loading} />
+          <KpiCard label="Inbound Calls Today" value={inbound} progress={inbound ? 100 : 0} hint="Calls received today" icon={PhoneIncoming} accent="azure" loading={loading} />
+          <KpiCard label="Inbound Received" value={activity?.inboundAnswered ?? 0} progress={pct(activity?.inboundAnswered, inbound)} hint="Answered" icon={Phone} accent="teal" loading={loading} />
+          <KpiCard label="Inbound Missed" value={activity?.inboundMissed ?? 0} progress={pct(activity?.inboundMissed, inbound)} hint="Not answered" icon={PhoneMissed} accent="pink" loading={loading} />
 
-          <KpiCard label="Total Time" value={formatHms(loggedIn)} progress={loggedIn ? 100 : 0} hint="Signed in today" icon={Clock} accent="blue" loading={loading} />
-          <KpiCard label="Talk Time" value={formatHms(activity?.talktimeSeconds)} progress={pct(activity?.talktimeSeconds, loggedIn)} hint="Time on calls" icon={Timer} accent="green" loading={loading} />
+          <KpiCard label="Total Time" value={formatHms(loggedIn)} progress={loggedIn ? 100 : 0} hint="Signed in today" icon={Clock} accent="indigo" loading={loading} />
+          <KpiCard label="Talk Time" value={formatHms(activity?.talktimeSeconds)} progress={pct(activity?.talktimeSeconds, loggedIn)} hint="Time on calls" icon={Timer} accent="leaf" loading={loading} />
           <KpiCard label="Break Time" value={formatHms(activity?.breakSeconds)} progress={pct(activity?.breakSeconds, loggedIn)} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
 
           {/* the numbers row: distinct numbers out of the attempts, every attempt, and today's Pause Break time */}
-          <KpiCard label="Unique Numbers Dialled" value={unique} progress={pct(unique, dialCalls)} hint="Distinct numbers called today" icon={Hash} accent="blue" loading={loading} />
+          <KpiCard label="Unique Numbers Dialled" value={unique} progress={pct(unique, dialCalls)} hint="Distinct numbers called today" icon={Hash} accent="cyan" loading={loading} />
           <KpiCard label="Total Dial Attempts" value={dialCalls} progress={dialCalls ? 100 : 0} hint="Outgoing attempts, repeats included" icon={Repeat} accent="amber" loading={loading} />
-          <KpiCard label="Pause Break" value={formatHms(activity?.pauseSeconds)} progress={pct(activity?.pauseSeconds, loggedIn)} hint="Campus visit, training, calibration" icon={Pause} accent="amber" loading={loading} />
+          <KpiCard label="Pause Break" value={formatHms(activity?.pauseSeconds)} progress={pct(activity?.pauseSeconds, loggedIn)} hint="Campus visit, training, calibration" icon={Pause} accent="fuchsia" loading={loading} />
         </div>
       </section>
     </>
@@ -926,7 +928,7 @@ export default function DashboardPage() {
   /** The stage behind a lead-status tile: the summary names it (it may be renamed in Masters), else the default name. */
   const statusName = (tileKey: DashboardStatusTile['key'], fallback: string) => summary?.leadStatus.find((t) => t.key === tileKey)?.name ?? fallback
   /** A card for the stage of this name: the period's count from the stage rows (0 when it has none), opening its leads. */
-  const stageCard = (name: string, icon: LucideIcon, accent?: 'blue' | 'red' | 'green') => {
+  const stageCard = (name: string, icon: LucideIcon, accent?: KpiAccent) => {
     const row = stageOf(name)
     const params = row?.params
     return (
@@ -969,7 +971,8 @@ export default function DashboardPage() {
         <CounsellorCards summary={summary} period={period} stages={stages} stagesLoading={rowsLoading} loading={isLoading} onOpen={open} />
       ) : user?.isSuperAdmin ? (
         // Super Admin: one grid of nine cards in this order, every one following the period switch except
-        // Follow-ups Due (overdue right now); a stage with no leads shows 0
+        // Follow-ups Due (overdue right now); a stage with no leads shows 0. The palette stages keep their colours;
+        // the other cards take hues none of them use (azure, slate, orange beside Not Connected's amber)
         <LeadsSection period={period} loading={isLoading} onOpen={open} unassignedLabel="Not Assigned Leads">
           {stageCard('Not Connected', PhoneOff)}
           {stageCard(statusName('notInterested', 'Not Interested'), ThumbsDown, 'red')}
