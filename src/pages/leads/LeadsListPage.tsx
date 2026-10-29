@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Bookmark, Check, CheckCheck, Download, FileText, Filter, Headset, Info, Mail, MessageCircle, MessageSquareText, PhoneCall, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
+import { Bookmark, Download, Filter, Headset, Info, Mail, MessageCircle, MessageSquareText, PhoneCall, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useDeleteSavedFilterMutation,
@@ -12,7 +12,6 @@ import {
 } from '../../services/leadsApi'
 import { useCurrentUser } from '../../app/hooks'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
-import { useWhatsAppSummaryQuery } from '../../services/messagingApi'
 import { activeSubStages } from '../../lib/stages'
 import { can } from '../../constants/permissions'
 import { isAdminLike } from '../../lib/roles'
@@ -35,7 +34,6 @@ import { BulkSendModal } from './BulkSendModal'
 import { DEFAULT_VISIBLE_COLUMNS, LOCKED_COLUMNS } from './leadColumns'
 import { useLeadColumns } from './useLeadColumns'
 import { LeadRowActions } from './LeadRowActions'
-import { listTimeLabel } from './chatTime'
 import { startQueue } from '../../features/telephony/callQueue'
 import { useTelephonyEnabled } from '../../features/telephony/useLiveCalls'
 import { useQueueForDialerMutation } from '../../services/telephonyApi'
@@ -64,44 +62,9 @@ const SMART_LABELS: Record<string, string> = {
   not_interested: 'Not Interested',
   no_activity_3d: 'No Activity 3+ Days',
   re_enquired: 'Re-enquired',
-  whatsapp: 'WhatsApp',
   unassigned: 'Unassigned',
   owner_inactive: 'Inactive Counsellors',
 }
-/**
- * The WhatsApp filter's column: an unread reply in bold with its count, else the last message either way (ours with
- * its tick), and when. Opening the lead (its WhatsApp tab) reads it and clears the mark.
- */
-const whatsappColumn: Column<Lead> = {
-  key: '__whatsapp',
-  header: 'WhatsApp',
-  render: (l) => {
-    const chat = l.whatsapp
-    const last = chat?.last
-    if (!last) return <span className="text-xs text-slate-400">—</span>
-    const mine = last.direction === 'out'
-    return (
-      <span className="flex w-72 max-w-full items-center gap-1.5 text-xs">
-        {chat.unread > 0 && (
-          <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white" title={`${chat.unread} unread`}>
-            {chat.unread}
-          </span>
-        )}
-        {mine && last.status === 'delivered' && <CheckCheck className="h-3.5 w-3.5 shrink-0 text-sky-600" aria-label="Delivered" />}
-        {mine && last.status === 'sent' && <Check className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-label="Sent" />}
-        {mine && last.status === 'failed' && <span className="shrink-0 text-red-600">Failed ·</span>}
-        {last.template && <FileText className="h-3 w-3 shrink-0 text-slate-400" aria-label="Template" />}
-        <span className={cn('min-w-0 truncate', chat.unread ? 'font-semibold text-slate-900' : 'text-slate-600')} title={last.body}>
-          {last.body || (last.template ? `Template · ${last.template}` : '')}
-        </span>
-        <span className={cn('ml-auto shrink-0 pl-1 text-[11px]', chat.unread ? 'font-semibold text-red-600' : 'text-slate-400')}>
-          {listTimeLabel(last.at)}
-        </span>
-      </span>
-    )
-  },
-}
-
 const smartLabel = (key: string) => SMART_LABELS[key] ?? key.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 
 /**
@@ -309,18 +272,8 @@ export default function LeadsListPage() {
     className: 'w-10',
     render: (l) => <LeadRowActions lead={l} />,
   }
-  const whatsappView = params.get('smart') === 'whatsapp'
-  // the WhatsApp quick filter's red badge: leads with unread replies (refreshed with the list)
-  const { data: waSummary } = useWhatsAppSummaryQuery(undefined, { pollingInterval: 30_000, skipPollingIfUnfocused: true })
-  const waUnread = waSummary?.data.unread ?? 0
   const visibleColumns = columnPrefs.visibleKeys.map((key) => leadColumns.find((c) => c.key === key)!).filter(Boolean)
-  const columns = [
-    ...(canBulk ? [selectColumn] : []),
-    // the WhatsApp filter shows each lead's last message right after the name
-    ...(whatsappView ? visibleColumns.flatMap((c) => (c.key === 'firstName' ? [c, whatsappColumn] : [c])) : visibleColumns),
-    ...(whatsappView && !visibleColumns.some((c) => c.key === 'firstName') ? [whatsappColumn] : []),
-    ...(canCall ? [actionsColumn] : []),
-  ]
+  const columns = [...(canBulk ? [selectColumn] : []), ...visibleColumns, ...(canCall ? [actionsColumn] : [])]
   // "Start calling": the selected leads, else this page, one after the other (each opens with ?dial=1)
   const callableIds = (selected.length ? (data?.data.filter((l) => selected.includes(l._id)) ?? []) : (data?.data ?? [])).map((l) => l._id)
   const startCalling = () => {
@@ -353,25 +306,19 @@ export default function LeadsListPage() {
     }
     replaceParams(next)
   }
-  const pill = (key: string, label: string, active: boolean, onClick: () => void, title: string, badge = 0) => (
+  const pill = (key: string, label: string, active: boolean, onClick: () => void, title: string) => (
     <button
       key={key}
       onClick={onClick}
       className={cn(
         'relative rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-        badge > 0 && 'pr-2',
         active
           ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
           : 'border-slate-300 bg-white text-slate-600 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700'
       )}
-      title={badge > 0 ? `${title} · ${badge} with unread replies` : title}
+      title={title}
     >
       {label}
-      {badge > 0 && (
-        <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 align-[1px] text-[10px] font-semibold text-white">
-          {badge > 99 ? '99+' : badge}
-        </span>
-      )}
     </button>
   )
 
@@ -411,8 +358,7 @@ export default function LeadsListPage() {
         <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Quick Filters</span>
         {pill('all', 'Show All', !smart && !notConnectedActive, clearQuick, 'All leads, no quick filter')}
         {meta?.data.smartFilters.flatMap((f) => [
-          pill(f.key, smartLabel(f.key), smart === f.key, () => setParam('smart', smart === f.key ? undefined : f.key), f.label,
-            f.key === 'whatsapp' ? waUnread : 0),
+          pill(f.key, smartLabel(f.key), smart === f.key, () => setParam('smart', smart === f.key ? undefined : f.key), f.label),
           // fallback pill sits where the backend's own not_connected filter would, right after Untouched
           ...(f.key === 'untouched' && !backendHasNotConnected && notConnectedStage
             ? [pill('not_connected', 'Not Connected', notConnectedActive, toggleNotConnected, 'Stage = Not Connected')]
@@ -633,7 +579,7 @@ export default function LeadsListPage() {
         pageSizes={[25, 50, 100]}
         onPageChange={(page) => setParam('page', page)}
         onPageSizeChange={(size) => setParam('page_size', size)}
-        onRowClick={(l) => navigate(whatsappView ? `/app/leads/${l._id}?tab=whatsapp` : `/app/leads/${l._id}`)}
+        onRowClick={(l) => navigate(`/app/leads/${l._id}`)}
         rowClassName={(l) => (l.isOverdue ? 'bg-red-50/40 [&>td:first-child]:shadow-[inset_3px_0_0_var(--danger)]' : undefined)}
       />
 

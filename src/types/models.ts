@@ -324,8 +324,6 @@ export interface Lead {
   ownerActive?: boolean | null
   /** calls logged on the lead (manual + dialer), for the list's "No. of Call Attempts" column */
   callsCount?: number
-  /** only with the WhatsApp quick filter: the lead's unread replies and last WhatsApp message */
-  whatsapp?: LeadWhatsAppChat
   profileValues?: Record<string, unknown>
   discussionValues?: Record<string, unknown>
 }
@@ -899,6 +897,8 @@ export interface CallLog {
   dialerMeta?: Record<string, unknown>
   /** proof of the call: the screenshot of the call time (required since call proofs), the recording (optional) */
   screenshot?: CallProofFile | null
+  /** every screenshot, in upload order (`screenshot` is the first): one per call now; calls logged earlier may carry several */
+  screenshots?: CallProofFile[]
   recording?: CallProofFile | null
   createdAt: string
 }
@@ -1159,6 +1159,8 @@ export interface AttendanceCallRow {
   stage?: string | null
   subStage?: string | null
   screenshot: CallProofFile | null
+  /** every screenshot, in upload order (`screenshot` is the first) */
+  screenshots?: CallProofFile[]
   recording: CallProofFile | null
 }
 
@@ -1399,19 +1401,6 @@ export interface WhatsAppChat {
 }
 
 /** A lead's WhatsApp chat on the leads list (the WhatsApp quick filter): unread replies and the last message. */
-export interface LeadWhatsAppChat {
-  unread: number
-  last?: { body: string; direction: 'in' | 'out'; status: string; sentBy?: string; template?: string; at: string }
-}
-
-/** The WhatsApp quick filter's red badge: leads with unread replies (and the replies), leads with a chat, replied. */
-export interface WhatsAppSummary {
-  all: number
-  replied: number
-  unread: number
-  unreadMessages: number
-}
-
 export interface MessagePreview {
   channel: 'sms' | 'email'
   template: MessageTemplate
@@ -1483,17 +1472,42 @@ export interface AutomationBody {
   isActive?: boolean
 }
 
-export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_assigned' | 'whatsapp_reply'
+/** The four counsellor alerts the editor special-cases; any other string is a rule key the server lists (?scope=all). */
+export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_assigned' | 'whatsapp_reply' | (string & {})
+export type StaffAlertKind = 'builtin' | 'custom' | 'account'
+/** What the Notifications tab may do with a row; a field false hides its control. */
+export interface StaffAlertCapabilities {
+  toggle: boolean
+  push: boolean
+  email: boolean
+  sms: boolean
+  /** there is a person it is about (the counsellor, the assignee …) who may be told */
+  owner: boolean
+  recipients: boolean
+  conditions: boolean
+  delete: boolean
+  test: boolean
+}
 
 /**
- * Communication → Automation → Counsellor alerts: the wording, channels and windows of the three staff-facing
- * alerts (follow-up reminder, untouched lead, new lead assigned). The texts use {{Placeholders}}.
+ * An alert rule (Communication → Notifications; the four counsellor alerts also under Automation → Team alerts):
+ * its wording, channels, recipients and — for the untouched-lead alert — windows. The texts use {{Placeholders}}.
  */
 export interface StaffAlertRow {
   _id: string
-  /** one of the three built-in alerts; null for an alert added in the CRM (Team alerts → Add alert) */
+  /** a built-in rule's key; null for an alert added in the CRM (Team alerts → Add alert) */
   trigger: StaffAlertTrigger | null
   label: string
+  /** ?scope=all only: what kind of row, where it sits, when it fires, what may be changed */
+  kind?: StaffAlertKind
+  group?: string
+  groupLabel?: string
+  description?: string
+  capabilities?: StaffAlertCapabilities
+  /** always shown in the bell (false for an account email) */
+  bell?: boolean
+  /** who "notifyOwner" means: "Counsellor", "Previous counsellor", "The person who exported" … */
+  subjectLabel?: string
   /** added in the CRM: its name, the lead event it goes out on (straight away) and the lead conditions it needs */
   custom?: boolean
   name?: string | null
@@ -1583,6 +1597,8 @@ export interface StaffAlertsResponse {
   /** Add alert: the lead events it can go out on, and the ready-made wording */
   events?: { value: string; label: string }[]
   customDefaults?: StaffAlertBody
+  /** the Notifications tab's sections, in order */
+  groups?: { key: string; label: string }[]
 }
 
 /** The test send's outcome per channel (only the channels that are on). */
@@ -1653,6 +1669,18 @@ export interface ExportJob {
   downloadUrl?: string | null
 }
 
+/** A bulk upload running in the background (options.background): polled until done (with the result) or failed. */
+export interface ImportJob {
+  _id: string
+  status: 'queued' | 'running' | 'done' | 'failed'
+  fileName: string
+  error?: string | null
+  result?: ImportResult | null
+  createdAt: string
+  startedAt?: string | null
+  finishedAt?: string | null
+}
+
 export interface BulkAssignResult {
   total: number
   perCounsellor: { _id: string; name: string; count: number }[]
@@ -1719,6 +1747,8 @@ export interface DashboardSummary {
     calls?: number
     talktimeSeconds?: number
     breakSeconds?: number
+    /** the part of breakSeconds that was Pause Break (campus visit, training, calibration) */
+    pauseSeconds?: number
     /** dialer figures (apps.telephony): connected calls, connect rate %, inbound / outbound counts, average talk time */
     connected?: number
     connectRate?: number
@@ -1727,26 +1757,57 @@ export interface DashboardSummary {
     inboundAnswered?: number
     inboundMissed?: number
     avgTalkSeconds?: number
+    /** the counsellor's Today's Activity: outbound calls (logged or dialer) and how they ended */
+    dialCalls?: number
+    dialConnected?: number
+    dialNotConnected?: number
+    /** signed-in time today */
+    loggedInSeconds?: number
+    /** different numbers dialled today, of them reached (a call connected), and dialled more than once */
+    uniqueNumbers?: number
+    numbersReached?: number
+    multipleAttempts?: number
   }
 }
 
 /**
- * Round-robin auto-assignment: Meta / Google / Website leads rotate over the online pool
- * members — any active user with "In round-robin lead pool" ticked and View on the Leads
- * module, whatever their role, except a Super Admin.
+ * Round-robin auto-assignment: Meta / Google / Website leads go to the logged-in pool members
+ * in a fixed sequence — any active user with "In round-robin lead pool" ticked and View on the
+ * Leads module, whatever their role, except a Super Admin. Overnight leads pool and go out in the
+ * morning as equal quotas; what is left is split at the checkpoint.
  */
 export type RoundRobinChannel = 'meta' | 'google' | 'capture' | 'telephony' | 'chatbot'
 
 export interface RoundRobinSettings {
   enabled: boolean
   channels: RoundRobinChannel[]
-  /** "HH:MM" IST; both null = 24×7 */
+  /** "HH:MM" IST, end exclusive; both null = 24×7 */
   windowStart: string | null
   windowEnd: string | null
   /** 0=Mon … 6=Sun; [] = every day */
   days: number[]
-  /** true: only logged-in members get leads, the rest wait in the pool; false: every pool member, logged in or not */
-  onlineOnly: boolean
+  /** "HH:MM" IST: from the window start until then the overnight backlog goes out as quotas, the rest is split at it; null = no morning */
+  checkpoint: string | null
+}
+
+/** closed: outside the window / days (leads pool) · morning: before the checkpoint · live: in sequence */
+export type RoundRobinPhase = 'closed' | 'morning' | 'live'
+
+/** Today's morning backlog */
+export interface RoundRobinMorning {
+  day: string
+  /** pooled leads that arrived before the window opened */
+  backlog: number
+  /** members with the toggle on that it was divided by */
+  members: number
+  /** leads per member */
+  quota: number
+  /** quota leads handed out so far */
+  given: number
+  /** the checkpoint split ran */
+  closedAt: string | null
+  /** leads the checkpoint split handed out */
+  split: number
 }
 
 /**
@@ -1772,15 +1833,30 @@ export interface RoundRobinMember {
   onBreak?: { type: string; label: string; startedAt: string } | null
   /** active + flag + not super admin + leads access + online + team not paused + not on a break → in rotation */
   eligible: boolean
-  /** order in rotation; null when not eligible */
+  /** order among the eligible right now; null when not eligible */
   position: number | null
+  /** place in the fixed sequence (1 = first), set by the team's manager (HOD) or the Super Admin */
+  sequence: number | null
+  /** the caller may flip this member's toggle and move them in the sequence */
+  canManage: boolean
+  /** leads the rotation gave them today, and when it last did */
+  assignedToday: number
+  lastAssignedAt: string | null
+  /** of those, from today's morning quota */
+  morningLeads: number
 }
 
 export interface RoundRobinStatus {
   settings: RoundRobinSettings
-  /** rotation allowed to hand out leads right now */
+  /** a new lead goes straight to the next member right now (the live phase) */
   activeNow: boolean
+  phase: RoundRobinPhase
+  morning: RoundRobinMorning | null
   rotation: RoundRobinMember[]
+  /** the caller manages at least one listed member */
+  canReorder: boolean
+  /** leads the rotation handed out today */
+  assignedToday: number
   nextUp: Ref | null
   lastAssigned: Ref | null
   /** leads waiting (nobody online / outside window) */
@@ -1789,7 +1865,7 @@ export interface RoundRobinStatus {
 
 /* ------------------------------------------------------------------ Punch Break & Attendance */
 
-export type BreakType = 'tea' | 'lunch' | 'bio' | 'other'
+export type BreakType = 'tea' | 'lunch' | 'bio' | 'pause' | 'other'
 /** active: running · completed: ended by the employee · incomplete: still open when its day ended, left out of every total */
 export type BreakStatus = 'active' | 'completed' | 'incomplete'
 
@@ -1798,7 +1874,7 @@ export interface BreakEntry {
   type: BreakType
   /** "Lunch Break" */
   label: string
-  /** the reason given for an "other" break */
+  /** the reason given for a pause (Campus Visit, Training Session or typed) or an "other" break */
   note?: string
   /** IST date the break started on (YYYY-MM-DD) */
   day: string
@@ -1820,14 +1896,16 @@ export interface BreaksToday {
   breaks: BreakEntry[]
   /** completed seconds per type */
   byType: Record<BreakType, number>
-  /** completed breaks only */
+  /** completed breaks only, the pause left out */
   totalSeconds: number
+  /** completed pause time (campus visit, training, call calibration): shown apart, never part of totalSeconds */
+  pauseSeconds: number
 }
 
 /** The top bar for the signed-in employee: today's logged-in time plus the Punch Break state. */
 export interface AttendanceToday extends BreaksToday {
   firstLoginAt: string | null
-  /** signed-in time today as of the response; keeps running while `live` */
+  /** signed-in time today as of the response, minus time on a pause; keeps running while `live` and not pausing */
   loggedInSeconds: number
   live: boolean
 }
@@ -1842,9 +1920,9 @@ export interface AttendanceRow {
   loginAt?: string
   /** sign-out of the day's last session */
   logoutAt?: string
-  /** signed-in time that day: the sessions added up (overlaps counted once), the same figure as the employee's
-   * logged-in timer; running while online; counted up to the last activity when the logout is missing.
-   * null when there was no sign-in */
+  /** signed-in time that day: the sessions added up (overlaps counted once) minus time on a pause, the same
+   * figure as the employee's logged-in timer; running while online; counted up to the last activity when the
+   * logout is missing. null when there was no sign-in */
   loginSeconds: number | null
   /** the day's last session never signed out: flagged, never guessed */
   logoutMissing: boolean
@@ -1854,7 +1932,10 @@ export interface AttendanceRow {
   calls: number
   talktimeSeconds: number
   breaks: Record<BreakType, number>
+  /** every type but the pause */
   breakSeconds: number
+  /** the pause on its own: neither break time nor part of loginSeconds */
+  pauseSeconds: number
   activeBreak: { type: BreakType; label: string; note?: string; startedAt: string } | null
   incompleteBreaks: number
 }
@@ -1887,4 +1968,109 @@ export interface TargetOptions {
   stages: { _id: string; name: string }[]
   /** assignee id → their active target id: they cannot get another until it closes */
   busyAssignees: Record<string, string>
+}
+
+// ---------- Reports ----------
+
+export type ReportColumnType = 'text' | 'number' | 'duration' | 'percent'
+export type ReportPeriodKey = 'today' | 'yesterday' | 'last_7_days' | 'last_week' | 'this_month' | 'last_month'
+
+export interface ReportColumn {
+  key: string
+  label: string
+  type: ReportColumnType
+  /** a duration shown in minutes in the Excel file (on screen every duration is HH:MM:SS) */
+  short: boolean
+  align: 'left' | 'center' | 'right'
+}
+
+/** A report in the registry: its columns (typed, formatted the same on screen, in Excel and CSV) and periods. */
+export interface ReportDefinition {
+  key: string
+  name: string
+  category: string
+  description: string
+  /** a one-day report (the EOD): one date, scheduled for today or yesterday */
+  oneDay: boolean
+  /** a leading "Sr. No." column */
+  numbered: boolean
+  defaultPeriod: ReportPeriodKey
+  periods: { value: ReportPeriodKey; label: string }[]
+  columns: ReportColumn[]
+  notes: string[]
+}
+
+export type ReportRow = Record<string, string | number | null>
+
+export interface ReportSummaryItem {
+  label: string
+  value: number
+  type: ReportColumnType
+}
+
+/** Durations in seconds, percents as 0–100, counts as numbers. */
+export interface ReportResult {
+  report: ReportDefinition
+  dateFrom: string
+  dateTo: string
+  periodLabel: string
+  rows: ReportRow[]
+  totals: ReportRow | null
+  summary: ReportSummaryItem[]
+}
+
+export type ReportFrequency = 'daily' | 'weekly' | 'monthly'
+export type ReportRunStatus = 'running' | 'sent' | 'retry' | 'failed'
+export type ReportRunTrigger = 'schedule' | 'manual' | 'resend'
+
+/** "Email report X for period P to these people every day / week / month at HH:MM (IST)". */
+export interface ReportSchedule {
+  _id: string
+  name: string
+  reportKey: string
+  reportName: string
+  period: ReportPeriodKey
+  periodLabel: string
+  params: Record<string, unknown>
+  frequency: ReportFrequency
+  /** HH:MM, IST */
+  sendTime: string
+  /** daily: the days it goes out; weekly: [the day] — 0 = Monday */
+  weekdays: number[]
+  monthDay: number | null
+  recipients: string[]
+  cc: string[]
+  isActive: boolean
+  owner: { _id: string; name?: string; email?: string } | null
+  nextRunAt: string | null
+  lastRunAt: string | null
+  lastStatus: ReportRunStatus | null
+  createdAt: string
+  updatedAt: string
+}
+
+/** One generation + email of a report: what went out, to whom, the file, and why it failed. */
+export interface ReportRun {
+  _id: string
+  schedule: string | null
+  reportKey: string
+  name: string
+  trigger: ReportRunTrigger
+  scheduledFor: string | null
+  params: Record<string, unknown>
+  periodLabel: string
+  recipients: string[]
+  cc: string[]
+  status: ReportRunStatus
+  attempts: number
+  nextAttemptAt: string | null
+  error: string | null
+  rowCount: number
+  summary: ReportSummaryItem[]
+  hasFile: boolean
+  fileName: string | null
+  triggeredBy: { _id: string; name?: string } | null
+  startedAt: string | null
+  finishedAt: string | null
+  createdAt: string
 }

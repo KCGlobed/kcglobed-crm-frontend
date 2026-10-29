@@ -15,6 +15,7 @@ import type {
   CustomFieldDef,
   ImportPreview,
   ImportValidation,
+  ImportJob,
   ImportResult,
   Lead,
   LeadActivity,
@@ -242,6 +243,11 @@ export const leadsApi = api.injectEndpoints({
     uploadCallProof: build.mutation<ApiResponse<CallProofFile>, FormData>({
       query: (body) => ({ url: '/calls/proofs', method: 'POST', body }),
     }),
+    // Lead page → Recent Calls → Re-upload: the kinds sent replace the call's screenshots / recording
+    replaceCallProofs: build.mutation<ApiResponse<CallLog>, { callId: string; leadId: string; screenshotIds?: string[]; recordingId?: string }>({
+      query: ({ callId, screenshotIds, recordingId }) => ({ url: `/calls/${callId}/proofs`, method: 'PUT', body: { screenshotIds, recordingId } }),
+      invalidatesTags: (_r, error, { leadId }) => (error ? [] : [{ type: 'LeadCalls', id: leadId }, { type: 'LeadTimeline', id: leadId }, 'Attendance']),
+    }),
     profileOptions: build.query<ApiResponse<{ states: string[]; citiesByState: Record<string, string[]> }>, void>({
       query: () => '/leads/profile-options',
     }),
@@ -257,9 +263,13 @@ export const leadsApi = api.injectEndpoints({
     validateImport: build.mutation<ApiResponse<ImportValidation>, FormData>({
       query: (body) => ({ url: '/leads/import/validate', method: 'POST', body }),
     }),
-    bulkUploadLeads: build.mutation<ApiResponse<ImportResult>, FormData>({
+    /** With options.background the import runs as a job: the answer is { job }, polled through importJob. */
+    bulkUploadLeads: build.mutation<ApiResponse<ImportResult | { job: ImportJob }>, FormData>({
       query: (body) => ({ url: '/leads/bulk-upload', method: 'POST', body }),
       invalidatesTags: [{ type: 'Leads', id: 'LIST' }, 'Dashboard', 'Notifications'],
+    }),
+    importJob: build.query<ApiResponse<ImportJob>, string>({
+      query: (id) => ({ url: `/leads/import/jobs/${id}`, headers: { 'X-Background': '1' } }),
     }),
     exportJob: build.query<ApiResponse<ExportJob>, string>({
       query: (id) => `/leads/exports/${id}`,
@@ -319,6 +329,20 @@ export const leadsApi = api.injectEndpoints({
       },
       invalidatesTags: (_r, error) => (error ? [] : [{ type: 'Users', id: 'LIST' }, { type: 'Users', id: 'OPTIONS' }]),
     }),
+    // the HOD's (or the Super Admin's) new order for the members they manage, top first
+    setRoundRobinSequence: build.mutation<ApiResponse<RoundRobinStatus>, string[]>({
+      query: (order) => ({ url: '/leads/round-robin/sequence', method: 'PUT', body: { order } }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+          dispatch(leadsApi.util.updateQueryData('roundRobinStatus', undefined, (draft) => {
+            draft.data = data.data
+          }))
+        } catch {
+          // the page shows the error
+        }
+      },
+    }),
   }),
 })
 
@@ -352,11 +376,13 @@ export const {
   useUploadLeadDocumentMutation,
   useDeleteLeadDocumentMutation,
   useUploadCallProofMutation,
+  useReplaceCallProofsMutation,
   useProfileOptionsQuery,
   useImportPreviewMutation,
   useValidateImportMutation,
   useCreateImportCustomFieldMutation,
   useBulkUploadLeadsMutation,
+  useLazyImportJobQuery,
   useLazyExportJobQuery,
   useLeadProfileQuery,
   useSaveLeadProfileStepMutation,
@@ -365,4 +391,5 @@ export const {
   useRoundRobinStatusQuery,
   useUpdateRoundRobinSettingsMutation,
   useSetRoundRobinUserMutation,
+  useSetRoundRobinSequenceMutation,
 } = leadsApi

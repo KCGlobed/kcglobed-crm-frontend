@@ -15,7 +15,7 @@ import { useCurrentUser } from '../../../app/hooks'
 import { can } from '../../../constants/permissions'
 import { Drawer } from '../../../components/ui/Drawer'
 import { Button } from '../../../components/ui/Button'
-import { Checkbox, FieldGroup, FormField, Input, Select } from '../../../components/ui/fields'
+import { Checkbox, FieldGroup, FormField, Input, PasswordInput, Select } from '../../../components/ui/fields'
 import { mobileField } from '../../../lib/mobile'
 import { cn, parseApiError } from '../../../lib/utils'
 import type { RoleKey, User } from '../../../types/models'
@@ -305,7 +305,7 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
               hint={isEdit ? 'Leave empty to keep the current password' : 'Leave empty to email login credentials instead'}
               className="sm:col-span-2"
             >
-              <Input type="password" autoComplete="new-password" {...register('password')} aria-invalid={!!errors.password} />
+              <PasswordInput autoComplete="new-password" {...register('password')} aria-invalid={!!errors.password} />
             </FormField>
           </div>
         </FieldGroup>

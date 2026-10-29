@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Bell, CheckCheck } from 'lucide-react'
+import { ArrowLeft, Bell, CheckCheck } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Card, PageHeader } from '../components/ui/misc'
 import { Button } from '../components/ui/Button'
 import { Skeleton } from '../components/ui/feedback'
@@ -20,15 +21,24 @@ export default function NotificationsPage() {
   const [markRead] = useMarkNotificationReadMutation()
   const [markAll] = useMarkAllNotificationsReadMutation()
   const openNotification = useOpenNotification()
+  const navigate = useNavigate()
+  const location = useLocation()
   const items = data?.data.items ?? []
   const unread = data?.data.unreadCount ?? 0
   const toggleUnread = () => {
     setUnreadOnly((v) => !v)
     setPage(1)
   }
+  // back to the page "View All" was pressed on; opened directly (a bookmark, a fresh tab) there is none, so the dashboard
+  const back = () => (location.key === 'default' ? navigate('/app/dashboard') : navigate(-1))
 
   return (
     <>
+      <div className="mb-3">
+        <Button variant="ghost" size="sm" onClick={back}>
+          <ArrowLeft className="h-3.5 w-3.5" /> Back
+        </Button>
+      </div>
       <PageHeader
         title="Notifications"
         description={unread ? `${unread} unread` : 'Everything sent to you, newest first'}

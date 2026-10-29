@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   CalendarPlus,
+  Eye,
   Mail,
   MessageCircle,
   MessageSquareText,
@@ -13,6 +14,7 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   Trash2,
+  Upload,
   UserPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -31,6 +33,7 @@ import { Tabs } from '../../components/ui/misc'
 import { cn, formatDateTime, fullName, initials, parseApiError, timeAgo } from '../../lib/utils'
 import { useAuthorizedObjectUrl } from '../../lib/download'
 import { LeadFormDrawer } from './LeadFormDrawer'
+import { ExportLeadButton } from './ExportLeadButton'
 import { formatCustomValue } from './leadColumns'
 import { LeadTimeline } from './LeadTimeline'
 import { LeadNotes } from './LeadNotes'
@@ -41,6 +44,8 @@ import { LeadHistory } from './LeadHistory'
 import { CounsellorDiscussion } from './CounsellorDiscussion'
 import { CustomInformation } from './CustomInformation'
 import { DispositionDrawer } from './DispositionDrawer'
+import { CallProofPreview, ReuploadCallProofs } from './CallProofDialogs'
+import { callScreenshots } from './callProofFiles'
 import { ChangeStageModal } from './ChangeStageModal'
 import { AddNoteModal, AssignLeadModal, SendMessageModal } from './LeadActionModals'
 import { WhatsAppChat } from './WhatsAppChat'
@@ -103,7 +108,10 @@ function OverviewTab({
   onEditCustom?: () => void
   onViewNotes?: () => void
 }) {
+  const user = useCurrentUser()
   const { data: calls } = useLeadCallsQuery(lead._id)
+  const [preview, setPreview] = useState<CallLog | null>(null)
+  const [reupload, setReupload] = useState<CallLog | null>(null)
   const { data: notes } = useLeadNotesQuery(lead._id)
   const { data: messages } = useLeadMessagesQuery(lead._id)
   const { data: masters } = useMasterBootstrapQuery()
@@ -171,29 +179,79 @@ function OverviewTab({
       )}
     </Card>
   )
+  // the counsellor who logged a call re-uploads its files; Super Admin / Admin those of any logged call
+  const canReupload = (c: CallLog) => c.source === 'manual' && can(user, 'leads', 'edit') && (isAdminLike(user) || c.user?._id === user?._id)
   const recentCalls = (
-    <Card title="Recent Calls">
+    <Card title={`Recent Calls${calls?.data.length ? ` (${calls.data.length})` : ''}`}>
       {!calls?.data.length && <p className="text-xs text-slate-400">No Calls Logged Yet</p>}
-      {calls?.data.slice(0, 5).map((c) => (
-        <div key={c._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0" data-testid="recent-call">
-          <p className="flex flex-wrap items-center gap-1.5 font-medium text-slate-700">
-            {c.direction === 'inbound' ? (
-              <PhoneIncoming className="h-3 w-3 shrink-0 text-emerald-600" aria-label="Inbound" />
-            ) : (
-              <PhoneOutgoing className="h-3 w-3 shrink-0 text-brand-600" aria-label="Outbound" />
-            )}
-            <span>{c.subStage ?? c.stage ?? (c.source === 'dialer' ? (c.needsDisposition ? 'Outcome pending' : 'No outcome') : '—')}</span>
-            {c.source === 'dialer' && <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge>}
-            {!!c.durationSeconds && <span className="font-mono font-normal tabular-nums text-slate-500">{formatHms(c.durationSeconds)}</span>}
-          </p>
-          <p className="text-slate-400">
-            {c.user?.name ?? (c.source === 'dialer' ? 'Dialer' : 'System')} · {formatDateTime(c.createdAt)}
-          </p>
-          {(c.recording || c.recordingUrl) && (
-            <RecordingPlayer callId={c._id} proofId={c.recording?._id} fileName={c.recording?.fileName} fallbackUrl={c.recordingUrl} compact className="mt-1" />
-          )}
-        </div>
-      ))}
+      {/* every call, in a box that keeps its height and scrolls */}
+      <div className="-mr-2 max-h-96 overflow-y-auto pr-2" data-testid="recent-calls">
+        {calls?.data.map((c) => {
+          const shots = callScreenshots(c)
+          const files = [shots.length ? `${shots.length} screenshot${shots.length > 1 ? 's' : ''}` : null, c.recording ? 'recording' : null].filter(Boolean).join(' · ')
+          return (
+            <div key={c._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0" data-testid="recent-call">
+              <p className="flex flex-wrap items-center gap-1.5 font-medium text-slate-700">
+                {c.direction === 'inbound' ? (
+                  <PhoneIncoming className="h-3 w-3 shrink-0 text-emerald-600" aria-label="Inbound" />
+                ) : (
+                  <PhoneOutgoing className="h-3 w-3 shrink-0 text-brand-600" aria-label="Outbound" />
+                )}
+                <span>{c.subStage ?? c.stage ?? (c.source === 'dialer' ? (c.needsDisposition ? 'Outcome pending' : 'No outcome') : '—')}</span>
+                {c.source === 'dialer' && <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge>}
+                {!!c.durationSeconds && <span className="font-mono font-normal tabular-nums text-slate-500">{formatHms(c.durationSeconds)}</span>}
+              </p>
+              <p className="text-slate-400">
+                {c.user?.name ?? (c.source === 'dialer' ? 'Dialer' : 'System')} · {formatDateTime(c.createdAt)}
+              </p>
+              {c.source === 'dialer' ? (
+                (c.recording || c.recordingUrl) && (
+                  <RecordingPlayer callId={c._id} proofId={c.recording?._id} fileName={c.recording?.fileName} fallbackUrl={c.recordingUrl} compact className="mt-1" />
+                )
+              ) : (
+                (files || canReupload(c)) && (
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    {files && <span className="mr-1 text-[11px] text-slate-400">{files}</span>}
+                    {files && (
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-brand-700" onClick={() => setPreview(c)} data-testid="preview-call-files">
+                        <Eye className="h-3.5 w-3.5" /> Preview
+                      </Button>
+                    )}
+                    {canReupload(c) && (
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-600" onClick={() => setReupload(c)} data-testid="reupload-call-files">
+                        <Upload className="h-3.5 w-3.5" /> Re-upload
+                      </Button>
+                    )}
+                  </div>
+                )
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {preview && (
+        <CallProofPreview
+          call={preview}
+          title={`Call by ${preview.user?.name ?? 'the counsellor'}`}
+          description={`${fullName(lead)} · ${lead.leadNo} · ${formatDateTime(preview.createdAt)}`}
+          actions={
+            canReupload(preview) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setReupload(preview)
+                  setPreview(null)
+                }}
+              >
+                <Upload className="h-3.5 w-3.5" /> Re-upload
+              </Button>
+            )
+          }
+          onClose={() => setPreview(null)}
+        />
+      )}
+      {reupload && <ReuploadCallProofs call={reupload} leadId={lead._id} onClose={() => setReupload(null)} />}
     </Card>
   )
   const recentMessages = (
@@ -543,31 +601,35 @@ export default function LeadDetailPage() {
                   )}
                 </div>
               </div>
-              {canSend && (
-                <div className="flex flex-wrap items-center gap-2" data-testid="lead-messaging-actions">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!hasUsableMobile(lead.mobile)}
-                    title={hasUsableMobile(lead.mobile) ? 'Send a DLT-approved SMS to this lead' : 'No valid mobile number'}
-                    onClick={() => setModal('sms')}
-                  >
-                    <MessageSquareText className="h-3.5 w-3.5" /> Send SMS
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setModal('email')}>
-                    <Mail className="h-3.5 w-3.5" /> Send Email
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!hasUsableMobile(lead.mobile)}
-                    title={hasUsableMobile(lead.mobile) ? 'Send an approved WhatsApp template to this lead' : 'No valid mobile number'}
-                    onClick={() => setModal('whatsapp')}
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" /> Send WhatsApp
-                  </Button>
-                </div>
-              )}
+              {/* the send buttons need communications.create; Export Details only needs to see the lead */}
+              <div className="flex flex-wrap items-center gap-2" data-testid="lead-messaging-actions">
+                {canSend && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!hasUsableMobile(lead.mobile)}
+                      title={hasUsableMobile(lead.mobile) ? 'Send a DLT-approved SMS to this lead' : 'No valid mobile number'}
+                      onClick={() => setModal('sms')}
+                    >
+                      <MessageSquareText className="h-3.5 w-3.5" /> Send SMS
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setModal('email')}>
+                      <Mail className="h-3.5 w-3.5" /> Send Email
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!hasUsableMobile(lead.mobile)}
+                      title={hasUsableMobile(lead.mobile) ? 'Send an approved WhatsApp template to this lead' : 'No valid mobile number'}
+                      onClick={() => setModal('whatsapp')}
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" /> Send WhatsApp
+                    </Button>
+                  </>
+                )}
+                <ExportLeadButton leadId={lead._id} />
+              </div>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 sm:grid-cols-3 lg:grid-cols-6">
               <HeaderFact label="Owner">{lead.owner?.name ?? 'Unassigned'}</HeaderFact>

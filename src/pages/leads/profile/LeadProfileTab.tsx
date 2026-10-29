@@ -20,6 +20,7 @@ import { PersonalStep } from './PersonalStep'
 import { AcademicStep } from './AcademicStep'
 import { WorkStep } from './WorkStep'
 import { DocumentsStep } from './DocumentsStep'
+import { ExportDocumentsButton } from './ExportDocumentsButton'
 import { Section, PROFILE_STEP_FORM, PROFILE_STEP_SAVE } from './ProfileFields'
 
 const STEPS: { key: ProfileStepKey | 'documents' | 'declaration'; label: string }[] = [
@@ -179,7 +180,11 @@ export function LeadProfileTab({ leadId, actions }: { leadId: string; actions?: 
           </div>
           <span className="text-xs font-semibold tabular-nums text-slate-700">{profile.completionPercent}%</span>
         </div>
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+        {/* Call (when the user can edit) and Export PDF (view is enough, so also on a locked profile) */}
+        <div className="flex items-center gap-2">
+          {actions}
+          <ExportDocumentsButton leadId={leadId} />
+        </div>
         {profile.locked ? (
           <div className="flex items-center gap-2">
             <Badge tone="violet">
