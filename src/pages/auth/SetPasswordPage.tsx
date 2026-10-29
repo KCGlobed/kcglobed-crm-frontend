@@ -48,7 +48,7 @@ export default function SetPasswordPage() {
       await changePassword({ currentPassword: values.currentPassword, newPassword: values.newPassword }).unwrap()
       const me = await fetchMe().unwrap()
       dispatch(setUser(me.data.user))
-      toast.success('Password set — welcome to KcGlobed CRM')
+      toast.success('Password set — welcome to GccSchool CRM')
       navigate('/app', { replace: true })
     } catch (err) {
       const { message, errors: fieldErrors } = parseApiError(err)
