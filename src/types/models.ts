@@ -1633,22 +1633,43 @@ export interface DashboardSummary {
 }
 
 /**
- * Round-robin auto-assignment: Meta / Google / Website leads rotate over the online pool
- * members — any active user with "In round-robin lead pool" ticked and View on the Leads
- * module, whatever their role, except a Super Admin.
+ * Round-robin auto-assignment: Meta / Google / Website leads go to the logged-in pool members
+ * in a fixed sequence — any active user with "In round-robin lead pool" ticked and View on the
+ * Leads module, whatever their role, except a Super Admin. Overnight leads pool and go out in the
+ * morning as equal quotas; what is left is split at the checkpoint.
  */
 export type RoundRobinChannel = 'meta' | 'google' | 'capture' | 'telephony' | 'chatbot'
 
 export interface RoundRobinSettings {
   enabled: boolean
   channels: RoundRobinChannel[]
-  /** "HH:MM" IST; both null = 24×7 */
+  /** "HH:MM" IST, end exclusive; both null = 24×7 */
   windowStart: string | null
   windowEnd: string | null
   /** 0=Mon … 6=Sun; [] = every day */
   days: number[]
-  /** true: only logged-in members get leads, the rest wait in the pool; false: every pool member, logged in or not */
-  onlineOnly: boolean
+  /** "HH:MM" IST: from the window start until then the overnight backlog goes out as quotas, the rest is split at it; null = no morning */
+  checkpoint: string | null
+}
+
+/** closed: outside the window / days (leads pool) · morning: before the checkpoint · live: in sequence */
+export type RoundRobinPhase = 'closed' | 'morning' | 'live'
+
+/** Today's morning backlog */
+export interface RoundRobinMorning {
+  day: string
+  /** pooled leads that arrived before the window opened */
+  backlog: number
+  /** members with the toggle on that it was divided by */
+  members: number
+  /** leads per member */
+  quota: number
+  /** quota leads handed out so far */
+  given: number
+  /** the checkpoint split ran */
+  closedAt: string | null
+  /** leads the checkpoint split handed out */
+  split: number
 }
 
 /**
@@ -1674,15 +1695,30 @@ export interface RoundRobinMember {
   onBreak?: { type: string; label: string; startedAt: string } | null
   /** active + flag + not super admin + leads access + online + team not paused + not on a break → in rotation */
   eligible: boolean
-  /** order in rotation; null when not eligible */
+  /** order among the eligible right now; null when not eligible */
   position: number | null
+  /** place in the fixed sequence (1 = first), set by the team's manager (HOD) or the Super Admin */
+  sequence: number | null
+  /** the caller may flip this member's toggle and move them in the sequence */
+  canManage: boolean
+  /** leads the rotation gave them today, and when it last did */
+  assignedToday: number
+  lastAssignedAt: string | null
+  /** of those, from today's morning quota */
+  morningLeads: number
 }
 
 export interface RoundRobinStatus {
   settings: RoundRobinSettings
-  /** rotation allowed to hand out leads right now */
+  /** a new lead goes straight to the next member right now (the live phase) */
   activeNow: boolean
+  phase: RoundRobinPhase
+  morning: RoundRobinMorning | null
   rotation: RoundRobinMember[]
+  /** the caller manages at least one listed member */
+  canReorder: boolean
+  /** leads the rotation handed out today */
+  assignedToday: number
   nextUp: Ref | null
   lastAssigned: Ref | null
   /** leads waiting (nobody online / outside window) */
