@@ -31,7 +31,8 @@ export type EndedCall = PhoneCall & { endedAt: number }
 export interface PhoneState {
   status: PhoneStatus
   error: string | null
-  ringing: PhoneCall | null
+  ringing: PhoneCall | null // the first of `incoming`
+  incoming: PhoneCall[] // every call ringing this phone now, oldest first (shown stacked, bottom right)
   inCall: PhoneCall | null
   lastEnded: EndedCall | null
   autoAnswerAll: boolean // the counsellor's own choice: pick up incoming calls too (off by default)
@@ -57,10 +58,13 @@ function readAutoAnswer() {
   }
 }
 
-let state: PhoneState = { status: 'off', error: null, ringing: null, inCall: null, lastEnded: null, autoAnswerAll: readAutoAnswer(), log: [] }
+let state: PhoneState = {
+  status: 'off', error: null, ringing: null, incoming: [], inCall: null, lastEnded: null, autoAnswerAll: readAutoAnswer(), log: [],
+}
 const listeners = new Set<() => void>()
 let ua: UA | null = null
-let session: RTCSession | null = null
+let session: RTCSession | null = null // the call being answered or talked on
+const ringingSessions = new Map<string, RTCSession>() // calls still ringing, waiting for Answer / Decline
 let expectUntil = 0
 let expectRingback = false
 let expectLeadId: string | undefined
@@ -135,7 +139,35 @@ if (typeof window !== 'undefined') {
   window.addEventListener('keydown', unlock)
 }
 
-/** One Indian-style "tring-tring": two short bursts of two mixed tones. */
+/** One marimba note: a soft mallet hit (the base tone plus the bar's bright overtones, each dying away fast). */
+function marimbaNote(c: AudioContext, freq: number, at: number, volume: number) {
+  for (const [mult, share, decay] of [[1, 1, 1.1], [4, 0.22, 0.28], [9.2, 0.05, 0.09]]) {
+    const osc = c.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.value = freq * mult
+    const gain = c.createGain()
+    gain.gain.setValueAtTime(0.0001, at)
+    gain.gain.exponentialRampToValueAtTime(volume * share, at + 0.006)
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + decay)
+    osc.connect(gain).connect(c.destination)
+    osc.start(at)
+    osc.stop(at + decay + 0.05)
+  }
+}
+
+// the incoming-call ring: an iPhone-style marimba phrase (our own tune), [seconds from the start, Hz]
+const RING_PHRASE: [number, number][] = [
+  [0, 659.25], [0.14, 987.77], [0.28, 830.61], [0.42, 1318.51], [0.56, 987.77], [0.7, 830.61],
+  [0.98, 739.99], [1.12, 1108.73], [1.26, 987.77], [1.4, 1479.98], [1.54, 1108.73], [1.68, 987.77],
+]
+const RING_EVERY_MS = 2600
+
+function marimbaRing(c: AudioContext, volume: number) {
+  const t0 = c.currentTime + 0.02
+  for (const [at, freq] of RING_PHRASE) marimbaNote(c, freq, t0 + at, volume)
+}
+
+/** One Indian-style "tring-tring": two short bursts of two mixed tones (the ringback while the lead's phone rings). */
 function burst(c: AudioContext, freqs: number[], volume: number) {
   const gain = c.createGain()
   gain.connect(c.destination)
@@ -158,9 +190,9 @@ function playTone(kind: 'ring' | 'ringback') {
   stopTone()
   const c = audioContext()
   if (!c) return
-  const play = () => (kind === 'ring' ? burst(c, [800, 850], 0.35) : burst(c, [400, 450], 0.12))
+  const play = () => (kind === 'ring' ? marimbaRing(c, 0.3) : burst(c, [400, 450], 0.12))
   play()
-  tone = { timer: window.setInterval(play, 3000), until: Date.now() + 60_000 }
+  tone = { timer: window.setInterval(play, kind === 'ring' ? RING_EVERY_MS : 3000), until: Date.now() + 60_000 }
 }
 
 function stopTone() {
@@ -188,23 +220,44 @@ function stopRinging() {
   notification = null
 }
 
-/** A call the CRM placed: ringback until the lead's side makes a sound (they answered, or Smartflo plays its own tone). */
+/**
+ * A call the CRM placed: ringback until the lead's side speaks. Smartflo plays the lead's ringing down this line too
+ * (seen live: any sound at all counted the call as picked up 3–5 s after the click), so only a voice counts — a
+ * ringing tone (400–450 Hz) has nearly all its sound in that one narrow band, a voice spreads over 300–3400 Hz. This
+ * is only the live timer: whether the lead picked up, and the talk time, come from Smartflo's call record.
+ */
 function ringbackUntilAnswered(stream: MediaStream) {
   const c = audioContext()
   if (!c || !state.inCall?.calling) return
   playTone('ringback')
   try {
     const analyser = c.createAnalyser()
-    analyser.fftSize = 512
+    analyser.fftSize = 2048
+    analyser.smoothingTimeConstant = 0.2
     c.createMediaStreamSource(stream).connect(analyser)
-    const data = new Uint8Array(analyser.fftSize)
-    let loud = 0
+    const wave = new Uint8Array(analyser.fftSize)
+    const spectrum = new Float32Array(analyser.frequencyBinCount)
+    const hz = c.sampleRate / analyser.fftSize
+    const recent: boolean[] = [] // the last 1.5 s: was it a voice?
     level = window.setInterval(() => {
-      analyser.getByteTimeDomainData(data)
+      analyser.getByteTimeDomainData(wave)
       let sum = 0
-      for (const v of data) sum += ((v - 128) / 128) ** 2
-      loud = Math.sqrt(sum / data.length) > 0.02 ? loud + 1 : 0
-      if (loud >= 2 || !tone || Date.now() > tone.until) leadAnswered()
+      for (const v of wave) sum += ((v - 128) / 128) ** 2
+      let voice = false
+      if (Math.sqrt(sum / wave.length) > 0.02) {
+        analyser.getFloatFrequencyData(spectrum)
+        let all = 0
+        let ringBand = 0
+        for (let i = Math.floor(300 / hz); i <= Math.ceil(3400 / hz) && i < spectrum.length; i++) {
+          const power = 10 ** (spectrum[i] / 10)
+          all += power
+          if (i * hz >= 350 && i * hz <= 500) ringBand += power
+        }
+        voice = all > 0 && ringBand / all < 0.8
+      }
+      recent.push(voice)
+      if (recent.length > 10) recent.shift()
+      if (recent.filter(Boolean).length >= 6 || !tone || Date.now() > tone.until) leadAnswered()
     }, 150)
   } catch {
     window.setTimeout(leadAnswered, 15_000)
@@ -273,19 +326,30 @@ function callerOf(s: RTCSession): PhoneCall {
     kind: 'inbound', startedAt: Date.now(), answeredAt: null }
 }
 
+function setIncoming(incoming: PhoneCall[]) {
+  set({ incoming, ringing: incoming[0] ?? null })
+}
+
 function onSession(e: RTCSessionEvent) {
   if (e.originator !== 'remote') return
   const s = e.session
   if (session) {
-    s.terminate({ status_code: 486, reason_phrase: 'Busy Here' }) // one call at a time
+    // one call at a time: busy, so Smartflo hands it to the next counsellor instead of ringing here
+    s.terminate({ status_code: 486, reason_phrase: 'Busy Here' })
     return
   }
-  session = s
   let call = callerOf(s)
   const done = () => {
-    stopRinging()
-    if (session === s) session = null
-    set({ ringing: null, inCall: null, lastEnded: { ...(state.inCall ?? call), endedAt: Date.now() } })
+    if (ringingSessions.delete(s.id)) {
+      // a call that rang here and was never answered (the caller hung up, or Decline)
+      const rest = state.incoming.filter((c) => c.id !== s.id)
+      if (!rest.length) stopRinging()
+      setIncoming(rest)
+    }
+    if (session === s) {
+      session = null
+      set({ inCall: null, lastEnded: { ...(state.inCall ?? call), endedAt: Date.now() } })
+    }
   }
   note(`incoming call from ${call.number || 'unknown'}${call.name ? ` (${call.name})` : ''}`)
   s.on('accepted', () => {
@@ -293,7 +357,7 @@ function onSession(e: RTCSessionEvent) {
     stopRinging()
     // inbound: talking from now; a click-to-call: our leg is up, the lead's phone rings next (answeredAt then)
     call = { ...call, since: Date.now(), answeredAt: call.kind === 'inbound' ? Date.now() : null }
-    set({ ringing: null, inCall: call })
+    set({ inCall: call })
   })
   // answer as soon as a public (STUN) address is known instead of waiting for every candidate
   s.on('icecandidate', (e) => {
@@ -318,24 +382,54 @@ function onSession(e: RTCSessionEvent) {
     expectUntil = 0
     const kind = !placedByCrm ? 'inbound' : expectRingback ? 'outbound' : 'session'
     call = { ...call, calling: kind === 'outbound', kind, leadId: placedByCrm ? expectLeadId : undefined }
-    answer() // no Incoming-call modal: the CRM placed this call, the in-call bar shows once it is up
+    pickUp(s) // no incoming card: the CRM placed this call, the calling dock shows it once it is up
   } else {
-    set({ ringing: call })
-    startRinging(call.name || call.number || 'Smartflo')
+    ringingSessions.set(s.id, s)
+    setIncoming([...state.incoming, call])
+    if (state.incoming.length === 1) startRinging(call.name || call.number || 'Smartflo')
   }
 }
 
-export function answer() {
-  if (!session || session.isEstablished()) return
+function pickUp(s: RTCSession) {
   stopRinging()
+  session = s
+  ringingSessions.delete(s.id)
+  // one call at a time: the others still ringing go busy, so Smartflo hands them to the next counsellor
+  const others = [...ringingSessions.values()]
+  ringingSessions.clear()
+  setIncoming([])
+  for (const other of others) {
+    try {
+      other.terminate({ status_code: 486, reason_phrase: 'Busy Here' })
+    } catch {
+      // already gone
+    }
+  }
   try {
-    session.answer({ mediaConstraints: { audio: true, video: false }, pcConfig: PC_CONFIG })
+    s.answer({ mediaConstraints: { audio: true, video: false }, pcConfig: PC_CONFIG })
   } catch (err) {
     note(`could not answer: ${err instanceof Error ? err.message : err}`)
     set({ error: err instanceof Error ? err.message : 'Could not answer the call' })
   }
 }
 
+/** Answer a ringing call (the oldest when none is named). */
+export function answer(id?: string) {
+  const target = id ?? state.incoming[0]?.id
+  const s = target ? ringingSessions.get(target) : undefined
+  if (s && !session) pickUp(s)
+}
+
+/** Decline one ringing call; the others keep ringing. */
+export function decline(id: string) {
+  try {
+    ringingSessions.get(id)?.terminate({ status_code: 486, reason_phrase: 'Busy Here' })
+  } catch {
+    // already gone
+  }
+}
+
+/** End the call on now. */
 export function hangup() {
   stopRinging()
   try {
@@ -391,6 +485,14 @@ export async function connectPhone(login: SoftphoneLogin) {
 
 export function disconnectPhone() {
   hangup()
+  for (const s of ringingSessions.values()) {
+    try {
+      s.terminate()
+    } catch {
+      // already gone
+    }
+  }
+  ringingSessions.clear()
   if (ua) {
     const old = ua
     ua = null
@@ -400,5 +502,5 @@ export function disconnectPhone() {
       // already stopped
     }
   }
-  set({ status: 'off', ringing: null, inCall: null })
+  set({ status: 'off', ringing: null, incoming: [], inCall: null })
 }

@@ -269,8 +269,11 @@ function AgentsCard() {
   const onSync = async () => {
     try {
       const res = await sync().unwrap()
-      const { matched, unmatched, updated } = res.data
+      const { matched, unmatched, updated, unlinked = [] } = res.data
       toast.success(`${matched.length} matched, ${updated} updated${unmatched.length ? `, ${unmatched.length} Smartflo agent${unmatched.length === 1 ? '' : 's'} without a CRM user` : ''}`)
+      if (unlinked.length) {
+        toast.warning(`Deleted in Smartflo: ${unlinked.map((u) => u.name).join(', ')} — use Turn on (Auto-dialer) to create them again`)
+      }
     } catch (err) {
       toast.error(parseApiError(err).message)
     }

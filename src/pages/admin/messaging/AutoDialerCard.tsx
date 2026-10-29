@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { KeyRound, PhoneIncoming, Power, RefreshCw, Save, Settings2, Wrench } from 'lucide-react'
+import { KeyRound, PhoneIncoming, Power, RefreshCw, Save, Settings2, UserX, Wrench } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useApplyDialerSettingsMutation,
@@ -13,7 +13,7 @@ import {
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { Checkbox, Input, Select, Switch } from '../../../components/ui/fields'
-import { Skeleton } from '../../../components/ui/feedback'
+import { ConfirmDialog, Skeleton } from '../../../components/ui/feedback'
 import { Card } from '../../../components/ui/misc'
 import { formatDateTime, parseApiError } from '../../../lib/utils'
 import type { DialerConfig, DialerOverview } from '../../../types/models'
@@ -21,7 +21,7 @@ import type { DialerConfig, DialerOverview } from '../../../types/models'
 const NUMBER_FIELDS: { key: keyof DialerConfig; label: string; hint: string }[] = [
   { key: 'retries', label: 'Retries', hint: 'unanswered leads are tried again' },
   { key: 'retryAfterMinutes', label: 'Retry after (min)', hint: '' },
-  { key: 'wrapUpSeconds', label: 'Wrap-up (s)', hint: 'time to save the outcome before the next call' },
+  { key: 'wrapUpSeconds', label: 'Gap before next call (s)', hint: 'Progressive call: seconds after a call ends (to save its outcome) before the next lead is called — 15 by default' },
   { key: 'redialRounds', label: 'Call again (rounds)', hint: 'progressive call: once every lead was called, the ones who did not pick up are called again (0 = off)' },
   { key: 'ringTimeout', label: 'Ring time (s)', hint: '' },
 ]
@@ -158,19 +158,24 @@ function SettingsForm({ overview }: { overview: DialerOverview }) {
 
 function AgentRow({ row, numbers }: { row: DialerOverview['agents'][number]; numbers: { id: string; did: string; isInbound: boolean }[] }) {
   const d = row.dialer
+  const deleted = !!row.smartfloDeleted
   const [didId, setDidId] = useState(d?.didId ?? '')
+  const [confirmRemove, setConfirmRemove] = useState(false)
   const [action, { isLoading }] = useDialerAgentActionMutation()
-  const run = async (what: 'enable' | 'disable' | 'reset-password' | 'route-number') => {
+  const run = async (what: 'enable' | 'disable' | 'reset-password' | 'route-number' | 'remove') => {
+    setConfirmRemove(false)
     try {
       await action({ userId: row.userId, action: what, didId: what === 'enable' ? didId || undefined : undefined }).unwrap()
       toast.success(
         what === 'enable'
-          ? `${row.name}: on the auto-dialer — they open it from the Dialer button`
+          ? `${row.name}: ${deleted ? 'created again in Smartflo and ' : ''}on the auto-dialer — they open it from the Dialer button`
           : what === 'disable'
             ? `${row.name}: off the auto-dialer`
             : what === 'reset-password'
               ? `${row.name}: new dialer password (shown in their Dialer)`
-              : `${row.name}: calls to ${d?.didNumber} now reach them`
+              : what === 'remove'
+                ? `${row.name}: deleted from Smartflo — the seat is free`
+                : `${row.name}: calls to ${d?.didNumber} now reach them`
       )
     } catch (err) {
       toast.error(parseApiError(err).message)
@@ -185,8 +190,18 @@ function AgentRow({ row, numbers }: { row: DialerOverview['agents'][number]; num
         <p className="font-mono text-[11px] text-slate-400">{d?.loginId ?? row.telephonyAgentId ?? 'no Smartflo agent yet'}</p>
       </td>
       <td className="px-3 py-2">
-        {d ? <Badge tone={d.enabled ? 'green' : 'slate'}>{d.enabled ? 'On' : 'Off'}</Badge> : <Badge tone="slate">Not set up</Badge>}
-        {d?.lastError && <p className="mt-1 max-w-56 text-[11px] text-red-600">{d.lastError}</p>}
+        {deleted ? (
+          <Badge tone="red">Deleted in Smartflo</Badge>
+        ) : d ? (
+          <Badge tone={d.enabled ? 'green' : 'slate'}>{d.enabled ? 'On' : 'Off'}</Badge>
+        ) : (
+          <Badge tone="slate">Not set up</Badge>
+        )}
+        {deleted ? (
+          <p className="mt-1 max-w-56 text-[11px] text-red-600">Turn on creates a new Smartflo user for them</p>
+        ) : (
+          d?.lastError && <p className="mt-1 max-w-56 text-[11px] text-red-600">{d.lastError}</p>
+        )}
       </td>
       <td className="px-3 py-2">
         <Select className="!h-8 !w-40 text-xs" value={didId} onChange={(e) => setDidId(e.target.value)} aria-label={`Number for ${row.name}`}>
@@ -220,10 +235,22 @@ function AgentRow({ row, numbers }: { row: DialerOverview['agents'][number]; num
       </td>
       <td className="px-3 py-2 text-right">
         <div className="flex flex-wrap justify-end gap-1">
-          <Button size="sm" variant={d?.enabled ? 'outline' : 'primary'} loading={isLoading} onClick={() => run('enable')} title="Dialer role + softphone, own lead list, own campaign (running it again repairs it)">
-            {d?.enabled ? <Wrench className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />} {d?.enabled ? 'Update' : 'Turn on'}
+          <Button
+            size="sm"
+            variant={d?.enabled && !deleted ? 'outline' : 'primary'}
+            loading={isLoading}
+            disabled={!row.mobile && !row.telephonyAgentId}
+            onClick={() => run('enable')}
+            title={
+              !row.mobile && !row.telephonyAgentId
+                ? 'Add a mobile in Users & Access first'
+                : 'Creates their Smartflo counsellor if needed, then dialer role + softphone, own lead list, own campaign (running it again repairs it)'
+            }
+          >
+            {d?.enabled && !deleted ? <Wrench className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}{' '}
+            {deleted ? 'Create again' : d?.enabled ? 'Update' : 'Turn on'}
           </Button>
-          {d?.enabled && (
+          {d?.enabled && !deleted && (
             <>
               {d.didId && !d.didRouted && d.didId !== numbers.find((n) => n.isInbound)?.id && (
                 <Button size="sm" variant="outline" disabled={isLoading} onClick={() => run('route-number')} title={`Calls to ${d.didNumber} ring ${row.name}'s dialer`}>
@@ -238,7 +265,30 @@ function AgentRow({ row, numbers }: { row: DialerOverview['agents'][number]; num
               </Button>
             </>
           )}
+          {row.telephonyAgentId && !deleted && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-600 hover:bg-red-50"
+              disabled={isLoading}
+              aria-label={`Remove ${row.name} from Smartflo`}
+              title="Delete their Smartflo user (frees the calling seat)"
+              onClick={() => setConfirmRemove(true)}
+            >
+              <UserX className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
+        <ConfirmDialog
+          open={confirmRemove}
+          onClose={() => setConfirmRemove(false)}
+          onConfirm={() => void run('remove')}
+          loading={isLoading}
+          title={`Remove ${row.name} from Smartflo?`}
+          message={`Their Smartflo user is deleted and its calling seat is freed. ${row.name} cannot call from the CRM until you Turn on again (that creates a new Smartflo user and keeps their lead list, campaign and number).`}
+          confirmLabel="Delete from Smartflo"
+          danger
+        />
       </td>
     </tr>
   )

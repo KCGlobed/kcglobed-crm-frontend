@@ -1003,7 +1003,15 @@ export interface DialerConfig {
 
 export interface DialerOverview {
   config: DialerConfig
-  agents: { userId: string; name: string; mobile?: string | null; telephonyAgentId?: string | null; dialer: DialerAgentDoc | null }[]
+  agents: {
+    userId: string
+    name: string
+    mobile?: string | null
+    telephonyAgentId?: string | null
+    /** the CRM still links them to a Smartflo user that was deleted in the portal — "Turn on" makes a new one */
+    smartfloDeleted?: boolean
+    dialer: DialerAgentDoc | null
+  }[]
   totals: Record<string, number>
   lastRunAt?: string | null
   fullAt?: string | null
