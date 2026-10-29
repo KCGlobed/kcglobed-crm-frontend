@@ -97,7 +97,13 @@ export const telephonyApi = api.injectEndpoints({
       providesTags: ['Telephony', { type: 'Users', id: 'LIST' }],
     }),
     syncTelephonyAgents: build.mutation<
-      ApiResponse<{ matched: { userId: string; name: string; agentId: string }[]; unmatched: { agentId: string; name: string; number: string }[]; updated: number }>,
+      ApiResponse<{
+        matched: { userId: string; name: string; agentId: string }[]
+        unmatched: { agentId: string; name: string; number: string }[]
+        /** CRM users whose Smartflo user was deleted: unlinked, to be made again */
+        unlinked?: { userId: string; name: string; agentId: string }[]
+        updated: number
+      }>,
       void
     >({
       query: () => ({ url: '/telephony/agents/sync', method: 'POST' }),
@@ -146,7 +152,7 @@ export const telephonyApi = api.injectEndpoints({
     }),
     dialerAgentAction: build.mutation<
       ApiResponse<DialerAgentDoc>,
-      { userId: string; action: 'enable' | 'disable' | 'reset-password' | 'route-number'; didId?: string }
+      { userId: string; action: 'enable' | 'disable' | 'reset-password' | 'route-number' | 'remove'; didId?: string }
     >({
       query: ({ userId, action, didId }) => ({ url: `/telephony/dialer/agents/${userId}/${action}`, method: 'POST', body: didId ? { didId } : {} }),
       invalidatesTags: ['Telephony'],
@@ -221,4 +227,5 @@ export const {
   useDialerSessionMutation,
   useLazyMySoftphoneQuery,
   useLazySoftphoneCallerQuery,
+  useSoftphoneCallerQuery,
 } = telephonyApi

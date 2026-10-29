@@ -11,6 +11,7 @@ import type { Lead, LiveCall } from '../../types/models'
 import { QuickAddDrawer } from '../../pages/leads/QuickAddDrawer'
 import type { CallPhase } from './callState'
 import { advanceQueue, clearQueue, readQueue, remainingInQueue } from './callQueue'
+import { PhoneIncomingCards } from './CrmPhone'
 import { usePhone } from './softphone'
 import { useLiveCalls } from './useLiveCalls'
 
@@ -39,8 +40,8 @@ function Who({ call }: { call: LiveCall }) {
 }
 
 /**
- * The dialer's floating cards, mounted once in the app layout: incoming calls ringing this user (who is calling,
- * Create lead) and the "Start calling" queue. The call in progress shows in the calling dock (CallDock); an ended
+ * The dialer's floating cards, mounted once in the app layout, stacked bottom right: the calls ringing the CRM phone
+ * (Answer / Decline), other incoming calls ringing this user (who is calling, Create lead) and the "Start calling" queue. The call in progress shows in the calling dock (CallDock); an ended
  * call's outcome is asked on the lead's page, which opens by itself.
  */
 export function CallPopover() {
@@ -112,11 +113,12 @@ export function CallPopover() {
     }
   }
 
-  if (!visibleIncoming.length && !queue) return null
+  if (!visibleIncoming.length && !queue && !phone.incoming.length) return null
 
   return (
     <>
-      <div className="pointer-events-none fixed bottom-4 right-4 z-40 flex w-[22rem] max-w-[calc(100vw-2rem)] flex-col gap-2" data-testid="call-popover">
+      <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-[22rem] max-w-[calc(100vw-2rem)] flex-col gap-2" data-testid="call-popover">
+        <PhoneIncomingCards />
         {visibleIncoming.map((c) => (
           <div key={c._id} className="pointer-events-auto rounded-xl border border-emerald-200 bg-white p-3 shadow-xl ring-1 ring-emerald-100" data-testid="incoming-call">
             <div className="flex items-start gap-3">
