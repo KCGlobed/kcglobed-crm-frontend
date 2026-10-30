@@ -10,6 +10,7 @@ import { setCredentials } from '../../features/auth/authSlice'
 import { AuthShell } from '../../components/layout/AuthShell'
 import { Button } from '../../components/ui/Button'
 import { FormField, Input, PasswordInput } from '../../components/ui/fields'
+import { afterLoginPath, lastSignedInUser, lastTabUser, rememberSignedInUser } from '../../lib/afterLogin'
 import { parseApiError } from '../../lib/utils'
 
 const schema = z.object({
@@ -34,14 +35,18 @@ export default function LoginPage() {
   const onSubmit = async (values: FormValues) => {
     try {
       const result = await login(values).unwrap()
+      // whose page this tab was on: the tab's own account first (another tab may have signed someone else in since)
+      const previousUser = lastTabUser() ?? lastSignedInUser()
+      rememberSignedInUser(result.data.user._id)
       dispatch(setCredentials({ user: result.data.user, accessToken: result.data.access_token }))
       if (result.data.user.mustChangePassword) {
         navigate('/set-password', { replace: true })
         return
       }
       toast.success(`Welcome back, ${result.data.user.name.split(' ')[0]}`)
+      // back to the page the session ended on — unless it was someone else's (a shared computer)
       const from = (location.state as { from?: string } | null)?.from
-      navigate(from && from !== '/login' ? from : '/app', { replace: true })
+      navigate(afterLoginPath(from, previousUser, result.data.user._id), { replace: true })
     } catch (err) {
       const { message, errors: fieldErrors } = parseApiError(err)
       Object.entries(fieldErrors).forEach(([field, msg]) =>
