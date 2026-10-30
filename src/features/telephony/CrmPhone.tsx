@@ -7,11 +7,11 @@ import { useLogPhoneCallMutation, useSoftphoneCallerQuery } from '../../services
 import { Button } from '../../components/ui/Button'
 import { answer, decline, disconnectPhone, usePhone, type PhoneCall } from './softphone'
 import { useConnectPhone } from './useConnectPhone'
-import { outcomeShown } from './outcomeOnce'
 import { leadNavOptions } from './leadNav'
-import { useTelephonyEnabled } from './useLiveCalls'
+import { useLiveCalls, useTelephonyEnabled } from './useLiveCalls'
 
 const leadPath = (leadId: string) => `/app/leads/${leadId}`
+const STILL_LISTED_MS = 60_000
 
 /**
  * The CRM's phone, mounted once in the app layout: registers the counsellor's softphone as soon as they are signed in
@@ -53,8 +53,7 @@ export function CrmPhone() {
     if (live && leadId) leadOfCall.current.set(live.id, leadId)
   }, [live, leadId])
 
-  // the call ended: the CRM closes its row with what the phone saw, then the lead page opens the outcome drawer by
-  // itself (only now — never while the call is on)
+  // the call ended: the CRM closes its row with what the phone saw (the page stays where it is; no outcome drawer)
   const ended = phone.lastEnded
   useEffect(() => {
     if (!ended || reported.current === ended.id || ended.kind === 'session') return
@@ -72,12 +71,9 @@ export function CrmPhone() {
     })
       .unwrap()
       .then((res) => {
-        const due = res.data
-        // the call is over: its lead opens with the outcome drawer — once per call, never again for it
-        if (due?.needsDisposition && due.lead && !outcomeShown(due._id)) navigate(`${leadPath(due.lead._id)}?disposition=${due._id}`, leadNavOptions())
         // a click-to-call's outcome and talk time come from Smartflo's call record, which can land a few seconds after
-        // the call: read the lead's calls again so the outcome drawer shows them
-        const settledLead = ended.kind === 'outbound' ? due?.lead?._id : undefined
+        // the call: read the lead's calls again to show them
+        const settledLead = ended.kind === 'outbound' ? res.data?.lead?._id : undefined
         if (settledLead) {
           for (const ms of [6000, 15000]) {
             window.setTimeout(() => dispatch(api.util.invalidateTags([{ type: 'LeadCalls', id: settledLead }, { type: 'LeadTimeline', id: settledLead }])), ms)
@@ -85,16 +81,27 @@ export function CrmPhone() {
         }
       })
       .catch(() => {})
-  }, [ended, logCall, navigate, dispatch])
+  }, [ended, logCall, dispatch])
 
-  // picked up: open the caller's lead (once per call; a click-to-call's lead opens from the calling dock)
-  const inbound = phone.inCall?.kind === 'inbound' ? phone.inCall : null
-  const inboundLead = inbound ? (inbound.leadId ?? (caller && inbound.number === number ? caller.data.lead?._id : undefined)) : undefined
+  // a call starting takes the counsellor to its lead at once, as it starts to ring, either way (once per call); of
+  // several ringing, the one picked up opens when it is
   useEffect(() => {
-    if (!inbound || !inboundLead || opened.current === inbound.id) return
-    opened.current = inbound.id
-    if (location.pathname !== leadPath(inboundLead)) navigate(leadPath(inboundLead), leadNavOptions())
-  }, [inbound, inboundLead, location.pathname, navigate])
+    if (!live || live.kind === 'session' || !leadId || opened.current === live.id) return
+    opened.current = live.id
+    if (location.pathname !== leadPath(leadId)) navigate(leadPath(leadId), leadNavOptions())
+  }, [live, leadId, location.pathname, navigate])
+
+  // a call not on this phone (it rings the counsellor's mobile): the CRM's call row says so
+  const { call: serverCall, incoming } = useLiveCalls()
+  const offPhone = serverCall ?? incoming[0] ?? null
+  const offPhoneLead = !live ? offPhone?.lead?._id : undefined
+  useEffect(() => {
+    if (!offPhone || !offPhoneLead || opened.current === offPhone._id) return
+    // the row of a call just ended on this phone can still show as live for a few seconds
+    if (phone.lastEnded && Date.now() - phone.lastEnded.endedAt < STILL_LISTED_MS) return
+    opened.current = offPhone._id
+    if (location.pathname !== leadPath(offPhoneLead)) navigate(leadPath(offPhoneLead), leadNavOptions())
+  }, [offPhone, offPhoneLead, phone.lastEnded, location.pathname, navigate])
 
   return null // ringing: the cards bottom right (PhoneIncomingCards) · on a call: the calling dock (CallDock)
 }

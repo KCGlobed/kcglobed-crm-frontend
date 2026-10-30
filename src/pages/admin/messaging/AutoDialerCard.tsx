@@ -271,11 +271,10 @@ function AgentRow({ row, numbers }: { row: DialerOverview['agents'][number]; num
               variant="ghost"
               className="text-red-600 hover:bg-red-50"
               disabled={isLoading}
-              aria-label={`Remove ${row.name} from Smartflo`}
               title="Delete their Smartflo user (frees the calling seat)"
               onClick={() => setConfirmRemove(true)}
             >
-              <UserX className="h-3.5 w-3.5" />
+              <UserX className="h-3.5 w-3.5" /> Delete from Smartflo
             </Button>
           )}
         </div>
