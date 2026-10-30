@@ -347,7 +347,7 @@ function NotConnectedCard({ notConnected, total, loading, onOpen }: { notConnect
       label="Not Connected"
       value={count}
       progress={share(count, total)}
-      hint="Not connected, untouched or stopped answering"
+      hint="Leads on this stage"
       icon={PhoneOff}
       color={STAGE_COLORS[NOT_CONNECTED_STAGE]}
       loading={loading || notConnected.loading}
@@ -479,7 +479,7 @@ function CounsellorCards({
           <KpiCard label="Inbound Received" value={activity?.inboundAnswered ?? 0} progress={pct(activity?.inboundAnswered, inbound)} hint="Answered" icon={Phone} accent="teal" loading={loading} onClick={calls('inbound_answered', activity?.inboundAnswered)} />
           <KpiCard label="Inbound Missed" value={activity?.inboundMissed ?? 0} progress={pct(activity?.inboundMissed, inbound)} hint="Not answered" icon={PhoneMissed} accent="pink" loading={loading} onClick={calls('inbound_missed', activity?.inboundMissed)} />
 
-          <KpiCard label="Active Time" value={formatHms(activity?.activeSeconds)} progress={pct(activity?.activeSeconds, loggedIn)} hint={`Of ${formatHms(loggedIn)} signed in`} icon={Clock} accent="indigo" loading={loading} />
+          <KpiCard label="Active Time" value={formatHms(activity?.activeSeconds)} progress={pct(activity?.activeSeconds, loggedIn)} hint="Excludes talk, break & pause time" icon={Clock} accent="indigo" loading={loading} />
           <KpiCard label="Talk Time" value={formatHms(activity?.talktimeSeconds)} progress={pct(activity?.talktimeSeconds, loggedIn)} hint="From pick-up, connected calls only" icon={Timer} accent="leaf" loading={loading} onClick={calls('connected', activity?.talktimeSeconds)} />
           <KpiCard label="Break Time" value={formatHms(activity?.breakSeconds)} progress={pct(activity?.breakSeconds, loggedIn)} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
 
