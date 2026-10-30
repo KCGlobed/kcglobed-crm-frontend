@@ -97,7 +97,7 @@ export default function BulkUploadPage() {
   const [source, setSource] = useState('')
   const [assignMode, setAssignMode] = useState<'unassigned' | 'one' | 'split'>('unassigned')
   const [owners, setOwners] = useState<string[]>([])
-  const [duplicates, setDuplicates] = useState<'skip' | 'update_empty' | 'reenquire'>('skip')
+  const [duplicates, setDuplicates] = useState<'skip' | 'update_empty' | 'reenquire' | 'reenquire_replace'>('skip')
   const [sendWelcome, setSendWelcome] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   /** full-file dry run shown before the Confirm button; cleared by any mapping/value change */
@@ -660,6 +660,7 @@ export default function BulkUploadPage() {
                         <option value="skip">Skip (default)</option>
                         <option value="update_empty">Update Empty Fields</option>
                         <option value="reenquire">Mark as Re-enquiry (fills empty fields, floats to top, owner notified)</option>
+                        <option value="reenquire_replace">Mark as Re-enquiry (fills empty fields, replaces all data except email &amp; phone)</option>
                       </Select>
                     </FormField>
                   </div>
@@ -765,7 +766,7 @@ export default function BulkUploadPage() {
                       ['Rows', validation.total, 'text-slate-800'],
                       ['Will create', validation.willCreate, 'text-emerald-700'],
                       ['Will update', validation.willUpdate, 'text-sky-700'],
-                      ...((validation.willReEnquire ?? 0) > 0 || duplicates === 'reenquire'
+                      ...((validation.willReEnquire ?? 0) > 0 || duplicates.startsWith('reenquire')
                         ? ([['Will re-enquire', validation.willReEnquire ?? 0, 'text-violet-700']] as const)
                         : []),
                       ['Duplicate (will skip)', validation.duplicates, 'text-amber-700'],

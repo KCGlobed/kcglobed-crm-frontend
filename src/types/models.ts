@@ -711,7 +711,7 @@ export interface ImportResult {
   total: number
   created: number
   updated: number
-  /** duplicates imported as re-enquiries (duplicates mode: reenquire) */
+  /** duplicates imported as re-enquiries (duplicates mode: reenquire / reenquire_replace) */
   reEnquired?: number
   skipped: number
   failed: number
