@@ -11,7 +11,6 @@ import { formatHms } from '../../lib/durations'
 import { formatDateTime, parseApiError } from '../../lib/utils'
 import { isFinalStatus, statusLabel, statusTone } from '../../features/telephony/callState'
 import { SettlingBadge } from '../../features/telephony/SettlingBadge'
-import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
 import type { CallLog, Lead } from '../../types/models'
 import { taskTypeLabel, toLocalInput } from '../tasks/taskMeta'
 import { offersFollowUp } from './stageForm'
@@ -195,9 +194,6 @@ export function DispositionDrawer({
                 {dialer.customerNumber ? ` · ${dialer.customerNumber}` : ''}
                 {dialer.hangupCause ? ` · ${dialer.hangupCause.toLowerCase().replace(/_/g, ' ')}` : ''}
               </p>
-              {(dialer.recording || dialer.recordingPending) && (
-                <RecordingPlayer callId={dialer._id} proofId={dialer.recording?._id} fileName={dialer.recording?.fileName} pending={dialer.recordingPending} className="mt-2" />
-              )}
               {manualDuration && (
                 <FormField
                   label="Talk time"
