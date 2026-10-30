@@ -53,7 +53,7 @@ export function useOpenNotification() {
       if (n.type === 'whatsapp_reply' && n.data?.leadId) navigate(`/app/leads/${n.data.leadId}?tab=whatsapp`)
       else if (n.type === 'whatsapp_unknown') navigate('/app/admin/audit?tab=communications&action=whatsapp_unknown_reply')
       // a dialer call: the lead page opens its outcome drawer once the call has ended
-      else if (n.data?.leadId && n.data?.callId) navigate(`/app/leads/${n.data.leadId}?disposition=${n.data.callId}`)
+      else if (n.data?.leadId && n.data?.callId) navigate(`/app/leads/${n.data.leadId}?disposition=${n.data.callId}&again=1`) // asked for: opens even if it did before
       else if (n.data?.leadId) navigate(`/app/leads/${n.data.leadId}`)
       else if (n.data?.smart) navigate(`/app/leads?smart=${n.data.smart}`)
       else if (n.data?.templateId) navigate(`/app/admin/messaging/whatsapp/${n.data.templateId}`)

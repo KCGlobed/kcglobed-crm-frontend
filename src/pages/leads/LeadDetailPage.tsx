@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -55,6 +55,8 @@ import { subStageOf } from '../../lib/stages'
 import { formatHms } from '../../lib/durations'
 import { CallButton } from '../../features/telephony/CallButton'
 import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
+import { SettlingBadge } from '../../features/telephony/SettlingBadge'
+import { markOutcomeShown, outcomeShown } from '../../features/telephony/outcomeOnce'
 import { OPEN_DISPOSITION_EVENT, type OpenDispositionDetail } from '../../features/telephony/events'
 import { isFinalStatus, statusLabel, statusTone } from '../../features/telephony/callState'
 import { useLiveCalls, useStartCall } from '../../features/telephony/useLiveCalls'
@@ -197,15 +199,21 @@ function OverviewTab({
                   <PhoneOutgoing className="h-3 w-3 shrink-0 text-brand-600" aria-label="Outbound" />
                 )}
                 <span>{c.subStage ?? c.stage ?? (c.source === 'dialer' ? (c.needsDisposition ? 'Outcome pending' : 'No outcome') : '—')}</span>
-                {c.source === 'dialer' && <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge>}
-                {!!c.durationSeconds && <span className="font-mono font-normal tabular-nums text-slate-500">{formatHms(c.durationSeconds)}</span>}
+                {c.settled === false ? (
+                  <SettlingBadge />
+                ) : (
+                  <>
+                    {c.source === 'dialer' && <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge>}
+                    {!!c.durationSeconds && <span className="font-mono font-normal tabular-nums text-slate-500">{formatHms(c.durationSeconds)}</span>}
+                  </>
+                )}
               </p>
               <p className="text-slate-400">
                 {c.user?.name ?? (c.source === 'dialer' ? 'Dialer' : 'System')} · {formatDateTime(c.createdAt)}
               </p>
               {c.source === 'dialer' ? (
-                (c.recording || c.recordingUrl) && (
-                  <RecordingPlayer callId={c._id} proofId={c.recording?._id} fileName={c.recording?.fileName} fallbackUrl={c.recordingUrl} compact className="mt-1" />
+                (c.recording || c.recordingPending) && (
+                  <RecordingPlayer callId={c._id} proofId={c.recording?._id} fileName={c.recording?.fileName} pending={c.recordingPending} compact className="mt-1" />
                 )
               ) : (
                 (files || canReupload(c)) && (
@@ -412,40 +420,49 @@ export default function LeadDetailPage() {
   // the popover from another page), by the popover's button on this page (window event), or found by the
   // live feed (a pending outcome of this lead) — and ?dial=1 from the "Start calling" list
   const { pending, enabled: dialerEnabled } = useLiveCalls()
+  // on a call in the CRM phone: the lead page stays as it is; the outcome opens once the call ends
   const { startCall } = useStartCall()
-  const { data: callRows } = useLeadCallsQuery(id, { skip: !id })
+  // a call that just ended: its result comes from the dialer in a few seconds — read again until it is in
+  const [settling, setSettling] = useState(false)
+  const { data: callRows } = useLeadCallsQuery(id, { skip: !id, pollingInterval: settling ? 2000 : 0 })
+  const anySettling = !!callRows?.data.some((c) => c.settled === false)
+  if (anySettling !== settling) setSettling(anySettling)
   const [dialerCall, setDialerCall] = useState<CallLog | null>(null)
   // calls whose drawer this page already showed (saved, skipped or closed): never re-opened by the poll
-  const [handledCalls, setHandledCalls] = useState<string[]>([])
   const dialled = useRef(false)
   const requestedCallId = searchParams.get('disposition')
   const findCall = useCallback(
     (callId: string): CallLog | undefined => pending.find((c) => c._id === callId) ?? callRows?.data.find((c) => c._id === callId),
     [pending, callRows]
   )
-  // the call whose outcome is due without anyone clicking: the one in the URL, else this lead's pending one
-  const dueCall = useMemo(() => {
-    if (!lead || !canEdit || modal !== null) return null
-    const fromUrl = requestedCallId ? findCall(requestedCallId) : undefined
-    const due = fromUrl ?? pending.find((c) => c.lead?._id === lead._id && c.needsDisposition)
-    return due && isFinalStatus(due.status) && !handledCalls.includes(due._id) ? due : null
-  }, [lead, canEdit, modal, requestedCallId, findCall, pending, handledCalls])
-  const openDialer = modal === 'dialer' ? dialerCall : dueCall
+  // the outcome drawer opens by itself only once per call — when that call ends (the CRM phone opens this page with
+  // ?disposition=<call>); opening the lead never opens it, and a call it already opened for never opens it again.
+  // It shows the call as it is now (its result arrives after the call ends), not as it was when opened.
+  const openDialer = modal === 'dialer' && dialerCall ? (findCall(dialerCall._id) ?? dialerCall) : null
   const close = () => {
-    if (openDialer) setHandledCalls((h) => [...h, openDialer._id])
     setModal(null)
     setDialerCall(null)
   }
+  const [urlCallDone, setUrlCallDone] = useState<string | null>(null) // the ?disposition call already handled
+  const urlCall = requestedCallId && lead ? findCall(requestedCallId) : undefined
+  if (requestedCallId && lead && requestedCallId !== urlCallDone && (urlCall || callRows)) {
+    setUrlCallDone(requestedCallId)
+    // `again=1`: asked for by a click (a notification) — opens even for a call it opened for before
+    if (urlCall && canEdit && isFinalStatus(urlCall.status) && (!outcomeShown(urlCall._id) || searchParams.get('again') === '1')) {
+      markOutcomeShown(urlCall._id)
+      setDialerCall(urlCall)
+      setModal('dialer')
+    }
+  }
   // the URL parameter has done its job once the call is known (or cannot be found in the loaded calls)
   useEffect(() => {
-    if (!requestedCallId || !lead) return
-    const call = findCall(requestedCallId)
-    if (!call && !callRows) return
+    if (!requestedCallId || requestedCallId !== urlCallDone) return
     const next = new URLSearchParams(searchParams)
     next.delete('disposition')
+    next.delete('again')
     setSearchParams(next, { replace: true })
-    if (call && !isFinalStatus(call.status)) toast.message('The call is still in progress — its outcome can be saved once it ends')
-  }, [requestedCallId, lead, callRows, findCall, searchParams, setSearchParams])
+    if (urlCall && !isFinalStatus(urlCall.status)) toast.message('The call is still in progress — its outcome can be saved once it ends')
+  }, [requestedCallId, urlCallDone, urlCall, searchParams, setSearchParams])
   useEffect(() => {
     if (searchParams.get('dial') !== '1' || !lead || dialled.current) return
     const next = new URLSearchParams(searchParams)

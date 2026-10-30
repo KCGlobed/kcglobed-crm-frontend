@@ -111,10 +111,11 @@ export function ConfirmDialog({
       size="sm"
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
+          {/* side by side, sharing the width on a narrow screen */}
+          <Button variant="outline" className="min-w-0 flex-1 whitespace-nowrap sm:flex-none" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
-          <Button variant={danger ? 'danger' : 'primary'} onClick={onConfirm} loading={loading}>
+          <Button variant={danger ? 'danger' : 'primary'} className="min-w-0 flex-1 whitespace-nowrap sm:flex-none" onClick={onConfirm} loading={loading}>
             {confirmLabel}
           </Button>
         </>

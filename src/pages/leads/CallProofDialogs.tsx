@@ -118,9 +118,10 @@ export function CallProofPreview({
 }
 
 /**
- * Re-upload the files of a call logged with Log Call: new screenshots replace all of the call's screenshots, a new
- * recording replaces its recording; whatever is left empty here stays as it is. The files upload as they are picked
- * (or pasted), as in the Log Call drawer, and replace the old ones on Save.
+ * Re-upload the files of a call logged with Log Call: a new screenshot replaces the call's screenshot (every one
+ * of them, for a call logged when several were allowed), a new recording replaces its recording; whatever is left
+ * empty here stays as it is. The files upload as they are picked (or pasted), as in the Log Call drawer, and
+ * replace the old ones on Save.
  */
 export function ReuploadCallProofs({ call, leadId, onClose }: { call: CallLog; leadId: string; onClose: () => void }) {
   const [replace, { isLoading }] = useReplaceCallProofsMutation()
@@ -174,7 +175,7 @@ export function ReuploadCallProofs({ call, leadId, onClose }: { call: CallLog; l
     >
       <div
         onPaste={(e) => {
-          // a screenshot pasted anywhere in the dialog is added to the new screenshots
+          // a screenshot pasted anywhere in the dialog becomes the new screenshot
           const image = Array.from(e.clipboardData.files).find((f) => f.type.startsWith('image/'))
           if (image) {
             e.preventDefault()
@@ -184,7 +185,7 @@ export function ReuploadCallProofs({ call, leadId, onClose }: { call: CallLog; l
         className="space-y-3"
       >
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-          This call has {now}. New screenshots replace all of its screenshots, and a new recording replaces its recording. Leave one empty to keep it.
+          This call has {now}. A new screenshot replaces its screenshot{current.length > 1 ? 's' : ''}, and a new recording replaces its recording. Leave one empty to keep it.
         </p>
         <CallProofField kind="screenshot" value={screenshots} onChange={setScreenshots} onBusy={setShotBusy} pasted={pasted} error={errors.screenshotId} />
         <CallProofField kind="recording" value={recording} onChange={setRecording} onBusy={setRecBusy} error={errors.recordingId} />

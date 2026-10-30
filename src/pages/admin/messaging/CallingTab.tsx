@@ -5,10 +5,8 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
-  Download,
   PhoneCall,
   PhoneIncoming,
-  PhoneOutgoing,
   RefreshCw,
   RotateCw,
   Save,
@@ -18,33 +16,27 @@ import {
 import { toast } from 'sonner'
 import dayjs from 'dayjs'
 import {
-  callLogQuery,
   useApplyTelephonyRoutingMutation,
   useProvisionTelephonyAgentMutation,
   useRetryTelephonyEventMutation,
   useSyncTelephonyAgentsMutation,
   useTelephonyAgentsQuery,
-  useTelephonyCallsQuery,
   useTelephonyEventsQuery,
   useTelephonyNumbersQuery,
   useTelephonyStatusQuery,
   useTestCallMutation,
   type CallLogParams,
 } from '../../../services/telephonyApi'
-import { useUpdateUserMutation, useUserOptionsQuery } from '../../../services/adminApi'
+import { useUpdateUserMutation } from '../../../services/adminApi'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
-import { DataTable, type Column } from '../../../components/ui/DataTable'
-import { DateRangeFilter } from '../../../components/ui/DateRangeFilter'
 import { Input, Select } from '../../../components/ui/fields'
 import { EmptyState, Skeleton } from '../../../components/ui/feedback'
 import { Card } from '../../../components/ui/misc'
-import { authorizedDownload } from '../../../lib/download'
-import { formatHms } from '../../../lib/durations'
 import { cn, formatDateTime, parseApiError } from '../../../lib/utils'
-import { RecordingPlayer } from '../../../features/telephony/RecordingPlayer'
-import { statusLabel, statusTone } from '../../../features/telephony/callState'
-import type { LiveCall, TelephonyAgentRow, TelephonyEventRow, TelephonyStatus, TelephonyTemplate } from '../../../types/models'
+import { CallLog } from '../../../features/telephony/CallLog'
+import { AutoDialerCard } from './AutoDialerCard'
+import type { TelephonyAgentRow, TelephonyEventRow, TelephonyStatus, TelephonyTemplate } from '../../../types/models'
 
 const copy = (text: string, what = 'Copied') =>
   navigator.clipboard
@@ -268,8 +260,11 @@ function AgentsCard() {
   const onSync = async () => {
     try {
       const res = await sync().unwrap()
-      const { matched, unmatched, updated } = res.data
+      const { matched, unmatched, updated, unlinked = [] } = res.data
       toast.success(`${matched.length} matched, ${updated} updated${unmatched.length ? `, ${unmatched.length} Smartflo agent${unmatched.length === 1 ? '' : 's'} without a CRM user` : ''}`)
+      if (unlinked.length) {
+        toast.warning(`Deleted in Smartflo: ${unlinked.map((u) => u.name).join(', ')} — use Turn on (Auto-dialer) to create them again`)
+      }
     } catch (err) {
       toast.error(parseApiError(err).message)
     }
@@ -527,101 +522,7 @@ function TestCallCard({ status }: { status?: TelephonyStatus }) {
 
 function CallLogCard() {
   const [filters, setFilters] = useState<CallLogParams>({ page: 1, page_size: 25 })
-  const { data: people } = useUserOptionsQuery()
-  const { data, isLoading, isFetching, isError, error, refetch } = useTelephonyCallsQuery(filters)
-  const set = (patch: Partial<CallLogParams>) => setFilters((f) => ({ ...f, ...patch, page: patch.page ?? 1 }))
-  const exportXlsx = () =>
-    authorizedDownload(`/telephony/calls/export?${callLogQuery({ ...filters, page: undefined, page_size: undefined })}`, 'call-log.xlsx').catch((e) =>
-      toast.error(parseApiError(e).message)
-    )
-
-  const columns: Column<LiveCall>[] = [
-    { key: 'when', header: 'Date & Time', render: (c) => <span className="whitespace-nowrap text-xs text-slate-600">{formatDateTime(c.startedAt ?? c.createdAt)}</span> },
-    {
-      key: 'direction',
-      header: '',
-      className: 'w-8',
-      render: (c) =>
-        c.direction === 'inbound' ? <PhoneIncoming className="h-3.5 w-3.5 text-emerald-600" aria-label="Inbound" /> : <PhoneOutgoing className="h-3.5 w-3.5 text-brand-600" aria-label="Outbound" />,
-    },
-    { key: 'user', header: 'Counsellor', render: (c) => <span className="text-xs text-slate-800">{c.user?.name ?? <span className="text-slate-400">—</span>}</span> },
-    {
-      key: 'lead',
-      header: 'Lead',
-      render: (c) =>
-        c.lead ? (
-          <Link to={`/app/leads/${c.lead._id}`} onClick={(e) => e.stopPropagation()} className="block text-xs hover:underline">
-            <span className="font-medium text-brand-700">{c.lead.name}</span>
-            <span className="block text-[11px] text-slate-400">{c.lead.leadNo}</span>
-          </Link>
-        ) : (
-          <span className="text-xs text-slate-500">{c.customerNumber ?? 'Unknown'}</span>
-        ),
-    },
-    { key: 'status', header: 'Status', render: (c) => <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge> },
-    { key: 'talk', header: 'Talk time', align: 'right', render: (c) => <span className="font-mono text-xs tabular-nums">{c.durationSeconds != null ? formatHms(c.durationSeconds) : '—'}</span> },
-    { key: 'outcome', header: 'Outcome', render: (c) => <span className="text-xs text-slate-600">{c.subStage ?? c.stage ?? (c.needsDisposition ? <span className="text-amber-700">pending</span> : '—')}</span> },
-    { key: 'source', header: 'Source', render: (c) => <Badge tone={c.source === 'dialer' ? 'cyan' : 'slate'}>{c.source}</Badge> },
-    {
-      key: 'recording',
-      header: 'Recording',
-      render: (c) => (c.recording || c.recordingUrl ? <RecordingPlayer callId={c._id} proofId={c.recording?._id} fileName={c.recording?.fileName} fallbackUrl={c.recordingUrl} compact /> : <span className="text-xs text-slate-400">—</span>),
-    },
-  ]
-
-  return (
-    <Card
-      title="Call log"
-      actions={
-        <Button variant="outline" size="sm" onClick={exportXlsx}>
-          <Download className="h-3.5 w-3.5" /> Export
-        </Button>
-      }
-    >
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <DateRangeFilter from={filters.from} to={filters.to} onChange={(from, to) => set({ from: from || undefined, to: to || undefined })} label="Call Date" heading="Calls Between" />
-        <Select className="!w-auto" value={filters.userId ?? ''} onChange={(e) => set({ userId: e.target.value || undefined })} aria-label="Counsellor">
-          <option value="">All counsellors</option>
-          {people?.data.map((u) => (
-            <option key={u._id} value={u._id}>
-              {u.name}
-            </option>
-          ))}
-        </Select>
-        <Select className="!w-auto" value={filters.direction ?? ''} onChange={(e) => set({ direction: e.target.value || undefined })} aria-label="Direction">
-          <option value="">In & out</option>
-          <option value="outbound">Outbound</option>
-          <option value="inbound">Inbound</option>
-        </Select>
-        <Select className="!w-auto" value={filters.status ?? ''} onChange={(e) => set({ status: e.target.value || undefined })} aria-label="Status">
-          <option value="">Any status</option>
-          <option value="answered">Connected</option>
-          <option value="not_answered">Not answered</option>
-          <option value="busy">Busy</option>
-          <option value="failed">Failed</option>
-        </Select>
-        <Select className="!w-auto" value={filters.source ?? ''} onChange={(e) => set({ source: e.target.value || undefined })} aria-label="Source">
-          <option value="">Dialer & manual</option>
-          <option value="dialer">Dialer</option>
-          <option value="manual">Manual</option>
-        </Select>
-      </div>
-      <DataTable
-        columns={columns}
-        rows={data?.data}
-        rowKey={(c) => c._id}
-        loading={isLoading || isFetching}
-        error={isError}
-        errorMessage={isError ? parseApiError(error).message : undefined}
-        onRetry={refetch}
-        emptyTitle="No calls"
-        emptyDescription="No calls match these filters."
-        pagination={data?.pagination}
-        onPageChange={(page) => set({ page })}
-        onPageSizeChange={(page_size) => set({ page_size })}
-      />
-    </Card>
-  )
+  return <CallLog filters={filters} onChange={setFilters} />
 }
 
 /**
@@ -640,6 +541,7 @@ export function CallingTab() {
         <TestCallCard status={status} />
       </div>
       <AgentsCard />
+      <AutoDialerCard />
       <RoutingCard status={status} />
       <EventsCard />
       <CallLogCard />

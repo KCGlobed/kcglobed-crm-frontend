@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Clock3, Coffee } from 'lucide-react'
 import { useCurrentUser } from '../../app/hooks'
+import { BREAK_OPTIONS } from '../../constants/breaks'
 import { formatHms } from '../../lib/durations'
 import { Button } from '../ui/Button'
 import { Modal } from '../ui/Modal'
@@ -26,6 +27,7 @@ function Timers() {
   // break, and the amber chip brings it back
   const [hiddenFor, setHiddenFor] = useState<string | null>(null)
   const active = today?.active ?? null
+  const BreakIcon = (active && BREAK_OPTIONS.find((o) => o.type === active.type)?.icon) || Coffee
 
   if (!today) return null
 
@@ -68,7 +70,7 @@ function Timers() {
             >
               <div className="flex flex-col items-center py-6 text-center">
                 <span className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 text-amber-700">
-                  <Coffee className="h-8 w-8" />
+                  <BreakIcon className="h-8 w-8" />
                 </span>
                 <p className="mt-5 text-6xl font-bold tabular-nums tracking-tight text-slate-900 sm:text-7xl">{formatHms(breakSeconds)}</p>
                 <p className="mt-2 text-sm text-slate-500">Started at {clockTime(active.startedAt)}</p>

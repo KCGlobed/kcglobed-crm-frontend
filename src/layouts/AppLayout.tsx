@@ -3,7 +3,10 @@ import { Outlet } from 'react-router-dom'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Header } from '../components/layout/Header'
 import { PushNotifications } from '../components/layout/PushNotifications'
+import { CallDock } from '../features/telephony/CallDock'
 import { CallPopover } from '../features/telephony/CallPopover'
+import { CrmPhone } from '../features/telephony/CrmPhone'
+import { DialerPanel } from '../features/telephony/DialerPanel'
 import { Sidebar } from '../components/layout/Sidebar'
 import { useSessionSync } from '../features/auth/useSessionSync'
 
@@ -36,6 +39,9 @@ export default function AppLayout() {
     <div className="flex h-screen overflow-hidden bg-white">
       <PushNotifications />
       <CallPopover />
+      <DialerPanel />
+      <CallDock />
+      <CrmPhone />
       <Sidebar
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}

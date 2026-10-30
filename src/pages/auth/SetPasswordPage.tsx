@@ -9,7 +9,7 @@ import { useAppDispatch, useCurrentUser } from '../../app/hooks'
 import { setUser } from '../../features/auth/authSlice'
 import { AuthShell } from '../../components/layout/AuthShell'
 import { Button } from '../../components/ui/Button'
-import { FormField, Input } from '../../components/ui/fields'
+import { FormField, PasswordInput } from '../../components/ui/fields'
 import { parseApiError } from '../../lib/utils'
 
 // GL-02: min 8 characters, 1 upper-case letter, 1 number, 1 symbol
@@ -48,7 +48,7 @@ export default function SetPasswordPage() {
       await changePassword({ currentPassword: values.currentPassword, newPassword: values.newPassword }).unwrap()
       const me = await fetchMe().unwrap()
       dispatch(setUser(me.data.user))
-      toast.success('Password set — welcome to KcGlobed CRM')
+      toast.success('Password set — welcome to GCC School CRM')
       navigate('/app', { replace: true })
     } catch (err) {
       const { message, errors: fieldErrors } = parseApiError(err)
@@ -71,7 +71,7 @@ export default function SetPasswordPage() {
         </div>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-md">
           <FormField label="Temporary password" error={errors.currentPassword?.message} required>
-            <Input type="password" autoComplete="current-password" {...register('currentPassword')} />
+            <PasswordInput autoComplete="current-password" {...register('currentPassword')} />
           </FormField>
           <FormField
             label="New password"
@@ -79,10 +79,10 @@ export default function SetPasswordPage() {
             hint="Min 8 characters with an upper-case letter, a number and a symbol"
             required
           >
-            <Input type="password" autoComplete="new-password" {...register('newPassword')} />
+            <PasswordInput autoComplete="new-password" {...register('newPassword')} />
           </FormField>
           <FormField label="Confirm new password" error={errors.confirm?.message} required>
-            <Input type="password" autoComplete="new-password" {...register('confirm')} />
+            <PasswordInput autoComplete="new-password" {...register('confirm')} />
           </FormField>
           <Button type="submit" className="w-full" loading={isLoading}>
             Save and continue

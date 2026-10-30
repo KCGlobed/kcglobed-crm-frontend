@@ -23,11 +23,12 @@ export const miscApi = api.injectEndpoints({
     }),
     listNotifications: build.query<
       ApiResponse<NotificationList> & { pagination: Pagination },
-      { page?: number; unread?: boolean }
+      { page?: number; unread?: boolean; hideCleared?: boolean }
     >({
-      query: ({ page = 1, unread }) => ({
+      // hideCleared: the bell, which leaves out what Clear All removed; View All shows everything
+      query: ({ page = 1, unread, hideCleared }) => ({
         url: '/notifications',
-        params: { page, page_size: 15, ...(unread ? { unread: 'true' } : {}) },
+        params: { page, page_size: 15, ...(unread ? { unread: 'true' } : {}), ...(hideCleared ? { cleared: 'false' } : {}) },
         // the bell's poll is not user activity — it must not keep an idle session alive (GL-05)
         headers: { 'X-Background': '1' },
       }),
@@ -47,6 +48,16 @@ export const miscApi = api.injectEndpoints({
     }),
     markAllNotificationsRead: build.mutation<ApiResponse<null>, void>({
       query: () => ({ url: '/notifications/read-all', method: 'PATCH' }),
+      invalidatesTags: ['Notifications'],
+    }),
+    /** Clear All: empties the user's bell only; the Notifications page (View All) and the Activity Log keep the rows. */
+    clearAllNotifications: build.mutation<ApiResponse<{ cleared: number }>, void>({
+      query: () => ({ url: '/notifications', method: 'DELETE' }),
+      invalidatesTags: ['Notifications'],
+    }),
+    /** Super Admin, Activity Log → Notifications: Clear All empties that log; nobody's bell or View All changes. */
+    clearNotificationLog: build.mutation<ApiResponse<{ cleared: number }>, void>({
+      query: () => ({ url: '/notifications/log', method: 'DELETE' }),
       invalidatesTags: ['Notifications'],
     }),
     // browser push (Firebase Cloud Messaging): this device's registration with the backend
@@ -71,6 +82,8 @@ export const {
   useNotificationLogQuery,
   useMarkNotificationReadMutation,
   useMarkAllNotificationsReadMutation,
+  useClearAllNotificationsMutation,
+  useClearNotificationLogMutation,
   usePushStatusQuery,
   useSubscribePushMutation,
   useUnsubscribePushMutation,
