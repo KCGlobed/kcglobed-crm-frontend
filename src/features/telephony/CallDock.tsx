@@ -27,6 +27,7 @@ import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/feedback'
 import { SettlingBadge } from './SettlingBadge'
+import { leadNavOptions } from './leadNav'
 import { formatHms, useNow } from '../../lib/durations'
 import { cn, parseApiError } from '../../lib/utils'
 import type { DialerProgressStatus } from '../../types/models'
@@ -62,9 +63,9 @@ const BAR: Partial<Record<DialerProgressStatus, string>> = {
 
 const SUMMARY: { status: DialerProgressStatus[]; label: string; tone: Tone }[] = [
   { status: ['answered'], label: 'Answered', tone: 'green' },
-  { status: ['not_answered', 'busy', 'failed'], label: 'Not answered', tone: 'red' },
+  { status: ['not_answered', 'busy', 'failed'], label: 'No answer', tone: 'red' },
   { status: ['calling', 'connected', 'dialled'], label: 'Calling', tone: 'amber' },
-  { status: ['adding', 'waiting'], label: 'In queue', tone: 'slate' },
+  { status: ['adding', 'waiting'], label: 'Queued', tone: 'slate' },
 ]
 
 const FINISHED: DialerProgressStatus[] = ['answered', 'not_answered', 'busy', 'failed', 'error', 'skipped']
@@ -72,13 +73,14 @@ const LIVE_PHASES: CallPhase[] = ['dialing', 'ringing_agent', 'ringing_customer'
 const COLLAPSE_KEY = 'crm.progressive.collapsed'
 const SIZE_KEY = 'crm.progressive.width'
 const COMPACT = 'h-7 gap-1 px-2 text-xs' // the dock's buttons: small enough to fit (and wrap) on a narrow dock
+const CALL_BTN = 'h-8 w-full min-w-0 justify-center gap-1 px-1 text-xs' // the call's Mute / Lead / End, side by side
+const ROW_BADGE = 'max-w-[55%] shrink-0 truncate px-1.5 text-[10px]' // a lead's status beside its name, never pushing it out
 const leadPath = (leadId: string) => `/app/leads/${leadId}`
 /** Opening a lead from the dock: just the lead — its outcome drawer does not pop up for a call already over. */
-const quietly = () => ({ state: { quietOutcomeSince: Date.now() } })
 
 /** The dock's width, set by dragging its right edge (null = the default). Never narrower than the sidebar. */
 const MIN_W = 240 // the sidebar's width (lg:w-60)
-const DEFAULT_W = 320
+const DEFAULT_W = MIN_W // as wide as the admin's left panel, unless widened
 const fitWidth = (w: number) => Math.round(Math.min(Math.max(w, MIN_W), window.innerWidth - 32))
 const readWidth = (): number | null => {
   try {
@@ -148,7 +150,6 @@ export function CallDock() {
   const { startCall, dialing } = useStartCall()
   const run = data?.data.run ?? null
   const fired = useRef<string | null>(null)
-  const opened = useRef(new Set<string>())
   // paused / going, per run (a run someone else queued for this counsellor waits for their Start)
   const [control, setControl] = useState<{ at: string; paused: boolean } | null>(null)
   const paused = !!run && (control?.at === run.at ? control.paused : run.auto === false)
@@ -221,13 +222,8 @@ export function CallDock() {
   }, [due, placeKey, run, startCall])
 
   // a lead of the run picked up: its page opens (once per call)
-  const pickedUp = run && current?.state === 'on' && current.leadId && run.leads.some((l) => l._id === current.leadId) ? current.leadId : null
-  const pickedKey = pickedUp ? `${run?.at}:${pickedUp}:${run?.round ?? 1}` : null
-  useEffect(() => {
-    if (!pickedUp || !pickedKey || opened.current.has(pickedKey)) return
-    opened.current.add(pickedKey)
-    if (location.pathname !== leadPath(pickedUp)) navigate(leadPath(pickedUp))
-  }, [pickedUp, pickedKey, location.pathname, navigate])
+  // a lead picking up does not take the counsellor anywhere: the Lead button opens it; the call's end opens its
+  // outcome (CrmPhone)
 
   const pause = () => run && setControl({ at: run.at, paused: true })
   const resume = () => {
@@ -382,20 +378,24 @@ export function CallDock() {
         aria-hidden
       />
       <div
-        className="flex cursor-grab touch-none select-none items-center gap-2 border-b border-slate-200 bg-slate-50 px-2 py-2.5 active:cursor-grabbing"
+        className="flex cursor-grab touch-none select-none items-center gap-1.5 border-b border-slate-200 bg-slate-50 px-2 py-2 active:cursor-grabbing"
         onPointerDown={startDrag}
         onDoubleClick={resetPosition}
         title="Drag to move · double-click to put it back"
       >
         <GripVertical className="h-4 w-4 shrink-0 text-slate-400" />
-        {run ? <PhoneForwarded className="h-4 w-4 text-brand-600" /> : <Phone className="h-4 w-4 text-brand-600" />}
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-800">{run ? 'Progressive calling' : current?.state === 'ringing' ? 'Calling' : 'Call'}</p>
+        {run ? <PhoneForwarded className="h-4 w-4 shrink-0 text-brand-600" /> : <Phone className="h-4 w-4 shrink-0 text-brand-600" />}
+        {/* one line each, cut short with … rather than wrapped, at the narrowest width too */}
+        <div className="min-w-0 flex-1 leading-tight">
+          <p className="truncate whitespace-nowrap text-[13px] font-semibold text-slate-800">{run ? 'Progressive calling' : current?.state === 'ringing' ? 'Calling' : 'Call'}</p>
           {run && (
-            <p className="text-[11px] text-slate-500">
-              {finished} of {run.total} done
-              {(run.rounds ?? 1) > 1 && ` · round ${run.round ?? 1} of ${run.rounds}`}
-              {run.done ? ' — all leads called' : paused ? ' · paused' : ''}
+            <p
+              className="truncate whitespace-nowrap text-[11px] text-slate-500"
+              title={`${finished} of ${run.total} done${(run.rounds ?? 1) > 1 ? ` · round ${run.round ?? 1} of ${run.rounds}` : ''}`}
+            >
+              {run.done ? `All ${run.total} called` : `${finished}/${run.total} done`}
+              {(run.rounds ?? 1) > 1 && ` · round ${run.round ?? 1}/${run.rounds}`}
+              {!run.done && paused ? ' · paused' : ''}
             </p>
           )}
         </div>
@@ -416,11 +416,11 @@ export function CallDock() {
       </div>
 
       {current && (
-        <div className={cn('m-3 rounded-lg p-3 ring-1', on ? 'bg-emerald-50 ring-emerald-200' : current.state === 'line' ? 'bg-slate-50 ring-slate-200' : 'bg-amber-50 ring-amber-200')}>
-          <div className="flex items-center gap-2.5">
+        <div className={cn('m-2 rounded-lg p-2.5 ring-1', on ? 'bg-emerald-50 ring-emerald-200' : current.state === 'line' ? 'bg-slate-50 ring-slate-200' : 'bg-amber-50 ring-amber-200')}>
+          <div className="flex items-center gap-2">
             <span
               className={cn(
-                'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white',
+                'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white',
                 on ? 'bg-emerald-600' : current.state === 'line' ? 'bg-slate-400' : 'animate-pulse bg-amber-500'
               )}
             >
@@ -432,30 +432,31 @@ export function CallDock() {
               </p>
               <p className="truncate text-sm font-semibold text-slate-800">{current.name}</p>
             </div>
-            {talk && <span className="font-mono text-base font-semibold tabular-nums text-emerald-700">{talk}</span>}
+            {talk && <span className="shrink-0 font-mono text-sm font-semibold tabular-nums text-emerald-700">{talk}</span>}
           </div>
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+          {/* one row of equal buttons, however many there are */}
+          <div className="mt-2 grid auto-cols-fr grid-flow-col gap-1">
             {phone.inCall && (
-              <Button size="sm" className={COMPACT} variant={phone.inCall.muted ? 'secondary' : 'outline'} title={phone.inCall.muted ? 'Unmute' : 'Mute'} onClick={toggleMute}>
+              <Button size="sm" className={CALL_BTN} variant={phone.inCall.muted ? 'secondary' : 'outline'} title={phone.inCall.muted ? 'Unmute' : 'Mute'} onClick={toggleMute}>
                 {phone.inCall.muted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
                 {phone.inCall.muted ? 'Unmute' : 'Mute'}
               </Button>
             )}
             {current.leadId && location.pathname !== leadPath(current.leadId) && (
-              <Button size="sm" className={COMPACT} variant="outline" onClick={() => navigate(leadPath(current.leadId!), quietly())}>
+              <Button size="sm" className={CALL_BTN} variant="outline" title="Open the lead" onClick={() => navigate(leadPath(current.leadId!), leadNavOptions())}>
                 <ExternalLink className="h-3.5 w-3.5" /> Lead
               </Button>
             )}
             <Button
               size="sm"
               variant="danger"
-              className={cn(COMPACT, 'ml-auto')}
+              className={CALL_BTN}
               loading={ending || hangingUp}
               onClick={endCall}
               title={current.state === 'line' ? 'Ends your dialer line' : 'End this call'}
               data-testid="hangup-call"
             >
-              <PhoneOff className="h-3.5 w-3.5" /> {current.state === 'line' ? 'Leave' : 'End call'}
+              <PhoneOff className="h-3.5 w-3.5" /> {current.state === 'line' ? 'Leave' : 'End'}
             </Button>
           </div>
         </div>
@@ -472,23 +473,23 @@ export function CallDock() {
             ))}
           </div>
 
-          <div className="grid grid-cols-4 gap-1 border-b border-slate-100 px-3 py-2.5 text-center">
+          <div className="grid grid-cols-4 gap-0.5 border-b border-slate-100 px-1.5 py-2 text-center">
             {SUMMARY.map((s) => (
-              <div key={s.label}>
-                <p className={cn('text-lg font-bold tabular-nums', s.tone === 'green' ? 'text-emerald-600' : s.tone === 'red' ? 'text-red-600' : s.tone === 'amber' ? 'text-amber-600' : 'text-slate-600')}>
+              <div key={s.label} className="min-w-0">
+                <p className={cn('text-base font-bold leading-tight tabular-nums', s.tone === 'green' ? 'text-emerald-600' : s.tone === 'red' ? 'text-red-600' : s.tone === 'amber' ? 'text-amber-600' : 'text-slate-600')}>
                   {count(s.status)}
                 </p>
-                <p className="text-[10px] leading-tight text-slate-500">{s.label}</p>
+                <p className="truncate whitespace-nowrap text-[10px] leading-tight text-slate-500">{s.label}</p>
               </div>
             ))}
           </div>
 
           {nextAt && (
-            <div className="mx-3 mt-3 rounded-lg bg-brand-50 px-3 py-2.5 ring-1 ring-brand-100">
+            <div className="mx-2 mt-2 rounded-lg bg-brand-50 px-2.5 py-2 ring-1 ring-brand-100">
               <p className="text-xs text-brand-800">
-                Next call in <b className="font-mono text-base tabular-nums">{secondsLeft}s</b> — save the outcome meanwhile
+                Next call in <b className="font-mono text-sm tabular-nums">{secondsLeft}s</b> — or save the outcome
               </p>
-              <div className="mt-2 flex flex-wrap gap-1.5">
+              <div className="mt-1.5 flex flex-wrap gap-1">
                 <Button size="sm" className={COMPACT} onClick={resume}>
                   <PhoneForwarded className="h-3.5 w-3.5" /> Call next now
                 </Button>
@@ -500,22 +501,22 @@ export function CallDock() {
           )}
 
           {!run.done && !current && phone.status !== 'ready' && (
-            <p className="mx-3 mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
-              Your CRM phone is not connected — calls start once it is (Dialer → Reconnect).
+            <p className="mx-2 mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
+              CRM phone not connected — Dialer → Reconnect.
             </p>
           )}
 
-          <ul className="mt-3 min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto border-t border-slate-100">
+          <ul className="mt-2 min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto border-t border-slate-100">
             {run.leads.map((l, i) => {
               const now_ = l._id === current?.leadId
               return (
                 <li key={l._id}>
                   <button
                     type="button"
-                    className={cn('flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50', now_ && 'bg-amber-50/60')}
-                    onClick={() => navigate(leadPath(l._id), quietly())}
+                    className={cn('flex w-full items-center gap-1.5 px-2 py-1.5 text-left hover:bg-slate-50', now_ && 'bg-amber-50/60')}
+                    onClick={() => navigate(leadPath(l._id), leadNavOptions())}
                   >
-                    <span className="w-5 shrink-0 text-right text-[10px] tabular-nums text-slate-400">{i + 1}</span>
+                    <span className="w-4 shrink-0 text-right text-[10px] tabular-nums text-slate-400">{i + 1}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs font-medium text-slate-800">{l.name}</span>
                       <span className="block truncate text-[10px] text-slate-500">
@@ -524,13 +525,18 @@ export function CallDock() {
                       </span>
                     </span>
                     {now_ && current ? (
-                      <Badge tone={on ? 'green' : 'amber'} dot>
+                      <Badge tone={on ? 'green' : 'amber'} dot className={ROW_BADGE}>
                         {on ? `On call${talk ? ` · ${talk}` : ''}` : 'Ringing'}
                       </Badge>
                     ) : l.status === 'settling' ? (
-                      <SettlingBadge />
+                      <SettlingBadge label="Result…" className="shrink-0" />
                     ) : (
-                      <Badge tone={TONE[l.status]} dot={l.status === 'calling' || l.status === 'connected'} title={l.outcome ? `Outcome: ${l.outcome}` : undefined}>
+                      <Badge
+                        tone={TONE[l.status]}
+                        dot={l.status === 'calling' || l.status === 'connected'}
+                        title={l.outcome ? `Outcome: ${l.outcome}` : undefined}
+                        className={ROW_BADGE}
+                      >
                         {l.label}
                         {l.status === 'answered' && l.durationSeconds ? ` · ${formatHms(l.durationSeconds)}` : ''}
                         {l.disposed ? ' ✓' : ''}
@@ -543,7 +549,7 @@ export function CallDock() {
           </ul>
 
           {!run.done && !nextAt && (
-            <div className="flex flex-wrap items-center justify-between gap-1.5 border-t border-slate-200 px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-1 border-t border-slate-200 px-2 py-1.5">
               <span className="min-w-0 text-[11px] text-slate-500">{paused ? 'Paused — no new calls' : current ? 'Next lead after this call' : 'Calling the next lead…'}</span>
               {paused ? (
                 <Button size="sm" className={COMPACT} onClick={resume}>
@@ -562,8 +568,8 @@ export function CallDock() {
             onClose={() => setConfirmClose(false)}
             onConfirm={close}
             loading={closing}
-            title="Close progressive calling?"
-            message={`${remaining} lead${remaining === 1 ? ' is' : 's are'} not called yet. Closing finishes this queue: they will not be called.`}
+            title="Close the queue?"
+            message={`${remaining} lead${remaining === 1 ? '' : 's'} not called yet — ${remaining === 1 ? 'it' : 'they'} won't be called.`}
             confirmLabel="Close queue"
             danger
           />

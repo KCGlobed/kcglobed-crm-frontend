@@ -14,6 +14,7 @@ import { advanceQueue, clearQueue, readQueue, remainingInQueue } from './callQue
 import { PhoneIncomingCards } from './CrmPhone'
 import { usePhone } from './softphone'
 import { useLiveCalls } from './useLiveCalls'
+import { leadNavOptions } from './leadNav'
 
 const leadPath = (leadId: string) => `/app/leads/${leadId}`
 const LIVE_PHASES: CallPhase[] = ['dialing', 'ringing_agent', 'ringing_customer', 'connected']
@@ -75,7 +76,7 @@ export function CallPopover() {
   useEffect(() => {
     if (!call || !autoLeadId || autoOpened.current.has(call._id)) return
     autoOpened.current.add(call._id)
-    if (location.pathname !== leadPath(autoLeadId)) navigate(leadPath(autoLeadId))
+    if (location.pathname !== leadPath(autoLeadId)) navigate(leadPath(autoLeadId), leadNavOptions())
   }, [call, autoLeadId, location.pathname, navigate])
 
   // the queue lives in localStorage; re-render when it changes (this tab or another)
@@ -99,7 +100,7 @@ export function CallPopover() {
   const newestPending = pending[0]
   const nextInQueue = () => {
     const next = advanceQueue()
-    if (next) navigate(`${leadPath(next)}?dial=1`)
+    if (next) navigate(`${leadPath(next)}?dial=1`, leadNavOptions())
     else toast.success('Calling list finished')
   }
   const onLeadCreated = async (lead: Lead) => {
