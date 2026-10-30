@@ -892,6 +892,8 @@ export interface CallLog {
   recordingUrl?: string | null
   /** the dialer has a recording the CRM has not copied yet: the player copies it when pressed */
   recordingPending?: boolean
+  /** false: the call just ended and its outcome and talk time are on their way from the dialer — show neither yet */
+  settled?: boolean
   customerNumber?: string | null
   agentNumber?: string | null
   dialerRefId?: string | null
@@ -1064,6 +1066,8 @@ export type DialerProgressStatus =
   | 'waiting'
   | 'calling'
   | 'connected'
+  /** ended; its outcome and talk time are on their way from the call record */
+  | 'settling'
   | 'dialled'
   | 'answered'
   | 'not_answered'

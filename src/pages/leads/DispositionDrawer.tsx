@@ -10,6 +10,7 @@ import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { formatHms } from '../../lib/durations'
 import { formatDateTime, parseApiError } from '../../lib/utils'
 import { isFinalStatus, statusLabel, statusTone } from '../../features/telephony/callState'
+import { SettlingBadge } from '../../features/telephony/SettlingBadge'
 import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
 import type { CallLog, Lead } from '../../types/models'
 import { taskTypeLabel, toLocalInput } from '../tasks/taskMeta'
@@ -177,9 +178,16 @@ export function DispositionDrawer({
                   <PhoneOutgoing className="h-4 w-4 text-brand-600" aria-label="Outbound call" />
                 )}
                 <span className="font-medium text-slate-700">{dialer.direction === 'inbound' ? 'Incoming call' : 'Outbound call'}</span>
-                <Badge tone={statusTone(dialer.status)}>{statusLabel(dialer.status)}</Badge>
-                {isFinalStatus(dialer.status) && (
-                  <span className="font-mono text-sm font-semibold tabular-nums text-slate-800">{formatHms(dialer.durationSeconds)}</span>
+                {dialer.settled === false ? (
+                  // just ended: the outcome and talk time come from the dialer's call record in a few seconds
+                  <SettlingBadge label="Fetching the call result from the dialer…" />
+                ) : (
+                  <>
+                    <Badge tone={statusTone(dialer.status)}>{statusLabel(dialer.status)}</Badge>
+                    {isFinalStatus(dialer.status) && (
+                      <span className="font-mono text-sm font-semibold tabular-nums text-slate-800">{formatHms(dialer.durationSeconds)}</span>
+                    )}
+                  </>
                 )}
               </div>
               <p className="mt-1 text-slate-500">

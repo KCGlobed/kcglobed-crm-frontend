@@ -26,6 +26,7 @@ import {
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/feedback'
+import { SettlingBadge } from './SettlingBadge'
 import { formatHms, useNow } from '../../lib/durations'
 import { cn, parseApiError } from '../../lib/utils'
 import type { DialerProgressStatus } from '../../types/models'
@@ -40,6 +41,7 @@ const TONE: Record<DialerProgressStatus, Tone> = {
   waiting: 'slate',
   calling: 'amber',
   connected: 'green',
+  settling: 'slate',
   dialled: 'blue',
   answered: 'green',
   not_answered: 'red',
@@ -68,7 +70,36 @@ const SUMMARY: { status: DialerProgressStatus[]; label: string; tone: Tone }[] =
 const FINISHED: DialerProgressStatus[] = ['answered', 'not_answered', 'busy', 'failed', 'error', 'skipped']
 const LIVE_PHASES: CallPhase[] = ['dialing', 'ringing_agent', 'ringing_customer', 'connected']
 const COLLAPSE_KEY = 'crm.progressive.collapsed'
+const SIZE_KEY = 'crm.progressive.size'
 const leadPath = (leadId: string) => `/app/leads/${leadId}`
+/** Opening a lead from the dock: just the lead — its outcome drawer does not pop up for a call already over. */
+const quietly = () => ({ state: { quietOutcomeSince: Date.now() } })
+
+/** The dock's size, set by dragging its edges (null = the default). Never narrower than the sidebar. */
+type Size = { w: number; h: number }
+const MIN_W = 240 // the sidebar's width (lg:w-60)
+const MIN_H = 180
+const DEFAULT_W = 320
+const fit = (s: Size): Size => ({
+  w: Math.round(Math.min(Math.max(s.w, MIN_W), window.innerWidth - 32)),
+  h: Math.round(Math.min(Math.max(s.h, MIN_H), window.innerHeight - 32)),
+})
+const readSize = (): Size | null => {
+  try {
+    const s = JSON.parse(localStorage.getItem(SIZE_KEY) || 'null') as Size | null
+    return s && s.w > 0 && s.h > 0 ? fit(s) : null
+  } catch {
+    return null
+  }
+}
+const saveSize = (s: Size | null) => {
+  try {
+    if (s) localStorage.setItem(SIZE_KEY, JSON.stringify(s))
+    else localStorage.removeItem(SIZE_KEY)
+  } catch {
+    // storage blocked — the size lasts for this page only
+  }
+}
 
 /** Where the counsellor dragged the dock: an offset from the bottom-left corner, where it always opens. */
 type Offset = { x: number; y: number }
@@ -110,6 +141,7 @@ export function CallDock() {
   const [offset, setOffset] = useState(CORNER)
   const [tabOffset, setTabOffset] = useState(CORNER)
   const panelRef = useRef<HTMLElement>(null)
+  const [size, setSize] = useState<Size | null>(readSize)
   const tabRef = useRef<HTMLButtonElement>(null)
   const dragged = useRef(false)
   const { data } = useDialerProgressQuery(undefined, { skip: !dialerOn, pollingInterval: dialerOn ? 3000 : 0 })
@@ -274,6 +306,33 @@ export function CallDock() {
   }
   const resetPosition = () => setOffset(CORNER)
 
+  // resize by the top edge (height), the right edge (width) or the top-right corner (both): the dock sits in the
+  // bottom-left corner, so it grows up and to the right; a double-click on an edge puts the default size back
+  const startResize = (e: ReactPointerEvent, axis: { x: boolean; y: boolean }) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+    const rect = panelRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const start = { px: e.clientX, py: e.clientY, w: rect.width, h: rect.height }
+    let last: Size = { w: start.w, h: start.h }
+    const move = (ev: PointerEvent) => {
+      last = fit({ w: axis.x ? start.w + (ev.clientX - start.px) : start.w, h: axis.y ? start.h - (ev.clientY - start.py) : start.h })
+      setSize(last)
+    }
+    const up = () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      saveSize(last)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+  }
+  const resetSize = () => {
+    setSize(null)
+    saveSize(null)
+  }
+
   // it opens in the bottom-left corner every time: a drag moves it only while it is open
   const shown = enabled && (!!run || !!current)
   if (shown !== wasShown) {
@@ -315,10 +374,40 @@ export function CallDock() {
   return (
     <aside
       ref={panelRef}
-      style={{ transform: `translate(${offset.x}px, ${offset.y}px)` }}
-      className="fixed bottom-4 left-4 z-[55] flex max-h-[min(32rem,calc(100vh-6rem))] w-80 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
+      style={{
+        transform: `translate(${offset.x}px, ${offset.y}px)`,
+        width: size?.w ?? DEFAULT_W,
+        minWidth: MIN_W,
+        ...(size ? { height: size.h, maxHeight: 'calc(100vh - 2rem)' } : {}),
+      }}
+      className={cn(
+        'fixed bottom-4 left-4 z-[55] flex max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl',
+        !size && 'max-h-[min(32rem,calc(100vh-6rem))]'
+      )}
       data-testid="call-dock"
     >
+      {/* resize: top edge = height, right edge = width, top-right corner = both */}
+      <div
+        className="absolute inset-x-3 top-0 z-10 h-1.5 cursor-ns-resize touch-none hover:bg-brand-200/70"
+        onPointerDown={(e) => startResize(e, { x: false, y: true })}
+        onDoubleClick={resetSize}
+        title="Drag to resize · double-click for the default size"
+        aria-hidden
+      />
+      <div
+        className="absolute inset-y-3 right-0 z-10 w-1.5 cursor-ew-resize touch-none hover:bg-brand-200/70"
+        onPointerDown={(e) => startResize(e, { x: true, y: false })}
+        onDoubleClick={resetSize}
+        title="Drag to resize · double-click for the default size"
+        aria-hidden
+      />
+      <div
+        className="absolute right-0 top-0 z-20 h-3 w-3 cursor-nesw-resize touch-none rounded-tr-xl hover:bg-brand-300/80"
+        onPointerDown={(e) => startResize(e, { x: true, y: true })}
+        onDoubleClick={resetSize}
+        title="Drag to resize · double-click for the default size"
+        aria-hidden
+      />
       <div
         className="flex cursor-grab touch-none select-none items-center gap-2 border-b border-slate-200 bg-slate-50 px-2 py-2.5 active:cursor-grabbing"
         onPointerDown={startDrag}
@@ -380,7 +469,7 @@ export function CallDock() {
               </Button>
             )}
             {current.leadId && location.pathname !== leadPath(current.leadId) && (
-              <Button size="sm" variant="outline" onClick={() => navigate(leadPath(current.leadId!))}>
+              <Button size="sm" variant="outline" onClick={() => navigate(leadPath(current.leadId!), quietly())}>
                 <ExternalLink className="h-3.5 w-3.5" /> Lead
               </Button>
             )}
@@ -451,7 +540,7 @@ export function CallDock() {
                   <button
                     type="button"
                     className={cn('flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50', now_ && 'bg-amber-50/60')}
-                    onClick={() => navigate(leadPath(l._id))}
+                    onClick={() => navigate(leadPath(l._id), quietly())}
                   >
                     <span className="w-5 shrink-0 text-right text-[10px] tabular-nums text-slate-400">{i + 1}</span>
                     <span className="min-w-0 flex-1">
@@ -465,6 +554,8 @@ export function CallDock() {
                       <Badge tone={on ? 'green' : 'amber'} dot>
                         {on ? `On call${talk ? ` · ${talk}` : ''}` : 'Ringing'}
                       </Badge>
+                    ) : l.status === 'settling' ? (
+                      <SettlingBadge />
                     ) : (
                       <Badge tone={TONE[l.status]} dot={l.status === 'calling' || l.status === 'connected'} title={l.outcome ? `Outcome: ${l.outcome}` : undefined}>
                         {l.label}

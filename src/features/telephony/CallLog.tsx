@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Download, PhoneIncoming, PhoneOutgoing } from 'lucide-react'
 import { toast } from 'sonner'
@@ -16,6 +16,7 @@ import { formatHms } from '../../lib/durations'
 import { formatDateTime, parseApiError } from '../../lib/utils'
 import type { LiveCall } from '../../types/models'
 import { RecordingPlayer } from './RecordingPlayer'
+import { SettlingBadge } from './SettlingBadge'
 import { statusLabel, statusTone } from './callState'
 
 const columns: Column<LiveCall>[] = [
@@ -44,8 +45,19 @@ const columns: Column<LiveCall>[] = [
         <span className="text-xs text-slate-500">{c.customerNumber ?? 'Unknown'}</span>
       ),
   },
-  { key: 'status', header: 'Status', render: (c) => <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge> },
-  { key: 'talk', header: 'Talk time', align: 'right', render: (c) => <span className="font-mono text-xs tabular-nums">{c.status === 'answered' && c.durationSeconds != null ? formatHms(c.durationSeconds) : '—'}</span> },
+  {
+    key: 'status',
+    header: 'Status',
+    render: (c) => (c.settled === false ? <SettlingBadge /> : <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge>),
+  },
+  {
+    key: 'talk',
+    header: 'Talk time',
+    align: 'right',
+    render: (c) => (
+      <span className="font-mono text-xs tabular-nums">{c.settled !== false && c.status === 'answered' && c.durationSeconds != null ? formatHms(c.durationSeconds) : '—'}</span>
+    ),
+  },
   { key: 'outcome', header: 'Outcome', render: (c) => <span className="text-xs text-slate-600">{c.subStage ?? c.stage ?? (c.needsDisposition ? <span className="text-amber-700">pending</span> : '—')}</span> },
   { key: 'source', header: 'Source', render: (c) => <Badge tone={c.source === 'dialer' ? 'cyan' : 'slate'}>{c.source}</Badge> },
   {
@@ -79,7 +91,11 @@ export function CallLog({
   extraActions?: ReactNode
 }) {
   const { data: people } = useUserOptionsQuery(undefined, { skip: !showPeople })
-  const { data, isLoading, isFetching, isError, error, refetch } = useTelephonyCallsQuery(filters)
+  // a call that just ended: its result comes from the dialer in a few seconds — read again until it is in
+  const [settling, setSettling] = useState(false)
+  const { data, isLoading, isFetching, isError, error, refetch } = useTelephonyCallsQuery(filters, { pollingInterval: settling ? 3000 : 0 })
+  const anySettling = !!data?.data.some((c) => c.settled === false)
+  if (anySettling !== settling) setSettling(anySettling)
   const set = (patch: Partial<CallLogParams>) => onChange({ ...filters, ...patch, page: patch.page ?? 1 })
   const exportXlsx = () =>
     authorizedDownload(`/telephony/calls/export?${callLogQuery({ ...filters, page: undefined, page_size: undefined })}`, 'call-log.xlsx').catch((e) =>

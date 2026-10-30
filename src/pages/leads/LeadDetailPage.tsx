@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   CalendarPlus,
@@ -55,6 +55,7 @@ import { subStageOf } from '../../lib/stages'
 import { formatHms } from '../../lib/durations'
 import { CallButton } from '../../features/telephony/CallButton'
 import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
+import { SettlingBadge } from '../../features/telephony/SettlingBadge'
 import { OPEN_DISPOSITION_EVENT, type OpenDispositionDetail } from '../../features/telephony/events'
 import { usePhone } from '../../features/telephony/softphone'
 import { isFinalStatus, statusLabel, statusTone } from '../../features/telephony/callState'
@@ -198,8 +199,14 @@ function OverviewTab({
                   <PhoneOutgoing className="h-3 w-3 shrink-0 text-brand-600" aria-label="Outbound" />
                 )}
                 <span>{c.subStage ?? c.stage ?? (c.source === 'dialer' ? (c.needsDisposition ? 'Outcome pending' : 'No outcome') : '—')}</span>
-                {c.source === 'dialer' && <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge>}
-                {!!c.durationSeconds && <span className="font-mono font-normal tabular-nums text-slate-500">{formatHms(c.durationSeconds)}</span>}
+                {c.settled === false ? (
+                  <SettlingBadge />
+                ) : (
+                  <>
+                    {c.source === 'dialer' && <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge>}
+                    {!!c.durationSeconds && <span className="font-mono font-normal tabular-nums text-slate-500">{formatHms(c.durationSeconds)}</span>}
+                  </>
+                )}
               </p>
               <p className="text-slate-400">
                 {c.user?.name ?? (c.source === 'dialer' ? 'Dialer' : 'System')} · {formatDateTime(c.createdAt)}
@@ -397,6 +404,9 @@ export default function LeadDetailPage() {
   const user = useCurrentUser()
   const admin = isAdminLike(user)
   const [searchParams, setSearchParams] = useSearchParams()
+  // opened from the calling dock: just the lead — the outcome drawer does not pop up for a call that ended before
+  // (the next call's still does)
+  const quietOutcomeSince = (useLocation().state as { quietOutcomeSince?: number } | null)?.quietOutcomeSince ?? 0
   // ?tab=whatsapp (a WhatsApp reply notification) opens straight on that tab
   const [tab, setTab] = useState(() => searchParams.get('tab') || 'overview')
   const [modal, setModal] = useState<'edit' | 'assign' | 'delete' | 'call' | 'update' | 'dialer' | 'stage' | 'followup' | 'note' | 'sms' | 'email' | 'whatsapp' | null>(null)
@@ -417,7 +427,11 @@ export default function LeadDetailPage() {
   const phone = usePhone()
   const onPhone = !!(phone.ringing || phone.inCall)
   const { startCall } = useStartCall()
-  const { data: callRows } = useLeadCallsQuery(id, { skip: !id })
+  // a call that just ended: its result comes from the dialer in a few seconds — read again until it is in
+  const [settling, setSettling] = useState(false)
+  const { data: callRows } = useLeadCallsQuery(id, { skip: !id, pollingInterval: settling ? 2000 : 0 })
+  const anySettling = !!callRows?.data.some((c) => c.settled === false)
+  if (anySettling !== settling) setSettling(anySettling)
   const [dialerCall, setDialerCall] = useState<CallLog | null>(null)
   // calls whose drawer this page already showed (saved, skipped or closed): never re-opened by the poll
   const [handledCalls, setHandledCalls] = useState<string[]>([])
@@ -432,9 +446,11 @@ export default function LeadDetailPage() {
     if (!lead || !canEdit || modal !== null || onPhone) return null
     const fromUrl = requestedCallId ? findCall(requestedCallId) : undefined
     const due = fromUrl ?? pending.find((c) => c.lead?._id === lead._id && c.needsDisposition)
-    return due && isFinalStatus(due.status) && !handledCalls.includes(due._id) ? due : null
-  }, [lead, canEdit, modal, onPhone, requestedCallId, findCall, pending, handledCalls])
-  const openDialer = modal === 'dialer' ? dialerCall : dueCall
+    const endedBefore = !!due && !fromUrl && !!quietOutcomeSince && Date.parse(due.endedAt ?? due.createdAt) <= quietOutcomeSince
+    return due && isFinalStatus(due.status) && !handledCalls.includes(due._id) && !endedBefore ? due : null
+  }, [lead, canEdit, modal, onPhone, requestedCallId, findCall, pending, handledCalls, quietOutcomeSince])
+  // the drawer shows the call as it is now (its result arrives after the call ends), not as it was when opened
+  const openDialer = modal === 'dialer' ? (dialerCall ? (findCall(dialerCall._id) ?? dialerCall) : null) : dueCall
   const close = () => {
     if (openDialer) setHandledCalls((h) => [...h, openDialer._id])
     setModal(null)
