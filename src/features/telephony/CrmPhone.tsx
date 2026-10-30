@@ -7,6 +7,8 @@ import { useLogPhoneCallMutation, useSoftphoneCallerQuery } from '../../services
 import { Button } from '../../components/ui/Button'
 import { answer, decline, disconnectPhone, usePhone, type PhoneCall } from './softphone'
 import { useConnectPhone } from './useConnectPhone'
+import { outcomeShown } from './outcomeOnce'
+import { leadNavOptions } from './leadNav'
 import { useTelephonyEnabled } from './useLiveCalls'
 
 const leadPath = (leadId: string) => `/app/leads/${leadId}`
@@ -71,7 +73,8 @@ export function CrmPhone() {
       .unwrap()
       .then((res) => {
         const due = res.data
-        if (due?.needsDisposition && due.lead && pathname.current !== leadPath(due.lead._id)) navigate(leadPath(due.lead._id))
+        // the call is over: its lead opens with the outcome drawer — once per call, never again for it
+        if (due?.needsDisposition && due.lead && !outcomeShown(due._id)) navigate(`${leadPath(due.lead._id)}?disposition=${due._id}`, leadNavOptions())
         // a click-to-call's outcome and talk time come from Smartflo's call record, which can land a few seconds after
         // the call: read the lead's calls again so the outcome drawer shows them
         const settledLead = ended.kind === 'outbound' ? due?.lead?._id : undefined
@@ -90,7 +93,7 @@ export function CrmPhone() {
   useEffect(() => {
     if (!inbound || !inboundLead || opened.current === inbound.id) return
     opened.current = inbound.id
-    if (location.pathname !== leadPath(inboundLead)) navigate(leadPath(inboundLead))
+    if (location.pathname !== leadPath(inboundLead)) navigate(leadPath(inboundLead), leadNavOptions())
   }, [inbound, inboundLead, location.pathname, navigate])
 
   return null // ringing: the cards bottom right (PhoneIncomingCards) · on a call: the calling dock (CallDock)
