@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   CalendarPlus,
+  Eye,
   Mail,
   MessageCircle,
   MessageSquareText,
@@ -13,6 +14,7 @@ import {
   PhoneIncoming,
   PhoneOutgoing,
   Trash2,
+  Upload,
   UserPlus,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -42,6 +44,8 @@ import { LeadHistory } from './LeadHistory'
 import { CounsellorDiscussion } from './CounsellorDiscussion'
 import { CustomInformation } from './CustomInformation'
 import { DispositionDrawer } from './DispositionDrawer'
+import { CallProofPreview, ReuploadCallProofs } from './CallProofDialogs'
+import { callScreenshots } from './callProofFiles'
 import { ChangeStageModal } from './ChangeStageModal'
 import { AddNoteModal, AssignLeadModal, SendMessageModal } from './LeadActionModals'
 import { WhatsAppChat } from './WhatsAppChat'
@@ -51,6 +55,8 @@ import { subStageOf } from '../../lib/stages'
 import { formatHms } from '../../lib/durations'
 import { CallButton } from '../../features/telephony/CallButton'
 import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
+import { SettlingBadge } from '../../features/telephony/SettlingBadge'
+import { markOutcomeShown, outcomeShown } from '../../features/telephony/outcomeOnce'
 import { OPEN_DISPOSITION_EVENT, type OpenDispositionDetail } from '../../features/telephony/events'
 import { isFinalStatus, statusLabel, statusTone } from '../../features/telephony/callState'
 import { useLiveCalls, useStartCall } from '../../features/telephony/useLiveCalls'
@@ -103,7 +109,10 @@ function OverviewTab({
   onEditCustom?: () => void
   onViewNotes?: () => void
 }) {
+  const user = useCurrentUser()
   const { data: calls } = useLeadCallsQuery(lead._id)
+  const [preview, setPreview] = useState<CallLog | null>(null)
+  const [reupload, setReupload] = useState<CallLog | null>(null)
   const { data: notes } = useLeadNotesQuery(lead._id)
   const { data: messages } = useLeadMessagesQuery(lead._id)
   const { data: masters } = useMasterBootstrapQuery()
@@ -171,29 +180,85 @@ function OverviewTab({
       )}
     </Card>
   )
+  // the counsellor who logged a call re-uploads its files; Super Admin / Admin those of any logged call
+  const canReupload = (c: CallLog) => c.source === 'manual' && can(user, 'leads', 'edit') && (isAdminLike(user) || c.user?._id === user?._id)
   const recentCalls = (
-    <Card title="Recent Calls">
+    <Card title={`Recent Calls${calls?.data.length ? ` (${calls.data.length})` : ''}`}>
       {!calls?.data.length && <p className="text-xs text-slate-400">No Calls Logged Yet</p>}
-      {calls?.data.slice(0, 5).map((c) => (
-        <div key={c._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0" data-testid="recent-call">
-          <p className="flex flex-wrap items-center gap-1.5 font-medium text-slate-700">
-            {c.direction === 'inbound' ? (
-              <PhoneIncoming className="h-3 w-3 shrink-0 text-emerald-600" aria-label="Inbound" />
-            ) : (
-              <PhoneOutgoing className="h-3 w-3 shrink-0 text-brand-600" aria-label="Outbound" />
-            )}
-            <span>{c.subStage ?? c.stage ?? (c.source === 'dialer' ? (c.needsDisposition ? 'Outcome pending' : 'No outcome') : '—')}</span>
-            {c.source === 'dialer' && <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge>}
-            {!!c.durationSeconds && <span className="font-mono font-normal tabular-nums text-slate-500">{formatHms(c.durationSeconds)}</span>}
-          </p>
-          <p className="text-slate-400">
-            {c.user?.name ?? (c.source === 'dialer' ? 'Dialer' : 'System')} · {formatDateTime(c.createdAt)}
-          </p>
-          {(c.recording || c.recordingUrl) && (
-            <RecordingPlayer callId={c._id} proofId={c.recording?._id} fileName={c.recording?.fileName} fallbackUrl={c.recordingUrl} compact className="mt-1" />
-          )}
-        </div>
-      ))}
+      {/* every call, in a box that keeps its height and scrolls */}
+      <div className="-mr-2 max-h-96 overflow-y-auto pr-2" data-testid="recent-calls">
+        {calls?.data.map((c) => {
+          const shots = callScreenshots(c)
+          const files = [shots.length ? `${shots.length} screenshot${shots.length > 1 ? 's' : ''}` : null, c.recording ? 'recording' : null].filter(Boolean).join(' · ')
+          return (
+            <div key={c._id} className="border-b border-slate-50 py-1.5 text-xs last:border-0" data-testid="recent-call">
+              <p className="flex flex-wrap items-center gap-1.5 font-medium text-slate-700">
+                {c.direction === 'inbound' ? (
+                  <PhoneIncoming className="h-3 w-3 shrink-0 text-emerald-600" aria-label="Inbound" />
+                ) : (
+                  <PhoneOutgoing className="h-3 w-3 shrink-0 text-brand-600" aria-label="Outbound" />
+                )}
+                <span>{c.subStage ?? c.stage ?? (c.source === 'dialer' ? (c.needsDisposition ? 'Outcome pending' : 'No outcome') : '—')}</span>
+                {c.settled === false ? (
+                  <SettlingBadge />
+                ) : (
+                  <>
+                    {c.source === 'dialer' && <Badge tone={statusTone(c.status)}>{statusLabel(c.status)}</Badge>}
+                    {!!c.durationSeconds && <span className="font-mono font-normal tabular-nums text-slate-500">{formatHms(c.durationSeconds)}</span>}
+                  </>
+                )}
+              </p>
+              <p className="text-slate-400">
+                {c.user?.name ?? (c.source === 'dialer' ? 'Dialer' : 'System')} · {formatDateTime(c.createdAt)}
+              </p>
+              {c.source === 'dialer' ? (
+                (c.recording || c.recordingPending) && (
+                  <RecordingPlayer callId={c._id} proofId={c.recording?._id} fileName={c.recording?.fileName} pending={c.recordingPending} compact className="mt-1" />
+                )
+              ) : (
+                (files || canReupload(c)) && (
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    {files && <span className="mr-1 text-[11px] text-slate-400">{files}</span>}
+                    {files && (
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-brand-700" onClick={() => setPreview(c)} data-testid="preview-call-files">
+                        <Eye className="h-3.5 w-3.5" /> Preview
+                      </Button>
+                    )}
+                    {canReupload(c) && (
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-600" onClick={() => setReupload(c)} data-testid="reupload-call-files">
+                        <Upload className="h-3.5 w-3.5" /> Re-upload
+                      </Button>
+                    )}
+                  </div>
+                )
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {preview && (
+        <CallProofPreview
+          call={preview}
+          title={`Call by ${preview.user?.name ?? 'the counsellor'}`}
+          description={`${fullName(lead)} · ${lead.leadNo} · ${formatDateTime(preview.createdAt)}`}
+          actions={
+            canReupload(preview) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setReupload(preview)
+                  setPreview(null)
+                }}
+              >
+                <Upload className="h-3.5 w-3.5" /> Re-upload
+              </Button>
+            )
+          }
+          onClose={() => setPreview(null)}
+        />
+      )}
+      {reupload && <ReuploadCallProofs call={reupload} leadId={lead._id} onClose={() => setReupload(null)} />}
     </Card>
   )
   const recentMessages = (
@@ -355,40 +420,49 @@ export default function LeadDetailPage() {
   // the popover from another page), by the popover's button on this page (window event), or found by the
   // live feed (a pending outcome of this lead) — and ?dial=1 from the "Start calling" list
   const { pending, enabled: dialerEnabled } = useLiveCalls()
+  // on a call in the CRM phone: the lead page stays as it is; the outcome opens once the call ends
   const { startCall } = useStartCall()
-  const { data: callRows } = useLeadCallsQuery(id, { skip: !id })
+  // a call that just ended: its result comes from the dialer in a few seconds — read again until it is in
+  const [settling, setSettling] = useState(false)
+  const { data: callRows } = useLeadCallsQuery(id, { skip: !id, pollingInterval: settling ? 2000 : 0 })
+  const anySettling = !!callRows?.data.some((c) => c.settled === false)
+  if (anySettling !== settling) setSettling(anySettling)
   const [dialerCall, setDialerCall] = useState<CallLog | null>(null)
   // calls whose drawer this page already showed (saved, skipped or closed): never re-opened by the poll
-  const [handledCalls, setHandledCalls] = useState<string[]>([])
   const dialled = useRef(false)
   const requestedCallId = searchParams.get('disposition')
   const findCall = useCallback(
     (callId: string): CallLog | undefined => pending.find((c) => c._id === callId) ?? callRows?.data.find((c) => c._id === callId),
     [pending, callRows]
   )
-  // the call whose outcome is due without anyone clicking: the one in the URL, else this lead's pending one
-  const dueCall = useMemo(() => {
-    if (!lead || !canEdit || modal !== null) return null
-    const fromUrl = requestedCallId ? findCall(requestedCallId) : undefined
-    const due = fromUrl ?? pending.find((c) => c.lead?._id === lead._id && c.needsDisposition)
-    return due && isFinalStatus(due.status) && !handledCalls.includes(due._id) ? due : null
-  }, [lead, canEdit, modal, requestedCallId, findCall, pending, handledCalls])
-  const openDialer = modal === 'dialer' ? dialerCall : dueCall
+  // the outcome drawer opens by itself only once per call — when that call ends (the CRM phone opens this page with
+  // ?disposition=<call>); opening the lead never opens it, and a call it already opened for never opens it again.
+  // It shows the call as it is now (its result arrives after the call ends), not as it was when opened.
+  const openDialer = modal === 'dialer' && dialerCall ? (findCall(dialerCall._id) ?? dialerCall) : null
   const close = () => {
-    if (openDialer) setHandledCalls((h) => [...h, openDialer._id])
     setModal(null)
     setDialerCall(null)
   }
+  const [urlCallDone, setUrlCallDone] = useState<string | null>(null) // the ?disposition call already handled
+  const urlCall = requestedCallId && lead ? findCall(requestedCallId) : undefined
+  if (requestedCallId && lead && requestedCallId !== urlCallDone && (urlCall || callRows)) {
+    setUrlCallDone(requestedCallId)
+    // `again=1`: asked for by a click (a notification) — opens even for a call it opened for before
+    if (urlCall && canEdit && isFinalStatus(urlCall.status) && (!outcomeShown(urlCall._id) || searchParams.get('again') === '1')) {
+      markOutcomeShown(urlCall._id)
+      setDialerCall(urlCall)
+      setModal('dialer')
+    }
+  }
   // the URL parameter has done its job once the call is known (or cannot be found in the loaded calls)
   useEffect(() => {
-    if (!requestedCallId || !lead) return
-    const call = findCall(requestedCallId)
-    if (!call && !callRows) return
+    if (!requestedCallId || requestedCallId !== urlCallDone) return
     const next = new URLSearchParams(searchParams)
     next.delete('disposition')
+    next.delete('again')
     setSearchParams(next, { replace: true })
-    if (call && !isFinalStatus(call.status)) toast.message('The call is still in progress — its outcome can be saved once it ends')
-  }, [requestedCallId, lead, callRows, findCall, searchParams, setSearchParams])
+    if (urlCall && !isFinalStatus(urlCall.status)) toast.message('The call is still in progress — its outcome can be saved once it ends')
+  }, [requestedCallId, urlCallDone, urlCall, searchParams, setSearchParams])
   useEffect(() => {
     if (searchParams.get('dial') !== '1' || !lead || dialled.current) return
     const next = new URLSearchParams(searchParams)

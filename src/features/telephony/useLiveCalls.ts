@@ -5,6 +5,7 @@ import { START_CALL_KEY, telephonyApi, useLiveCallsQuery, useStartCallMutation, 
 import { parseApiError } from '../../lib/utils'
 import type { LiveCall, TelephonyStatus } from '../../types/models'
 import { deriveCallState, pollIntervalFor, type CallState } from './callState'
+import { cancelExpectedCall, expectCall } from './softphone'
 
 /** Whether the dialer is switched on for this CRM (the server says so; console in DEBUG counts). */
 export function useTelephonyEnabled(): { enabled: boolean; status: TelephonyStatus | undefined } {
@@ -42,10 +43,12 @@ export function useStartCall() {
   const startCall = useCallback(
     async (leadId: string): Promise<LiveCall | null> => {
       try {
+        expectCall({ leadId }) // the CRM phone picks up the counsellor's leg by itself
         const res = await start({ leadId }).unwrap()
-        toast.success('Calling your phone — answer it to reach the lead', { id: `call-${res.data._id}` })
+        toast.success('Calling the lead…', { id: `call-${res.data._id}` })
         return res.data
       } catch (err) {
+        cancelExpectedCall()
         toast.error(parseApiError(err).message)
         return null
       }

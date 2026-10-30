@@ -3,15 +3,28 @@ import { ChevronRight } from 'lucide-react'
 import { Skeleton } from './feedback'
 import { cn } from '../../lib/utils'
 
-/** Per accent: icon disc gradient, bar fill, bar track, corner wave colour. */
+/**
+ * Per accent: icon disc gradient, bar fill, bar track, corner wave colour. All mid-tone (400→600 discs, 500 bars),
+ * so a section can give each card its own hue and they still read as one set: `blue` is the brand purple,
+ * `indigo` / `azure` / `cyan` / `teal` the cool side, `green` / `leaf` the greens, `amber` / `orange` / `red` /
+ * `pink` / `fuchsia` the warm side, `slate` neutral.
+ */
 const ACCENTS = {
   blue: { disc: 'from-brand-400 to-brand-600 shadow-brand-500/40', bar: 'bg-brand-500', track: 'bg-brand-100', wave: 'text-brand-500' },
-  green: { disc: 'from-emerald-400 to-emerald-600 shadow-emerald-500/40', bar: 'bg-emerald-500', track: 'bg-emerald-100', wave: 'text-emerald-500' },
-  amber: { disc: 'from-gold-300 to-gold-500 shadow-gold-400/50', bar: 'bg-gold-400', track: 'bg-gold-100', wave: 'text-gold-400' },
-  red: { disc: 'from-red-300 to-red-500 shadow-red-400/40', bar: 'bg-red-400', track: 'bg-red-100', wave: 'text-red-400' },
+  indigo: { disc: 'from-indigo-400 to-indigo-600 shadow-indigo-500/40', bar: 'bg-indigo-500', track: 'bg-indigo-100', wave: 'text-indigo-500' },
+  azure: { disc: 'from-blue-400 to-blue-600 shadow-blue-500/40', bar: 'bg-blue-500', track: 'bg-blue-100', wave: 'text-blue-500' },
   cyan: { disc: 'from-sky-500 to-sky-600 shadow-sky-500/40', bar: 'bg-sky-500', track: 'bg-sky-100', wave: 'text-sky-500' },
+  teal: { disc: 'from-teal-400 to-teal-600 shadow-teal-500/40', bar: 'bg-teal-500', track: 'bg-teal-100', wave: 'text-teal-500' },
+  green: { disc: 'from-emerald-400 to-emerald-600 shadow-emerald-500/40', bar: 'bg-emerald-500', track: 'bg-emerald-100', wave: 'text-emerald-500' },
+  leaf: { disc: 'from-leaf-400 to-leaf-600 shadow-leaf-500/40', bar: 'bg-leaf-500', track: 'bg-leaf-100', wave: 'text-leaf-500' },
+  amber: { disc: 'from-gold-300 to-gold-500 shadow-gold-400/50', bar: 'bg-gold-400', track: 'bg-gold-100', wave: 'text-gold-400' },
+  orange: { disc: 'from-orange-400 to-orange-600 shadow-orange-500/40', bar: 'bg-orange-500', track: 'bg-orange-100', wave: 'text-orange-500' },
+  red: { disc: 'from-red-300 to-red-500 shadow-red-400/40', bar: 'bg-red-400', track: 'bg-red-100', wave: 'text-red-400' },
+  pink: { disc: 'from-pink-400 to-pink-600 shadow-pink-500/40', bar: 'bg-pink-500', track: 'bg-pink-100', wave: 'text-pink-500' },
+  fuchsia: { disc: 'from-fuchsia-400 to-fuchsia-600 shadow-fuchsia-500/40', bar: 'bg-fuchsia-500', track: 'bg-fuchsia-100', wave: 'text-fuchsia-500' },
   slate: { disc: 'from-slate-400 to-slate-500 shadow-slate-400/40', bar: 'bg-slate-400', track: 'bg-slate-200', wave: 'text-slate-400' },
 } as const
+export type KpiAccent = keyof typeof ACCENTS
 
 /**
  * Metric card: gradient icon disc + title, then the supporting line and the

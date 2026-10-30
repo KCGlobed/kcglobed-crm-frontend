@@ -10,7 +10,7 @@ import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { formatHms } from '../../lib/durations'
 import { formatDateTime, parseApiError } from '../../lib/utils'
 import { isFinalStatus, statusLabel, statusTone } from '../../features/telephony/callState'
-import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
+import { SettlingBadge } from '../../features/telephony/SettlingBadge'
 import type { CallLog, Lead } from '../../types/models'
 import { taskTypeLabel, toLocalInput } from '../tasks/taskMeta'
 import { offersFollowUp } from './stageForm'
@@ -20,9 +20,8 @@ import { CallProofField, type ProofValue } from './CallProofField'
  * "Log Call / Update" (GL-16..20, GL-40): stage + disposition, a mandatory
  * future follow-up for every open stage, a reason for closing stages, an
  * optional note and, for a call, its duration (mandatory: talk time is summed
- * from it; 00:00:00 for a call that didn't connect), the screenshot(s) of the call
- * time (at least one, so the duration can be checked; several for a call spanning screens) and the recording
- * (optional). Counsellor Discussion and
+ * from it; 00:00:00 for a call that didn't connect), the screenshot of the call
+ * time (one, so the duration can be checked) and the recording (optional). Counsellor Discussion and
  * Call Result are intentionally not part of this form — the discussion lives in its own tab.
  *
  * `dialer` mode: the outcome of a call the dialer (Smartflo) placed or received — status, talk time and
@@ -178,9 +177,16 @@ export function DispositionDrawer({
                   <PhoneOutgoing className="h-4 w-4 text-brand-600" aria-label="Outbound call" />
                 )}
                 <span className="font-medium text-slate-700">{dialer.direction === 'inbound' ? 'Incoming call' : 'Outbound call'}</span>
-                <Badge tone={statusTone(dialer.status)}>{statusLabel(dialer.status)}</Badge>
-                {isFinalStatus(dialer.status) && (
-                  <span className="font-mono text-sm font-semibold tabular-nums text-slate-800">{formatHms(dialer.durationSeconds)}</span>
+                {dialer.settled === false ? (
+                  // just ended: the outcome and talk time come from the dialer's call record in a few seconds
+                  <SettlingBadge label="Fetching the call result from the dialer…" />
+                ) : (
+                  <>
+                    <Badge tone={statusTone(dialer.status)}>{statusLabel(dialer.status)}</Badge>
+                    {isFinalStatus(dialer.status) && (
+                      <span className="font-mono text-sm font-semibold tabular-nums text-slate-800">{formatHms(dialer.durationSeconds)}</span>
+                    )}
+                  </>
                 )}
               </div>
               <p className="mt-1 text-slate-500">
@@ -188,9 +194,6 @@ export function DispositionDrawer({
                 {dialer.customerNumber ? ` · ${dialer.customerNumber}` : ''}
                 {dialer.hangupCause ? ` · ${dialer.hangupCause.toLowerCase().replace(/_/g, ' ')}` : ''}
               </p>
-              {(dialer.recording || dialer.recordingUrl) && (
-                <RecordingPlayer callId={dialer._id} proofId={dialer.recording?._id} fileName={dialer.recording?.fileName} fallbackUrl={dialer.recordingUrl} className="mt-2" />
-              )}
               {manualDuration && (
                 <FormField
                   label="Talk time"

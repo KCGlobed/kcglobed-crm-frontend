@@ -3,6 +3,7 @@ import { toast } from 'sonner'
 import dayjs from 'dayjs'
 import { useSearchParams } from 'react-router-dom'
 import { useCurrentUser } from '../../app/hooks'
+import { BREAK_OPTIONS } from '../../constants/breaks'
 import { can } from '../../constants/permissions'
 import { useListParams } from '../../hooks/useListParams'
 import { authorizedDownload } from '../../lib/download'
@@ -16,7 +17,7 @@ import { DataTable, type Column } from '../../components/ui/DataTable'
 import { DateRangeFilter } from '../../components/ui/DateRangeFilter'
 import { Select } from '../../components/ui/fields'
 import { FilterBar, PageHeader, SearchInput, Tabs } from '../../components/ui/misc'
-import type { AttendanceRow, BreakEntry, BreakType } from '../../types/models'
+import type { AttendanceRow, BreakEntry } from '../../types/models'
 import { CallProofsTab } from './attendance/CallProofsTab'
 
 /**
@@ -36,18 +37,12 @@ const TABS: { key: Tab; label: string }[] = [
 ]
 const DESCRIPTIONS: Record<Tab, string> = {
   consolidated: 'Login and logout, talk time and break-wise time for every employee, one row per working day (IST).',
-  login: 'First sign-in, last sign-out and the time signed in (sessions added up, as on the employee\'s timer). A day whose last session never signed out is flagged and counted only up to the last activity.',
+  login: 'First sign-in, last sign-out and the time signed in (sessions added up, as on the employee\'s timer, minus time on a Pause Break). A day whose last session never signed out is flagged and counted only up to the last activity.',
   talk: 'Calls logged and the sum of their durations, per employee per day.',
-  breaks: 'Completed break time by type. A break still running is shown on its own; one left open past its day is counted as incomplete.',
+  breaks: 'Completed break time by type. Pause Break (campus visit, training, call calibration) is listed on its own and is not part of the total. A break still running is shown on its own; one left open past its day is counted as incomplete.',
   entries: 'Every break punched, with its start, end and duration, for auditing.',
   calls: 'Every logged call with the duration the counsellor entered, its call screenshot and recording. Preview to compare the duration with the screenshot.',
 }
-const BREAK_TYPES: { key: BreakType; label: string }[] = [
-  { key: 'tea', label: 'Tea Break' },
-  { key: 'lunch', label: 'Lunch Break' },
-  { key: 'bio', label: 'Bio Break' },
-  { key: 'other', label: 'Other Break' },
-]
 const FILTER_KEYS = ['tab', 'date_from', 'date_to', 'user', 'search', 'type', 'status']
 
 const clock = (iso?: string) => (iso ? dayjs(iso).format('h:mm A') : '—')
@@ -150,11 +145,11 @@ export default function AttendancePage() {
   }
   const callsCol: Column<AttendanceRow> = { key: 'calls', header: 'Total Calls', align: 'right', render: (r) => cell(String(r.calls)) }
   const talkCol: Column<AttendanceRow> = { key: 'talk', header: 'Total Talk Time', align: 'right', render: (r) => cell(formatHms(r.talktimeSeconds)) }
-  const breakCols: Column<AttendanceRow>[] = BREAK_TYPES.map(({ key, label }) => ({
-    key: `break-${key}`,
+  const breakCols: Column<AttendanceRow>[] = BREAK_OPTIONS.map(({ type, label }) => ({
+    key: `break-${type}`,
     header: label,
     align: 'right' as const,
-    render: (r: AttendanceRow) => cell(formatHms(r.breaks[key])),
+    render: (r: AttendanceRow) => cell(formatHms(r.breaks[type])),
   }))
   const totalBreakCol: Column<AttendanceRow> = {
     key: 'breakTotal',
@@ -162,7 +157,9 @@ export default function AttendancePage() {
     align: 'right',
     render: (r) => (
       <div className="flex flex-col items-end gap-0.5">
-        <span className="whitespace-nowrap text-xs font-semibold tabular-nums text-slate-800">{formatHms(r.breakSeconds)}</span>
+        <span className="whitespace-nowrap text-xs font-semibold tabular-nums text-slate-800" title="Pause Break is not included">
+          {formatHms(r.breakSeconds)}
+        </span>
         {r.activeBreak && (
           <span className="whitespace-nowrap text-[11px] font-medium text-amber-700" title={`Since ${clock(r.activeBreak.startedAt)}`}>
             On {r.activeBreak.label} · {formatHms(secondsSince(r.activeBreak.startedAt, now))}
@@ -276,8 +273,8 @@ export default function AttendancePage() {
           <>
             <Select className="!w-auto" value={(query.type as string) ?? ''} onChange={(e) => setParam('type', e.target.value)}>
               <option value="">All breaks</option>
-              {BREAK_TYPES.map((t) => (
-                <option key={t.key} value={t.key}>
+              {BREAK_OPTIONS.map((t) => (
+                <option key={t.type} value={t.type}>
                   {t.label}
                 </option>
               ))}

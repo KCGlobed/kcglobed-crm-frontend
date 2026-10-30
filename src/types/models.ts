@@ -711,7 +711,7 @@ export interface ImportResult {
   total: number
   created: number
   updated: number
-  /** duplicates imported as re-enquiries (duplicates mode: reenquire) */
+  /** duplicates imported as re-enquiries (duplicates mode: reenquire / reenquire_replace) */
   reEnquired?: number
   skipped: number
   failed: number
@@ -890,14 +890,18 @@ export interface CallLog {
   hangupCause?: string | null
   /** the provider's own recording link — only sent to admin-like users, as a fallback until the file is downloaded */
   recordingUrl?: string | null
+  /** the dialer has a recording the CRM has not copied yet: the player copies it when pressed */
+  recordingPending?: boolean
+  /** false: the call just ended and its outcome and talk time are on their way from the dialer — show neither yet */
+  settled?: boolean
   customerNumber?: string | null
   agentNumber?: string | null
   dialerRefId?: string | null
   dialerCallId?: string | null
   dialerMeta?: Record<string, unknown>
-  /** proof of the call: the screenshot(s) of the call time (required since call proofs), the recording (optional) */
+  /** proof of the call: the screenshot of the call time (required since call proofs), the recording (optional) */
   screenshot?: CallProofFile | null
-  /** every screenshot, in upload order (`screenshot` is the first) */
+  /** every screenshot, in upload order (`screenshot` is the first): one per call now; calls logged earlier may carry several */
   screenshots?: CallProofFile[]
   recording?: CallProofFile | null
   createdAt: string
@@ -957,6 +961,159 @@ export interface TelephonyStatus {
   agents?: { mapped: number; total: number }
   counters?: { eventsToday: number; unmatched: number; recordingErrors: number }
   routing?: TelephonyRouting | null
+  /** the auto-dialer: this user has a Smartflo agent panel (the Dialer button) */
+  myDialer?: { enabled: boolean }
+}
+
+/** A counsellor's own Smartflo dialer set-up (Calling tab → Auto-dialer, and the Dialer drawer). */
+export interface DialerAgentDoc {
+  userId: string
+  name: string
+  enabled: boolean
+  loginId?: string | null
+  password?: string | null
+  hasPassword: boolean
+  listId?: string | null
+  listName?: string | null
+  campaignId?: string | null
+  campaignName?: string | null
+  queueId?: string | null
+  didId?: string | null
+  didNumber?: string | null
+  didRouted: boolean
+  leads: Record<string, number>
+  lastError?: string | null
+  updatedAt?: string | null
+}
+
+export interface DialerConfig {
+  syncEnabled: boolean
+  /** a caller to the main number reaches the counsellor they last spoke to (Smartflo sticky agent, 10 days) */
+  stickyAgent?: boolean
+  /** a counsellor's Smartflo list holds only the leads they queued (Progressive call) — no one else is dialled */
+  queuedOnly?: boolean
+  stageIds: string[]
+  retries: number
+  retryAfterMinutes: number
+  wrapUpSeconds: number
+  ringTimeout: number
+  /** progressive call: rounds of calling the unanswered again once every lead was called */
+  redialRounds?: number
+  traversal: '1' | '2' | '3'
+  roleId?: string | null
+  dispositionListId?: string | null
+  breakListId?: string | null
+}
+
+export interface DialerOverview {
+  config: DialerConfig
+  agents: {
+    userId: string
+    name: string
+    mobile?: string | null
+    telephonyAgentId?: string | null
+    /** the CRM still links them to a Smartflo user that was deleted in the portal — "Turn on" makes a new one */
+    smartfloDeleted?: boolean
+    dialer: DialerAgentDoc | null
+  }[]
+  totals: Record<string, number>
+  lastRunAt?: string | null
+  fullAt?: string | null
+  stages: { _id: string; name: string }[]
+  panelUrl: string
+  errors: { leadId: string; error?: string | null; status: string }[]
+}
+
+export type DialerRingOn = 'laptop' | 'mobile' | 'both'
+
+/** The counsellor's dialer session as the CRM last set / heard it (Smartflo's "Session Call Answered" → ready). */
+export interface DialerSession {
+  state?: 'calling_you' | 'ready' | 'on_break' | 'stopped' | 'logged_out'
+  breakCode?: string | null
+  breakName?: string | null
+  startedAt?: string | null
+  lastError?: string | null
+  updatedAt?: string | null
+}
+
+export type MyDialer = Partial<DialerAgentDoc> & {
+  enabled: boolean
+  panelUrl: string
+  session?: DialerSession
+  breakCodes?: { id: string; name: string }[]
+  ringOn?: DialerRingOn
+}
+
+/** GET /telephony/dialer/me/phone — the counsellor's own Smartflo softphone extension, registered by the CRM's phone. */
+export interface SoftphoneLogin {
+  user: string
+  password: string
+  host: string
+  socket: string
+  displayName: string
+}
+
+export interface DialerQueueResult {
+  queued: number
+  skipped: { _id: string; leadNo: string; reason: string }[]
+  sent: { added?: number; removed?: number; failed?: number; rateLimited?: boolean }
+  /** how many of them are the caller's own (their Dialer starts on them) */
+  mine?: number
+}
+
+export type DialerProgressStatus =
+  | 'adding'
+  | 'waiting'
+  | 'calling'
+  | 'connected'
+  /** ended; its outcome and talk time are on their way from the call record */
+  | 'settling'
+  | 'dialled'
+  | 'answered'
+  | 'not_answered'
+  | 'busy'
+  | 'failed'
+  | 'error'
+  | 'skipped'
+
+/** GET /telephony/dialer/me/progress — the counsellor's last "Auto-dial first", lead by lead. */
+export interface DialerProgress {
+  run: {
+    at: string
+    total: number
+    counts: Partial<Record<DialerProgressStatus, number>>
+    done: boolean
+    leads: {
+      _id: string
+      name: string
+      leadNo: string
+      status: DialerProgressStatus
+      label: string
+      durationSeconds?: number | null
+      attempts?: number | null
+      callId?: string | null
+      error?: string | null
+      /** 2 and up: called again because the earlier round went unanswered */
+      round?: number
+      /** on the call now: when they picked up (the live timer runs from it) */
+      answeredAt?: string | null
+      /** its outcome was saved: the next call need not wait out the gap */
+      disposed?: boolean
+      outcome?: string | null
+      /** an outcome other than Not Connected, or a follow-up set: not called again in this run */
+      final?: boolean
+    }[]
+    round?: number
+    rounds?: number
+    /** the wrap-up time between calls (admin setting) */
+    wrapUpSeconds?: number
+    /** the lead the CRM calls next (the first not called yet in this round) */
+    next?: string | null
+    /** false: queued for this counsellor by someone else — it starts on their Start */
+    auto?: boolean
+    /** Smartflo's dialer state for the counsellor: wrap-up holds the next call */
+    agent?: { onDisposition: boolean; onCall: boolean; lineUp: boolean; status?: string | null; wrapUpEndsAt?: string | null } | null
+  } | null
 }
 
 export interface TelephonyEventRow {
@@ -1334,17 +1491,42 @@ export interface AutomationBody {
   isActive?: boolean
 }
 
-export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_assigned' | 'whatsapp_reply'
+/** The four counsellor alerts the editor special-cases; any other string is a rule key the server lists (?scope=all). */
+export type StaffAlertTrigger = 'follow_up_reminder' | 'lead_untouched' | 'lead_assigned' | 'whatsapp_reply' | (string & {})
+export type StaffAlertKind = 'builtin' | 'custom' | 'account'
+/** What the Notifications tab may do with a row; a field false hides its control. */
+export interface StaffAlertCapabilities {
+  toggle: boolean
+  push: boolean
+  email: boolean
+  sms: boolean
+  /** there is a person it is about (the counsellor, the assignee …) who may be told */
+  owner: boolean
+  recipients: boolean
+  conditions: boolean
+  delete: boolean
+  test: boolean
+}
 
 /**
- * Communication → Automation → Counsellor alerts: the wording, channels and windows of the three staff-facing
- * alerts (follow-up reminder, untouched lead, new lead assigned). The texts use {{Placeholders}}.
+ * An alert rule (Communication → Notifications; the four counsellor alerts also under Automation → Team alerts):
+ * its wording, channels, recipients and — for the untouched-lead alert — windows. The texts use {{Placeholders}}.
  */
 export interface StaffAlertRow {
   _id: string
-  /** one of the three built-in alerts; null for an alert added in the CRM (Team alerts → Add alert) */
+  /** a built-in rule's key; null for an alert added in the CRM (Team alerts → Add alert) */
   trigger: StaffAlertTrigger | null
   label: string
+  /** ?scope=all only: what kind of row, where it sits, when it fires, what may be changed */
+  kind?: StaffAlertKind
+  group?: string
+  groupLabel?: string
+  description?: string
+  capabilities?: StaffAlertCapabilities
+  /** always shown in the bell (false for an account email) */
+  bell?: boolean
+  /** who "notifyOwner" means: "Counsellor", "Previous counsellor", "The person who exported" … */
+  subjectLabel?: string
   /** added in the CRM: its name, the lead event it goes out on (straight away) and the lead conditions it needs */
   custom?: boolean
   name?: string | null
@@ -1434,6 +1616,8 @@ export interface StaffAlertsResponse {
   /** Add alert: the lead events it can go out on, and the ready-made wording */
   events?: { value: string; label: string }[]
   customDefaults?: StaffAlertBody
+  /** the Notifications tab's sections, in order */
+  groups?: { key: string; label: string }[]
 }
 
 /** The test send's outcome per channel (only the channels that are on). */
@@ -1556,6 +1740,21 @@ export interface DashboardRecentLead {
   createdAt: string
 }
 
+/** The call cards' figures (telephony call_activity): connected = the lead / caller picked up. */
+export interface CallActivity {
+  dialCalls: number
+  dialConnected: number
+  dialNotConnected: number
+  inbound: number
+  inboundAnswered: number
+  inboundMissed: number
+  calls: number
+  connected: number
+  connectRate: number
+  talktimeSeconds: number
+  avgTalkSeconds: number
+}
+
 export interface DashboardSummary {
   totals: {
     total: number
@@ -1576,12 +1775,16 @@ export interface DashboardSummary {
   byOwner: { _id: string; name: string; count: number }[]
   /** the eight newest leads in scope */
   recentLeads: DashboardRecentLead[]
-  /** the signed-in employee's day: calls they logged, the sum of those calls' durations, and their completed breaks
-   * (absent for Super Admin) */
+  /** admins: the calls of everyone they can see, today (the same figures as the Calls page each card opens) */
+  teamCallsToday?: CallActivity
+  /** the signed-in employee's day: calls they logged, the sum of those calls' durations, and their breaks (a running
+   * one up to now) (absent for Super Admin) */
   activityToday?: {
     calls?: number
     talktimeSeconds?: number
     breakSeconds?: number
+    /** the part of breakSeconds that was Pause Break (campus visit, training, calibration) */
+    pauseSeconds?: number
     /** dialer figures (apps.telephony): connected calls, connect rate %, inbound / outbound counts, average talk time */
     connected?: number
     connectRate?: number
@@ -1596,6 +1799,8 @@ export interface DashboardSummary {
     dialNotConnected?: number
     /** signed-in time today */
     loggedInSeconds?: number
+    /** Active Time: signed-in time off breaks (a running one up to now), pauses and calls */
+    activeSeconds?: number
     /** different numbers dialled today, of them reached (a call connected), and dialled more than once */
     uniqueNumbers?: number
     numbersReached?: number
@@ -1604,22 +1809,43 @@ export interface DashboardSummary {
 }
 
 /**
- * Round-robin auto-assignment: Meta / Google / Website leads rotate over the online pool
- * members — any active user with "In round-robin lead pool" ticked and View on the Leads
- * module, whatever their role, except a Super Admin.
+ * Round-robin auto-assignment: Meta / Google / Website leads go to the logged-in pool members
+ * in a fixed sequence — any active user with "In round-robin lead pool" ticked and View on the
+ * Leads module, whatever their role, except a Super Admin. Overnight leads pool and go out in the
+ * morning as equal quotas; what is left is split at the checkpoint.
  */
 export type RoundRobinChannel = 'meta' | 'google' | 'capture' | 'telephony' | 'chatbot'
 
 export interface RoundRobinSettings {
   enabled: boolean
   channels: RoundRobinChannel[]
-  /** "HH:MM" IST; both null = 24×7 */
+  /** "HH:MM" IST, end exclusive; both null = 24×7 */
   windowStart: string | null
   windowEnd: string | null
   /** 0=Mon … 6=Sun; [] = every day */
   days: number[]
-  /** true: only logged-in members get leads, the rest wait in the pool; false: every pool member, logged in or not */
-  onlineOnly: boolean
+  /** "HH:MM" IST: from the window start until then the overnight backlog goes out as quotas, the rest is split at it; null = no morning */
+  checkpoint: string | null
+}
+
+/** closed: outside the window / days (leads pool) · morning: before the checkpoint · live: in sequence */
+export type RoundRobinPhase = 'closed' | 'morning' | 'live'
+
+/** Today's morning backlog */
+export interface RoundRobinMorning {
+  day: string
+  /** pooled leads that arrived before the window opened */
+  backlog: number
+  /** members with the toggle on that it was divided by */
+  members: number
+  /** leads per member */
+  quota: number
+  /** quota leads handed out so far */
+  given: number
+  /** the checkpoint split ran */
+  closedAt: string | null
+  /** leads the checkpoint split handed out */
+  split: number
 }
 
 /**
@@ -1645,15 +1871,30 @@ export interface RoundRobinMember {
   onBreak?: { type: string; label: string; startedAt: string } | null
   /** active + flag + not super admin + leads access + online + team not paused + not on a break → in rotation */
   eligible: boolean
-  /** order in rotation; null when not eligible */
+  /** order among the eligible right now; null when not eligible */
   position: number | null
+  /** place in the fixed sequence (1 = first), set by the team's manager (HOD) or the Super Admin */
+  sequence: number | null
+  /** the caller may flip this member's toggle and move them in the sequence */
+  canManage: boolean
+  /** leads the rotation gave them today, and when it last did */
+  assignedToday: number
+  lastAssignedAt: string | null
+  /** of those, from today's morning quota */
+  morningLeads: number
 }
 
 export interface RoundRobinStatus {
   settings: RoundRobinSettings
-  /** rotation allowed to hand out leads right now */
+  /** a new lead goes straight to the next member right now (the live phase) */
   activeNow: boolean
+  phase: RoundRobinPhase
+  morning: RoundRobinMorning | null
   rotation: RoundRobinMember[]
+  /** the caller manages at least one listed member */
+  canReorder: boolean
+  /** leads the rotation handed out today */
+  assignedToday: number
   nextUp: Ref | null
   lastAssigned: Ref | null
   /** leads waiting (nobody online / outside window) */
@@ -1662,7 +1903,7 @@ export interface RoundRobinStatus {
 
 /* ------------------------------------------------------------------ Punch Break & Attendance */
 
-export type BreakType = 'tea' | 'lunch' | 'bio' | 'other'
+export type BreakType = 'tea' | 'lunch' | 'bio' | 'pause' | 'other'
 /** active: running · completed: ended by the employee · incomplete: still open when its day ended, left out of every total */
 export type BreakStatus = 'active' | 'completed' | 'incomplete'
 
@@ -1671,7 +1912,7 @@ export interface BreakEntry {
   type: BreakType
   /** "Lunch Break" */
   label: string
-  /** the reason given for an "other" break */
+  /** the reason given for a pause (Campus Visit, Training Session or typed) or an "other" break */
   note?: string
   /** IST date the break started on (YYYY-MM-DD) */
   day: string
@@ -1693,14 +1934,16 @@ export interface BreaksToday {
   breaks: BreakEntry[]
   /** completed seconds per type */
   byType: Record<BreakType, number>
-  /** completed breaks only */
+  /** completed breaks only, the pause left out */
   totalSeconds: number
+  /** completed pause time (campus visit, training, call calibration): shown apart, never part of totalSeconds */
+  pauseSeconds: number
 }
 
 /** The top bar for the signed-in employee: today's logged-in time plus the Punch Break state. */
 export interface AttendanceToday extends BreaksToday {
   firstLoginAt: string | null
-  /** signed-in time today as of the response; keeps running while `live` */
+  /** signed-in time today as of the response, minus time on a pause; keeps running while `live` and not pausing */
   loggedInSeconds: number
   live: boolean
 }
@@ -1715,9 +1958,9 @@ export interface AttendanceRow {
   loginAt?: string
   /** sign-out of the day's last session */
   logoutAt?: string
-  /** signed-in time that day: the sessions added up (overlaps counted once), the same figure as the employee's
-   * logged-in timer; running while online; counted up to the last activity when the logout is missing.
-   * null when there was no sign-in */
+  /** signed-in time that day: the sessions added up (overlaps counted once) minus time on a pause, the same
+   * figure as the employee's logged-in timer; running while online; counted up to the last activity when the
+   * logout is missing. null when there was no sign-in */
   loginSeconds: number | null
   /** the day's last session never signed out: flagged, never guessed */
   logoutMissing: boolean
@@ -1727,7 +1970,10 @@ export interface AttendanceRow {
   calls: number
   talktimeSeconds: number
   breaks: Record<BreakType, number>
+  /** every type but the pause */
   breakSeconds: number
+  /** the pause on its own: neither break time nor part of loginSeconds */
+  pauseSeconds: number
   activeBreak: { type: BreakType; label: string; note?: string; startedAt: string } | null
   incompleteBreaks: number
 }
