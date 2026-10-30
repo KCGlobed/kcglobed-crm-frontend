@@ -65,6 +65,13 @@ const listeners = new Set<() => void>()
 let ua: UA | null = null
 let session: RTCSession | null = null // the call being answered or talked on
 const ringingSessions = new Map<string, RTCSession>() // calls still ringing, waiting for Answer / Decline
+const answeredLead = new Map<string, string>() // a ringing call answered from its card → the lead the card showed
+// the microphone, opened while a call rings (or the CRM places one) so Answer does not wait for it
+let mic: Promise<MediaStream | null> | null = null
+let micStream: MediaStream | null = null
+let micRelease: number | null = null
+// a public address usually comes within ~200 ms; past this the answer goes with what the browser has
+const ICE_WAIT_MS = 800
 let expectUntil = 0
 let expectRingback = false
 let expectLeadId: string | undefined
@@ -100,6 +107,36 @@ export function expectCall({ ringback = true, leadId }: { ringback?: boolean; le
   expectUntil = Date.now() + EXPECT_MS
   expectLeadId = leadId
   expectRingback = ringback // a click-to-call rings the lead next; the dialer's session line stays quiet until a lead connects
+  warmMic()
+  releaseMicLater(EXPECT_MS + 1000)
+}
+
+/** Opens the microphone ahead of the answer (no prompt: the permission was given when the phone connected). */
+function warmMic() {
+  if (micRelease !== null) window.clearTimeout(micRelease)
+  micRelease = null
+  if (mic) return
+  mic = navigator.mediaDevices
+    .getUserMedia({ audio: true })
+    .then((stream) => (micStream = stream))
+    .catch(() => null)
+}
+
+function releaseMic() {
+  if (micRelease !== null) window.clearTimeout(micRelease)
+  micRelease = null
+  micStream?.getTracks().forEach((t) => t.stop())
+  micStream = null
+  mic = null
+}
+
+/** The microphone closes once nothing rings and no call is on (it never stays open unused). */
+function releaseMicLater(ms: number) {
+  if (micRelease !== null) window.clearTimeout(micRelease)
+  micRelease = window.setTimeout(() => {
+    micRelease = null
+    if (!session && !ringingSessions.size) releaseMic()
+  }, ms)
 }
 
 export function setAutoAnswerAll(on: boolean) {
@@ -220,16 +257,35 @@ function stopRinging() {
   notification = null
 }
 
+/** A ringing tone (one or two close frequencies, e.g. 400 + 450 Hz) keeps nearly all its sound near its loudest
+ * frequency; a voice spreads it over many harmonics. */
+function isRingingTone(spectrum: Float32Array, hz: number): boolean {
+  const from = Math.floor(300 / hz)
+  const to = Math.min(Math.ceil(3400 / hz), spectrum.length - 1)
+  let all = 0
+  let peak = from
+  for (let i = from; i <= to; i++) {
+    all += 10 ** (spectrum[i] / 10)
+    if (spectrum[i] > spectrum[peak]) peak = i
+  }
+  let near = 0
+  for (let i = Math.max(from, peak - Math.round(130 / hz)); i <= Math.min(to, peak + Math.round(130 / hz)); i++) near += 10 ** (spectrum[i] / 10)
+  return all <= 0 || near / all > 0.7
+}
+
+const ANSWER_FALLBACK_MS = 60_000
+
 /**
- * A call the CRM placed: ringback until the lead's side speaks. Smartflo plays the lead's ringing down this line too
- * (seen live: any sound at all counted the call as picked up 3–5 s after the click), so only a voice counts — a
- * ringing tone (400–450 Hz) has nearly all its sound in that one narrow band, a voice spreads over 300–3400 Hz. This
- * is only the live timer: whether the lead picked up, and the talk time, come from Smartflo's call record.
+ * A call the CRM placed: "Ringing" until the lead's side speaks. Smartflo already plays the lead's ringing (or their
+ * caller tune) down this line — seen live: any sound at all counted the call as picked up 3–5 s after the click —
+ * so no ringback of our own, and only a voice counts as the pick-up. This drives only the live timer and opening the
+ * lead: whether the lead picked up, and the talk time, come from Smartflo's call record.
  */
 function ringbackUntilAnswered(stream: MediaStream) {
   const c = audioContext()
   if (!c || !state.inCall?.calling) return
-  playTone('ringback')
+  const callId = state.inCall.id
+  const until = Date.now() + ANSWER_FALLBACK_MS
   try {
     const analyser = c.createAnalyser()
     analyser.fftSize = 2048
@@ -239,28 +295,27 @@ function ringbackUntilAnswered(stream: MediaStream) {
     const spectrum = new Float32Array(analyser.frequencyBinCount)
     const hz = c.sampleRate / analyser.fftSize
     const recent: boolean[] = [] // the last 1.5 s: was it a voice?
+    if (level !== null) window.clearInterval(level)
     level = window.setInterval(() => {
+      if (state.inCall?.id !== callId || !state.inCall.calling) {
+        window.clearInterval(level!)
+        level = null
+        return
+      }
       analyser.getByteTimeDomainData(wave)
       let sum = 0
       for (const v of wave) sum += ((v - 128) / 128) ** 2
       let voice = false
       if (Math.sqrt(sum / wave.length) > 0.02) {
         analyser.getFloatFrequencyData(spectrum)
-        let all = 0
-        let ringBand = 0
-        for (let i = Math.floor(300 / hz); i <= Math.ceil(3400 / hz) && i < spectrum.length; i++) {
-          const power = 10 ** (spectrum[i] / 10)
-          all += power
-          if (i * hz >= 350 && i * hz <= 500) ringBand += power
-        }
-        voice = all > 0 && ringBand / all < 0.8
+        voice = !isRingingTone(spectrum, hz)
       }
       recent.push(voice)
       if (recent.length > 10) recent.shift()
-      if (recent.filter(Boolean).length >= 6 || !tone || Date.now() > tone.until) leadAnswered()
+      if (recent.filter(Boolean).length >= 4 || Date.now() > until) leadAnswered()
     }, 150)
   } catch {
-    window.setTimeout(leadAnswered, 15_000)
+    window.setTimeout(() => state.inCall?.id === callId && leadAnswered(), 15_000)
   }
 }
 
@@ -333,6 +388,7 @@ function setIncoming(incoming: PhoneCall[]) {
 function onSession(e: RTCSessionEvent) {
   if (e.originator !== 'remote') return
   const s = e.session
+  if (session?.isEnded()) session = null // a call whose end event never came
   if (session) {
     // one call at a time: busy, so Smartflo hands it to the next counsellor instead of ringing here
     s.terminate({ status_code: 486, reason_phrase: 'Busy Here' })
@@ -350,18 +406,35 @@ function onSession(e: RTCSessionEvent) {
       session = null
       set({ inCall: null, lastEnded: { ...(state.inCall ?? call), endedAt: Date.now() } })
     }
+    if (!session && !ringingSessions.size) releaseMicLater(0)
   }
   note(`incoming call from ${call.number || 'unknown'}${call.name ? ` (${call.name})` : ''}`)
   s.on('accepted', () => {
     note('call answered')
     stopRinging()
     // inbound: talking from now; a click-to-call: our leg is up, the lead's phone rings next (answeredAt then)
-    call = { ...call, since: Date.now(), answeredAt: call.kind === 'inbound' ? Date.now() : null }
+    call = {
+      ...call,
+      since: Date.now(),
+      answeredAt: call.kind === 'inbound' ? Date.now() : null,
+      leadId: call.leadId ?? answeredLead.get(s.id),
+    }
+    answeredLead.delete(s.id)
     set({ inCall: call })
   })
-  // answer as soon as a public (STUN) address is known instead of waiting for every candidate
+  // answer as soon as a public (STUN) address is known instead of waiting for every candidate — and never wait
+  // longer than ICE_WAIT_MS for it
+  let iceSent = false
+  let iceTimer: number | null = null
   s.on('icecandidate', (e) => {
-    if (e.candidate.type === 'srflx') e.ready()
+    const go = () => {
+      if (iceTimer !== null) window.clearTimeout(iceTimer)
+      if (iceSent) return
+      iceSent = true
+      e.ready()
+    }
+    if (e.candidate.type === 'srflx') go()
+    else if (iceTimer === null && !iceSent) iceTimer = window.setTimeout(go, ICE_WAIT_MS)
   })
   s.on('confirmed', () => {
     note('call connected')
@@ -382,18 +455,21 @@ function onSession(e: RTCSessionEvent) {
     expectUntil = 0
     const kind = !placedByCrm ? 'inbound' : expectRingback ? 'outbound' : 'session'
     call = { ...call, calling: kind === 'outbound', kind, leadId: placedByCrm ? expectLeadId : undefined }
-    pickUp(s) // no incoming card: the CRM placed this call, the calling dock shows it once it is up
+    pickUp(s, call) // no incoming card: the CRM placed this call, the calling dock shows it at once
   } else {
     ringingSessions.set(s.id, s)
     setIncoming([...state.incoming, call])
+    warmMic()
     if (state.incoming.length === 1) startRinging(call.name || call.number || 'Smartflo')
   }
 }
 
-function pickUp(s: RTCSession) {
+function pickUp(s: RTCSession, call?: PhoneCall) {
   stopRinging()
   session = s
   ringingSessions.delete(s.id)
+  // the calling dock shows the call from the click on (talking from when the line is up — 'accepted')
+  if (call) set({ inCall: { ...call, leadId: call.leadId ?? answeredLead.get(s.id) } })
   // one call at a time: the others still ringing go busy, so Smartflo hands them to the next counsellor
   const others = [...ringingSessions.values()]
   ringingSessions.clear()
@@ -406,18 +482,27 @@ function pickUp(s: RTCSession) {
     }
   }
   try {
-    s.answer({ mediaConstraints: { audio: true, video: false }, pcConfig: PC_CONFIG })
+    // the microphone opened while it rang: no wait for it now (else the browser opens it, a little slower)
+    s.answer(micStream?.active ? { mediaStream: micStream, pcConfig: PC_CONFIG } : { mediaConstraints: { audio: true, video: false }, pcConfig: PC_CONFIG })
   } catch (err) {
     note(`could not answer: ${err instanceof Error ? err.message : err}`)
     set({ error: err instanceof Error ? err.message : 'Could not answer the call' })
+    if (session === s) session = null // never left "busy" by a call that did not come up
+    try {
+      s.terminate()
+    } catch {
+      // already gone
+    }
   }
 }
 
-/** Answer a ringing call (the oldest when none is named). */
-export function answer(id?: string) {
+/** Answer a ringing call (the oldest when none is named); `leadId`: the lead its card showed, opened on pick-up. */
+export function answer(id?: string, leadId?: string) {
   const target = id ?? state.incoming[0]?.id
   const s = target ? ringingSessions.get(target) : undefined
-  if (s && !session) pickUp(s)
+  if (!s || session) return
+  if (leadId) answeredLead.set(s.id, leadId)
+  pickUp(s, state.incoming.find((c) => c.id === s.id))
 }
 
 /** Decline one ringing call; the others keep ringing. */
@@ -493,6 +578,7 @@ export function disconnectPhone() {
     }
   }
   ringingSessions.clear()
+  releaseMic()
   if (ua) {
     const old = ua
     ua = null

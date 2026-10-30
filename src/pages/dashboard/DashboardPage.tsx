@@ -19,7 +19,8 @@ import { useAppDispatch, useCurrentUser } from '../../app/hooks'
 import { isCounsellor } from '../../lib/roles'
 import { cn, fullName, timeAgo } from '../../lib/utils'
 import { formatHms } from '../../lib/durations'
-import type { DashboardRecentLead, DashboardStatusTile, DashboardSummary, Stage } from '../../types/models'
+import type { CallActivity, DashboardRecentLead, DashboardStatusTile, DashboardSummary, Stage } from '../../types/models'
+import type { CallMetric } from '../../services/telephonyApi'
 
 /** Query params of the lead list (`/app/leads?…`) a metric drills down to. */
 type ListParams = Record<string, string>
@@ -380,6 +381,7 @@ function CounsellorCards({
   stagesLoading,
   loading,
   onOpen,
+  onOpenCalls,
 }: {
   summary?: DashboardSummary
   period: PeriodState
@@ -389,6 +391,8 @@ function CounsellorCards({
   stagesLoading: boolean
   loading: boolean
   onOpen: (params: ListParams) => void
+  /** a call card's "view all": the calls it counted */
+  onOpenCalls: (metric: CallMetric) => void
 }) {
   const { key, setKey, custom, setCustom, range, hint } = state
   const stageOf = (name: string) => stages?.find((s) => nameKey(s.name) === nameKey(name))
@@ -421,6 +425,8 @@ function CounsellorCards({
   const unique = activity?.uniqueNumbers ?? 0
   /** a card's bar: its share (0–100) of the row's total; empty when the total is 0 */
   const pct = (part: number | undefined, whole: number) => (whole ? Math.min(100, Math.round(((part ?? 0) / whole) * 100)) : 0)
+  /** a call card opens the calls it counted (none to open at 0) */
+  const calls = (metric: CallMetric, value: number | undefined) => (value ? () => onOpenCalls(metric) : undefined)
   return (
     <>
       <section aria-label="My Leads">
@@ -465,21 +471,21 @@ function CounsellorCards({
             it has no figure yet); each bar is the card's share of its row's total. Every card has a hue of its own
             (all mid-tone, see KpiCard), so no two look alike */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4" data-testid="todays-activity">
-          <KpiCard label="Total Dial Calls" value={dialCalls} progress={dialCalls ? 100 : 0} hint="Outgoing calls today" icon={PhoneOutgoing} accent="blue" loading={loading} />
-          <KpiCard label="Connected" value={activity?.dialConnected ?? 0} progress={pct(activity?.dialConnected, dialCalls)} hint="Dial calls answered" icon={PhoneCall} accent="green" loading={loading} />
-          <KpiCard label="Not Connected" value={activity?.dialNotConnected ?? 0} progress={pct(activity?.dialNotConnected, dialCalls)} hint="No answer, busy or failed" icon={PhoneOff} accent="red" loading={loading} />
+          <KpiCard label="Total Dial Calls" value={dialCalls} progress={dialCalls ? 100 : 0} hint="Outgoing calls today" icon={PhoneOutgoing} accent="blue" loading={loading} onClick={calls('dial', dialCalls)} />
+          <KpiCard label="Connected" value={activity?.dialConnected ?? 0} progress={pct(activity?.dialConnected, dialCalls)} hint="Dial calls the lead picked up" icon={PhoneCall} accent="green" loading={loading} onClick={calls('dial_connected', activity?.dialConnected)} />
+          <KpiCard label="Not Connected" value={activity?.dialNotConnected ?? 0} progress={pct(activity?.dialNotConnected, dialCalls)} hint="No answer, busy or failed" icon={PhoneOff} accent="red" loading={loading} onClick={calls('dial_not_connected', activity?.dialNotConnected)} />
 
-          <KpiCard label="Inbound Calls Today" value={inbound} progress={inbound ? 100 : 0} hint="Calls received today" icon={PhoneIncoming} accent="azure" loading={loading} />
-          <KpiCard label="Inbound Received" value={activity?.inboundAnswered ?? 0} progress={pct(activity?.inboundAnswered, inbound)} hint="Answered" icon={Phone} accent="teal" loading={loading} />
-          <KpiCard label="Inbound Missed" value={activity?.inboundMissed ?? 0} progress={pct(activity?.inboundMissed, inbound)} hint="Not answered" icon={PhoneMissed} accent="pink" loading={loading} />
+          <KpiCard label="Inbound Calls Today" value={inbound} progress={inbound ? 100 : 0} hint="Calls received today" icon={PhoneIncoming} accent="azure" loading={loading} onClick={calls('inbound', inbound)} />
+          <KpiCard label="Inbound Received" value={activity?.inboundAnswered ?? 0} progress={pct(activity?.inboundAnswered, inbound)} hint="Answered" icon={Phone} accent="teal" loading={loading} onClick={calls('inbound_answered', activity?.inboundAnswered)} />
+          <KpiCard label="Inbound Missed" value={activity?.inboundMissed ?? 0} progress={pct(activity?.inboundMissed, inbound)} hint="Not answered" icon={PhoneMissed} accent="pink" loading={loading} onClick={calls('inbound_missed', activity?.inboundMissed)} />
 
           <KpiCard label="Active Time" value={formatHms(activity?.activeSeconds)} progress={pct(activity?.activeSeconds, loggedIn)} hint="Excludes talk, break & pause time" icon={Clock} accent="indigo" loading={loading} />
-          <KpiCard label="Talk Time" value={formatHms(activity?.talktimeSeconds)} progress={pct(activity?.talktimeSeconds, loggedIn)} hint="Time on calls" icon={Timer} accent="leaf" loading={loading} />
+          <KpiCard label="Talk Time" value={formatHms(activity?.talktimeSeconds)} progress={pct(activity?.talktimeSeconds, loggedIn)} hint="From pick-up, connected calls only" icon={Timer} accent="leaf" loading={loading} onClick={calls('connected', activity?.talktimeSeconds)} />
           <KpiCard label="Break Time" value={formatHms(activity?.breakSeconds)} progress={pct(activity?.breakSeconds, loggedIn)} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
 
           {/* the numbers row: distinct numbers out of the attempts, every attempt, and today's Pause Break time */}
           <KpiCard label="Unique Numbers Dialled" value={unique} progress={pct(unique, dialCalls)} hint="Distinct numbers called today" icon={Hash} accent="cyan" loading={loading} />
-          <KpiCard label="Total Dial Attempts" value={dialCalls} progress={dialCalls ? 100 : 0} hint="Outgoing attempts, repeats included" icon={Repeat} accent="amber" loading={loading} />
+          <KpiCard label="Total Dial Attempts" value={dialCalls} progress={dialCalls ? 100 : 0} hint="Outgoing attempts, repeats included" icon={Repeat} accent="amber" loading={loading} onClick={calls('dial', dialCalls)} />
           <KpiCard label="Pause Break" value={formatHms(activity?.pauseSeconds)} progress={pct(activity?.pauseSeconds, loggedIn)} hint="Campus visit, training, calibration" icon={Pause} accent="fuchsia" loading={loading} />
         </div>
       </section>
@@ -509,6 +515,29 @@ const HIDDEN_SOURCES = new Set(['direct', 'no source'])
  * Masters or for "No stage", so the rows add up to every lead; highest count first, ties
  * keep the Masters order.
  */
+/** Admins: today's calls of everyone they can see — each card opens those calls (Calls page). */
+function TeamCallsSection({ activity, loading, onOpenCalls }: { activity?: CallActivity; loading: boolean; onOpenCalls: (metric: CallMetric) => void }) {
+  const dial = activity?.dialCalls ?? 0
+  const inbound = activity?.inbound ?? 0
+  const pct = (part: number | undefined, whole: number) => (whole ? Math.min(100, Math.round(((part ?? 0) / whole) * 100)) : 0)
+  const open = (metric: CallMetric, value: number | undefined) => (value ? () => onOpenCalls(metric) : undefined)
+  return (
+    <section className="mt-5" aria-label="Team calls today">
+      <SectionHeading title="Team Calls Today" hint="Click a card for its calls" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4" data-testid="team-calls">
+        <KpiCard label="Dial Calls" value={dial} progress={dial ? 100 : 0} hint="Outgoing calls today" icon={PhoneOutgoing} accent="blue" loading={loading} onClick={open('dial', dial)} />
+        <KpiCard label="Connected" value={activity?.dialConnected ?? 0} progress={pct(activity?.dialConnected, dial)} hint="Dial calls the lead picked up" icon={PhoneCall} accent="green" loading={loading} onClick={open('dial_connected', activity?.dialConnected)} />
+        <KpiCard label="Not Connected" value={activity?.dialNotConnected ?? 0} progress={pct(activity?.dialNotConnected, dial)} hint="No answer, busy or failed" icon={PhoneOff} accent="red" loading={loading} onClick={open('dial_not_connected', activity?.dialNotConnected)} />
+        <KpiCard label="Talk Time" value={formatHms(activity?.talktimeSeconds)} hint={activity?.avgTalkSeconds ? `Avg ${formatHms(activity.avgTalkSeconds)} per connected call` : 'From pick-up, connected calls only'} icon={Timer} accent="leaf" loading={loading} onClick={open('connected', activity?.talktimeSeconds)} />
+        <KpiCard label="Inbound Calls" value={inbound} progress={inbound ? 100 : 0} hint="Calls received today" icon={PhoneIncoming} accent="azure" loading={loading} onClick={open('inbound', inbound)} />
+        <KpiCard label="Inbound Received" value={activity?.inboundAnswered ?? 0} progress={pct(activity?.inboundAnswered, inbound)} hint="Answered" icon={Phone} accent="teal" loading={loading} onClick={open('inbound_answered', activity?.inboundAnswered)} />
+        <KpiCard label="Inbound Missed" value={activity?.inboundMissed ?? 0} progress={pct(activity?.inboundMissed, inbound)} hint="Not answered" icon={PhoneMissed} accent="pink" loading={loading} onClick={open('inbound_missed', activity?.inboundMissed)} />
+        <KpiCard label="Connect Rate" value={`${activity?.connectRate ?? 0}%`} progress={activity?.connectRate ?? 0} hint="Connected of all calls" icon={Hash} accent="cyan" loading={loading} onClick={open('connected', activity?.connected)} />
+      </div>
+    </section>
+  )
+}
+
 function allStagesByCount(stages: Stage[], byStage: DashboardSummary['byStage']): DashboardSummary['byStage'] {
   const counted = new Map(byStage.map((row) => [row._id, row.count]))
   const active = stages.filter((s) => s.isActive !== false)
@@ -946,6 +975,12 @@ export default function DashboardPage() {
   // `from=dashboard` tells the list it is a dashboard drill-down, so it offers a way back
   const open = (params: ListParams) => navigate(`/app/leads?${new URLSearchParams({ ...params, from: 'dashboard' }).toString()}`)
   const openLead = (id: string) => navigate(`/app/leads/${id}`)
+  // a call card's "view all": the Calls page with the card's own filters (today; a counsellor's cards: their calls)
+  const openCalls = (metric: CallMetric, mine: boolean) => {
+    const date = summary?.today?.from ?? dayjs().format('YYYY-MM-DD')
+    const query = new URLSearchParams({ metric, from: date, to: date, back: 'dashboard', ...(mine && user ? { userId: user._id } : {}) })
+    navigate(`/app/calls?${query.toString()}`)
+  }
   // Recent Leads' "View all" is a drill-down too: the list then shows the way back to the dashboard
   const viewAllLeads = () => navigate('/app/leads?from=dashboard')
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
@@ -1018,7 +1053,16 @@ export default function DashboardPage() {
       </section>
 
       {counsellor ? (
-        <CounsellorCards summary={summary} period={period} stages={stages} notConnected={notConnected} stagesLoading={rowsLoading} loading={isLoading} onOpen={open} />
+        <CounsellorCards
+          summary={summary}
+          period={period}
+          stages={stages}
+          notConnected={notConnected}
+          stagesLoading={rowsLoading}
+          loading={isLoading}
+          onOpen={open}
+          onOpenCalls={(metric) => openCalls(metric, true)}
+        />
       ) : user?.isSuperAdmin ? (
         // Super Admin: one grid of nine cards in this order, every one following the period switch except
         // Follow-ups Due (overdue right now); a stage with no leads shows 0. The palette stages keep their colours;
@@ -1043,6 +1087,10 @@ export default function DashboardPage() {
             </div>
           </section>
         </>
+      )}
+
+      {!counsellor && summary?.teamCallsToday && (
+        <TeamCallsSection activity={summary.teamCallsToday} loading={isLoading} onOpenCalls={(metric) => openCalls(metric, false)} />
       )}
 
       {/* A counsellor only ever sees their own leads: no source or by-counsellor charts, just Stage

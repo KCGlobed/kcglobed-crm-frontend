@@ -21,7 +21,7 @@ import {
   useDialerProgressQuery,
   useDialerSessionMutation,
   useHangupCallMutation,
-  useLazySoftphoneCallerQuery,
+  useSoftphoneCallerQuery,
 } from '../../services/telephonyApi'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
@@ -116,7 +116,6 @@ export function CallDock() {
   const [clear, { isLoading: closing }] = useClearDialerProgressMutation()
   const [runSession, { isLoading: ending }] = useDialerSessionMutation()
   const [hangupServer, { isLoading: hangingUp }] = useHangupCallMutation()
-  const [lookup, { data: caller }] = useLazySoftphoneCallerQuery()
   const [confirmClose, setConfirmClose] = useState(false)
   const { startCall, dialing } = useStartCall()
   const run = data?.data.run ?? null
@@ -128,11 +127,9 @@ export function CallDock() {
   const [skipped, setSkipped] = useState<string | null>(null)
   const [wasShown, setWasShown] = useState(false)
 
-  // an incoming call on the CRM phone: whose number it is
+  // an incoming call on the CRM phone: whose number it is (this number's answer only, never the previous call's)
   const inbound = phone.inCall?.kind === 'inbound' ? phone.inCall.number : null
-  useEffect(() => {
-    if (inbound) void lookup(inbound, true)
-  }, [inbound, lookup])
+  const { currentData: caller } = useSoftphoneCallerQuery(inbound ?? '', { skip: !inbound })
 
   const count = (statuses: DialerProgressStatus[]) => statuses.reduce((n, s) => n + (run?.counts[s] ?? 0), 0)
   const remaining = count(['adding', 'waiting'])
@@ -158,7 +155,7 @@ export function CallDock() {
     }
     if (c?.kind === 'inbound') {
       const lead = caller?.data.lead
-      return { leadId: lead?._id, name: lead?.name || c.name || c.number || 'Incoming call', state: 'on', since: c.since }
+      return { leadId: c.leadId ?? lead?._id, name: lead?.name || c.name || c.number || 'Incoming call', state: 'on', since: c.since }
     }
     if (serverLive && serverCall) {
       const on = phase === 'connected'
@@ -176,7 +173,9 @@ export function CallDock() {
   const wrapUpMs = (run?.wrapUpSeconds ?? 30) * 1000
   const ready =
     !!run && !run.done && !paused && !!run.next && phone.status === 'ready' && !phone.inCall && !phone.ringing && !dialing && !live.length && !serverLive
-  const nextAt = ready && ended && skipped !== ended.id ? ended.endedAt + wrapUpMs : null
+  // the gap is for saving the outcome: once it is saved, the next lead is called at once
+  const outcomeSaved = !!ended && !!run?.leads.find((l) => l._id === ended.leadId)?.disposed
+  const nextAt = ready && ended && skipped !== ended.id && !outcomeSaved ? ended.endedAt + wrapUpMs : null
   const now = useNow(1000, !!nextAt || current?.state === 'on')
   const secondsLeft = nextAt ? Math.max(0, Math.ceil((nextAt - now) / 1000)) : null
   const clock = (since?: number | string | null) =>
@@ -467,9 +466,10 @@ export function CallDock() {
                         {on ? `On call${talk ? ` · ${talk}` : ''}` : 'Ringing'}
                       </Badge>
                     ) : (
-                      <Badge tone={TONE[l.status]} dot={l.status === 'calling' || l.status === 'connected'}>
+                      <Badge tone={TONE[l.status]} dot={l.status === 'calling' || l.status === 'connected'} title={l.outcome ? `Outcome: ${l.outcome}` : undefined}>
                         {l.label}
                         {l.status === 'answered' && l.durationSeconds ? ` · ${formatHms(l.durationSeconds)}` : ''}
+                        {l.disposed ? ' ✓' : ''}
                       </Badge>
                     )}
                   </button>

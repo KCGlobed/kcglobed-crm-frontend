@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Phone, PhoneIncoming, PhoneOff } from 'lucide-react'
 import { useAppDispatch } from '../../app/hooks'
 import { api } from '../../services/api'
-import { useLazySoftphoneCallerQuery, useLogPhoneCallMutation, useSoftphoneCallerQuery } from '../../services/telephonyApi'
+import { useLogPhoneCallMutation, useSoftphoneCallerQuery } from '../../services/telephonyApi'
 import { Button } from '../../components/ui/Button'
 import { answer, decline, disconnectPhone, usePhone, type PhoneCall } from './softphone'
 import { useConnectPhone } from './useConnectPhone'
@@ -23,7 +23,6 @@ export function CrmPhone() {
   const { connect } = useConnectPhone()
   const navigate = useNavigate()
   const location = useLocation()
-  const [lookup, { data: caller }] = useLazySoftphoneCallerQuery()
   const opened = useRef<string | null>(null)
   const [logCall] = useLogPhoneCallMutation()
   const dispatch = useAppDispatch()
@@ -43,15 +42,14 @@ export function CrmPhone() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled])
 
+  // whose call it is: the lead the answered card showed, else the lead with this number (`currentData` is this
+  // number's answer only — never the previous call's while the new one is looked up)
   const number = live?.number
+  const { currentData: caller } = useSoftphoneCallerQuery(number ?? '', { skip: !number })
+  const leadId = live?.leadId ?? caller?.data.lead?._id ?? null
   useEffect(() => {
-    if (number) void lookup(number, true)
-  }, [number, lookup])
-
-  const lead = number && caller?.data ? caller.data.lead : null
-  useEffect(() => {
-    if (live && lead) leadOfCall.current.set(live.id, lead._id)
-  }, [live, lead])
+    if (live && leadId) leadOfCall.current.set(live.id, leadId)
+  }, [live, leadId])
 
   // the call ended: the CRM closes its row with what the phone saw, then the lead page opens the outcome drawer by
   // itself (only now — never while the call is on)
@@ -86,12 +84,14 @@ export function CrmPhone() {
       .catch(() => {})
   }, [ended, logCall, navigate, dispatch])
 
-  // picked up: open the caller's lead (once per call)
+  // picked up: open the caller's lead (once per call; a click-to-call's lead opens from the calling dock)
+  const inbound = phone.inCall?.kind === 'inbound' ? phone.inCall : null
+  const inboundLead = inbound ? (inbound.leadId ?? (caller && inbound.number === number ? caller.data.lead?._id : undefined)) : undefined
   useEffect(() => {
-    if (!phone.inCall || !lead || opened.current === phone.inCall.id) return
-    opened.current = phone.inCall.id
-    if (location.pathname !== leadPath(lead._id)) navigate(leadPath(lead._id))
-  }, [phone.inCall, lead, location.pathname, navigate])
+    if (!inbound || !inboundLead || opened.current === inbound.id) return
+    opened.current = inbound.id
+    if (location.pathname !== leadPath(inboundLead)) navigate(leadPath(inboundLead))
+  }, [inbound, inboundLead, location.pathname, navigate])
 
   return null // ringing: the cards bottom right (PhoneIncomingCards) · on a call: the calling dock (CallDock)
 }
@@ -127,7 +127,7 @@ function IncomingCard({ call }: { call: PhoneCall }) {
         <Button variant="danger" size="sm" onClick={() => decline(call.id)}>
           <PhoneOff className="h-4 w-4" /> Decline
         </Button>
-        <Button variant="success" size="sm" onClick={() => answer(call.id)} data-testid="phone-answer">
+        <Button variant="success" size="sm" onClick={() => answer(call.id, lead?._id)} data-testid="phone-answer">
           <Phone className="h-4 w-4" /> Answer
         </Button>
       </div>

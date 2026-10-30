@@ -1,63 +1,67 @@
 import { useState } from 'react'
-import { Download, ExternalLink, Loader2, Play } from 'lucide-react'
+import { Download, Loader2, Play } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '../../components/ui/Button'
 import { authorizedDownload, useAuthorizedObjectUrl } from '../../lib/download'
 import { cn, parseApiError } from '../../lib/utils'
+import { useFetchCallRecordingMutation } from '../../services/telephonyApi'
 
 /**
- * Plays a call recording: a "Play recording" button that fetches the protected file
- * (GET /calls/:id/proofs/:proofId) only when pressed, then an <audio> player. While the dialer's
- * download is still pending, admin-like users get the provider's own link instead.
+ * Plays a call recording in the CRM: a "Play recording" button that fetches the protected file
+ * (GET /calls/:id/proofs/:proofId) only when pressed, then an <audio> player. A recording the dialer has that the
+ * CRM has not copied yet (`pending`; the scheduler copies it a minute or two after the call) is copied when the
+ * button is pressed and plays here just the same — never a link out to the provider.
  */
 export function RecordingPlayer({
   callId,
   proofId,
   fileName,
-  fallbackUrl,
+  pending,
   compact,
   className,
 }: {
   callId: string
   proofId?: string | null
   fileName?: string
-  /** the provider's recording link (admin-like users only), used when the file is not downloaded yet */
-  fallbackUrl?: string | null
+  /** the dialer has a recording the CRM has not copied yet */
+  pending?: boolean
   compact?: boolean
   className?: string
 }) {
   const [open, setOpen] = useState(false)
-  const path = proofId ? `/calls/${callId}/proofs/${proofId}` : null
+  const [fetched, setFetched] = useState<{ id: string; fileName: string } | null>(null)
+  const [fetchRecording, { isLoading: copying }] = useFetchCallRecordingMutation()
+  const id = proofId ?? fetched?.id ?? null
+  const path = id ? `/calls/${callId}/proofs/${id}` : null
   const file = useAuthorizedObjectUrl(open ? path : null)
 
-  if (!proofId) {
-    if (!fallbackUrl) return null
-    return (
-      <a
-        href={fallbackUrl}
-        target="_blank"
-        rel="noreferrer"
-        className={cn('inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline', className)}
-        onClick={(e) => e.stopPropagation()}
-        data-testid="recording-provider-link"
-      >
-        <ExternalLink className="h-3 w-3" /> Open recording at the provider
-      </a>
-    )
-  }
+  if (!id && !pending) return null
   if (!open) {
+    const play = async () => {
+      if (!id) {
+        try {
+          const res = await fetchRecording(callId).unwrap()
+          setFetched({ id: res.data._id, fileName: res.data.fileName })
+        } catch (err) {
+          toast.error(parseApiError(err).message)
+          return
+        }
+      }
+      setOpen(true)
+    }
     return (
       <Button
         variant="ghost"
         size="sm"
         className={cn('h-7 px-2 text-brand-700', className)}
+        loading={copying}
         onClick={(e) => {
           e.stopPropagation()
-          setOpen(true)
+          void play()
         }}
         data-testid="play-recording"
       >
-        <Play className="h-3.5 w-3.5" /> Play recording
+        {!copying && <Play className="h-3.5 w-3.5" />} Play recording
       </Button>
     )
   }
@@ -76,7 +80,7 @@ export function RecordingPlayer({
           size="icon"
           title="Download recording"
           aria-label="Download recording"
-          onClick={() => authorizedDownload(`${path}?download=1`, fileName ?? 'recording.mp3').catch((e) => toast.error(parseApiError(e).message))}
+          onClick={() => authorizedDownload(`${path}?download=1`, fileName ?? fetched?.fileName ?? 'recording.mp3').catch((e) => toast.error(parseApiError(e).message))}
         >
           <Download className="h-3.5 w-3.5" />
         </Button>
