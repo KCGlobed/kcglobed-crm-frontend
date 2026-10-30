@@ -205,8 +205,8 @@ function OverviewTab({
                 {c.user?.name ?? (c.source === 'dialer' ? 'Dialer' : 'System')} · {formatDateTime(c.createdAt)}
               </p>
               {c.source === 'dialer' ? (
-                (c.recording || c.recordingUrl) && (
-                  <RecordingPlayer callId={c._id} proofId={c.recording?._id} fileName={c.recording?.fileName} fallbackUrl={c.recordingUrl} compact className="mt-1" />
+                (c.recording || c.recordingPending) && (
+                  <RecordingPlayer callId={c._id} proofId={c.recording?._id} fileName={c.recording?.fileName} pending={c.recordingPending} compact className="mt-1" />
                 )
               ) : (
                 (files || canReupload(c)) && (

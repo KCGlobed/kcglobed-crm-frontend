@@ -890,6 +890,8 @@ export interface CallLog {
   hangupCause?: string | null
   /** the provider's own recording link — only sent to admin-like users, as a fallback until the file is downloaded */
   recordingUrl?: string | null
+  /** the dialer has a recording the CRM has not copied yet: the player copies it when pressed */
+  recordingPending?: boolean
   customerNumber?: string | null
   agentNumber?: string | null
   dialerRefId?: string | null
@@ -1091,6 +1093,11 @@ export interface DialerProgress {
       round?: number
       /** on the call now: when they picked up (the live timer runs from it) */
       answeredAt?: string | null
+      /** its outcome was saved: the next call need not wait out the gap */
+      disposed?: boolean
+      outcome?: string | null
+      /** an outcome other than Not Connected, or a follow-up set: not called again in this run */
+      final?: boolean
     }[]
     round?: number
     rounds?: number
@@ -1729,6 +1736,21 @@ export interface DashboardRecentLead {
   createdAt: string
 }
 
+/** The call cards' figures (telephony call_activity): connected = the lead / caller picked up. */
+export interface CallActivity {
+  dialCalls: number
+  dialConnected: number
+  dialNotConnected: number
+  inbound: number
+  inboundAnswered: number
+  inboundMissed: number
+  calls: number
+  connected: number
+  connectRate: number
+  talktimeSeconds: number
+  avgTalkSeconds: number
+}
+
 export interface DashboardSummary {
   totals: {
     total: number
@@ -1749,6 +1771,8 @@ export interface DashboardSummary {
   byOwner: { _id: string; name: string; count: number }[]
   /** the eight newest leads in scope */
   recentLeads: DashboardRecentLead[]
+  /** admins: the calls of everyone they can see, today (the same figures as the Calls page each card opens) */
+  teamCallsToday?: CallActivity
   /** the signed-in employee's day: calls they logged, the sum of those calls' durations, and their breaks (a running
    * one up to now) (absent for Super Admin) */
   activityToday?: {

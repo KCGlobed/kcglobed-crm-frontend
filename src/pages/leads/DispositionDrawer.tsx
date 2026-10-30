@@ -187,8 +187,8 @@ export function DispositionDrawer({
                 {dialer.customerNumber ? ` · ${dialer.customerNumber}` : ''}
                 {dialer.hangupCause ? ` · ${dialer.hangupCause.toLowerCase().replace(/_/g, ' ')}` : ''}
               </p>
-              {(dialer.recording || dialer.recordingUrl) && (
-                <RecordingPlayer callId={dialer._id} proofId={dialer.recording?._id} fileName={dialer.recording?.fileName} fallbackUrl={dialer.recordingUrl} className="mt-2" />
+              {(dialer.recording || dialer.recordingPending) && (
+                <RecordingPlayer callId={dialer._id} proofId={dialer.recording?._id} fileName={dialer.recording?.fileName} pending={dialer.recordingPending} className="mt-2" />
               )}
               {manualDuration && (
                 <FormField

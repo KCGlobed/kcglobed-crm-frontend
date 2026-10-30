@@ -27,10 +27,14 @@ function cleanParams(params: Record<string, unknown>) {
   return Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''))
 }
 
+/** A dashboard call card's group of calls (the server's CALL_METRICS). */
+export type CallMetric = 'dial' | 'dial_connected' | 'dial_not_connected' | 'inbound' | 'inbound_answered' | 'inbound_missed' | 'connected' | 'not_connected'
+
 export interface CallLogParams {
   from?: string
   to?: string
   userId?: string
+  metric?: CallMetric
   direction?: string
   status?: string
   source?: string
@@ -73,7 +77,8 @@ export const telephonyApi = api.injectEndpoints({
       { leadId?: string; number?: string; direction: 'inbound' | 'outbound'; startedAt: string; answeredAt: string | null; endedAt: string }
     >({
       query: (body) => ({ url: '/telephony/calls/phone-log', method: 'POST', body }),
-      invalidatesTags: (res) => ['LiveCalls', ...(res?.data?.lead ? [{ type: 'LeadCalls' as const, id: res.data.lead._id }] : [])],
+      // 'Telephony': a progressive run reads the ended call at once
+      invalidatesTags: (res) => ['LiveCalls', 'Telephony', ...(res?.data?.lead ? [{ type: 'LeadCalls' as const, id: res.data.lead._id }] : [])],
     }),
     pickupCall: build.mutation<ApiResponse<{ callId: string; intercom: string }>, string>({
       query: (id) => ({ url: `/telephony/calls/${id}/pickup`, method: 'POST' }),
@@ -184,6 +189,11 @@ export const telephonyApi = api.injectEndpoints({
       query: (body) => ({ url: '/telephony/dialer/queue', method: 'POST', body }),
       invalidatesTags: ['Telephony'],
     }),
+    /** Copies a call's recording from the dialer now (the player was pressed before the scheduler copied it). */
+    fetchCallRecording: build.mutation<ApiResponse<{ _id: string; kind: string; fileName: string; contentType: string; size: number }>, string>({
+      query: (callId) => ({ url: `/telephony/calls/${callId}/recording`, method: 'POST' }),
+      invalidatesTags: ['LiveCalls', 'LeadCalls'],
+    }),
     dialerProgress: build.query<ApiResponse<DialerProgress>, void>({
       query: () => '/telephony/dialer/me/progress',
       providesTags: ['Telephony'],
@@ -203,6 +213,7 @@ export const {
   useDismissCallMutation,
   useAttachLeadMutation,
   usePickupCallMutation,
+  useFetchCallRecordingMutation,
   useLogPhoneCallMutation,
   useTelephonyEventsQuery,
   useRetryTelephonyEventMutation,

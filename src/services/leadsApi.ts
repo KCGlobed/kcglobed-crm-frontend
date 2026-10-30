@@ -169,7 +169,9 @@ export const leadsApi = api.injectEndpoints({
     }),
     saveDisposition: build.mutation<ApiResponse<{ callId: string | null; followUpId: string | null; lead: Lead }>, { id: string; body: Record<string, unknown> }>({
       query: ({ id, body }) => ({ url: `/leads/${id}/disposition`, method: 'POST', body }),
-      invalidatesTags: (_r, error, { id }) => (error ? [] : [...leadChanged(id), { type: 'LeadCalls', id }, { type: 'LeadNotes', id }, 'LeadMessages', 'LiveCalls']),
+      // 'Telephony': a progressive run sees the outcome at once and moves on to the next lead
+      invalidatesTags: (_r, error, { id }) =>
+        error ? [] : [...leadChanged(id), { type: 'LeadCalls', id }, { type: 'LeadNotes', id }, 'LeadMessages', 'LiveCalls', 'Telephony'],
     }),
     leadCalls: build.query<ApiResponse<CallLog[]>, string>({
       query: (id) => `/leads/${id}/calls`,
