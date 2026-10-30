@@ -294,7 +294,7 @@ function ringbackUntilAnswered(stream: MediaStream) {
     const wave = new Uint8Array(analyser.fftSize)
     const spectrum = new Float32Array(analyser.frequencyBinCount)
     const hz = c.sampleRate / analyser.fftSize
-    const recent: boolean[] = [] // the last 1.5 s: was it a voice?
+    const recent: { voice: boolean; at: number }[] = [] // the last 1.5 s: was it a voice, and when
     if (level !== null) window.clearInterval(level)
     level = window.setInterval(() => {
       if (state.inCall?.id !== callId || !state.inCall.calling) {
@@ -310,20 +310,24 @@ function ringbackUntilAnswered(stream: MediaStream) {
         analyser.getFloatFrequencyData(spectrum)
         voice = !isRingingTone(spectrum, hz)
       }
-      recent.push(voice)
+      recent.push({ voice, at: Date.now() })
       if (recent.length > 10) recent.shift()
-      if (recent.filter(Boolean).length >= 4 || Date.now() > until) leadAnswered()
+      const heard = recent.filter((r) => r.voice)
+      // the timer starts from the first word heard, not from when enough of the voice was heard to be sure
+      if (heard.length >= 4) leadAnswered(heard[0].at)
+      else if (Date.now() > until) leadAnswered()
     }, 150)
   } catch {
     window.setTimeout(() => state.inCall?.id === callId && leadAnswered(), 15_000)
   }
 }
 
-function leadAnswered() {
+/** `at`: when their voice was first heard (the pick-up), so the talk timer does not start late. */
+function leadAnswered(at = Date.now()) {
   stopTone()
   if (state.inCall?.calling) {
     note('the other side is on the line')
-    set({ inCall: { ...state.inCall, calling: false, since: Date.now(), answeredAt: Date.now() } })
+    set({ inCall: { ...state.inCall, calling: false, since: at, answeredAt: at } })
   }
 }
 

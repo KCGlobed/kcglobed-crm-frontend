@@ -1,10 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Download, Loader2, Play } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '../../components/ui/Button'
 import { authorizedDownload, useAuthorizedObjectUrl } from '../../lib/download'
 import { cn, parseApiError } from '../../lib/utils'
 import { useFetchCallRecordingMutation } from '../../services/telephonyApi'
+import { SettlingBadge } from './SettlingBadge'
+
+const FETCH_TRIES = 6
+const FETCH_EVERY_MS = 15_000
 
 /**
  * Plays a call recording in the CRM: a "Play recording" button that fetches the protected file
@@ -30,38 +34,58 @@ export function RecordingPlayer({
 }) {
   const [open, setOpen] = useState(false)
   const [fetched, setFetched] = useState<{ id: string; fileName: string } | null>(null)
-  const [fetchRecording, { isLoading: copying }] = useFetchCallRecordingMutation()
+  const [gaveUp, setGaveUp] = useState(false)
+  const [fetchRecording] = useFetchCallRecordingMutation()
   const id = proofId ?? fetched?.id ?? null
   const path = id ? `/calls/${callId}/proofs/${id}` : null
   const file = useAuthorizedObjectUrl(open ? path : null)
 
-  if (!id && !pending) return null
-  if (!open) {
-    const play = async () => {
-      if (!id) {
-        try {
-          const res = await fetchRecording(callId).unwrap()
-          setFetched({ id: res.data._id, fileName: res.data.fileName })
-        } catch (err) {
-          toast.error(parseApiError(err).message)
-          return
-        }
-      }
-      setOpen(true)
+  // a recording the CRM has not copied yet: fetched in the background (nothing waits for it), a few times while the
+  // dialer is still preparing it; "Fetching the recording…" until then
+  const fetchNow = !id && !!pending
+  useEffect(() => {
+    if (!fetchNow) return
+    let stopped = false
+    let timer: number | undefined
+    let tries = 0
+    const attempt = () => {
+      fetchRecording(callId)
+        .unwrap()
+        .then((res) => !stopped && setFetched({ id: res.data._id, fileName: res.data.fileName }))
+        .catch(() => {
+          if (stopped) return
+          if (++tries < FETCH_TRIES) timer = window.setTimeout(attempt, FETCH_EVERY_MS)
+          else setGaveUp(true)
+        })
     }
+    attempt()
+    return () => {
+      stopped = true
+      window.clearTimeout(timer)
+    }
+  }, [fetchNow, callId, fetchRecording])
+
+  if (!id && !pending) return null
+  if (!id) {
+    return gaveUp ? (
+      <span className={cn('text-[11px] text-slate-400', className)}>Recording not available yet</span>
+    ) : (
+      <SettlingBadge label="Fetching the recording…" className={className} />
+    )
+  }
+  if (!open) {
     return (
       <Button
         variant="ghost"
         size="sm"
         className={cn('h-7 px-2 text-brand-700', className)}
-        loading={copying}
         onClick={(e) => {
           e.stopPropagation()
-          void play()
+          setOpen(true)
         }}
         data-testid="play-recording"
       >
-        {!copying && <Play className="h-3.5 w-3.5" />} Play recording
+        <Play className="h-3.5 w-3.5" /> Play recording
       </Button>
     )
   }
