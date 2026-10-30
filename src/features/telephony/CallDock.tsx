@@ -70,34 +70,30 @@ const SUMMARY: { status: DialerProgressStatus[]; label: string; tone: Tone }[] =
 const FINISHED: DialerProgressStatus[] = ['answered', 'not_answered', 'busy', 'failed', 'error', 'skipped']
 const LIVE_PHASES: CallPhase[] = ['dialing', 'ringing_agent', 'ringing_customer', 'connected']
 const COLLAPSE_KEY = 'crm.progressive.collapsed'
-const SIZE_KEY = 'crm.progressive.size'
+const SIZE_KEY = 'crm.progressive.width'
+const COMPACT = 'h-7 gap-1 px-2 text-xs' // the dock's buttons: small enough to fit (and wrap) on a narrow dock
 const leadPath = (leadId: string) => `/app/leads/${leadId}`
 /** Opening a lead from the dock: just the lead — its outcome drawer does not pop up for a call already over. */
 const quietly = () => ({ state: { quietOutcomeSince: Date.now() } })
 
-/** The dock's size, set by dragging its edges (null = the default). Never narrower than the sidebar. */
-type Size = { w: number; h: number }
+/** The dock's width, set by dragging its right edge (null = the default). Never narrower than the sidebar. */
 const MIN_W = 240 // the sidebar's width (lg:w-60)
-const MIN_H = 180
 const DEFAULT_W = 320
-const fit = (s: Size): Size => ({
-  w: Math.round(Math.min(Math.max(s.w, MIN_W), window.innerWidth - 32)),
-  h: Math.round(Math.min(Math.max(s.h, MIN_H), window.innerHeight - 32)),
-})
-const readSize = (): Size | null => {
+const fitWidth = (w: number) => Math.round(Math.min(Math.max(w, MIN_W), window.innerWidth - 32))
+const readWidth = (): number | null => {
   try {
-    const s = JSON.parse(localStorage.getItem(SIZE_KEY) || 'null') as Size | null
-    return s && s.w > 0 && s.h > 0 ? fit(s) : null
+    const w = Number(localStorage.getItem(SIZE_KEY))
+    return w > 0 ? fitWidth(w) : null
   } catch {
     return null
   }
 }
-const saveSize = (s: Size | null) => {
+const saveWidth = (w: number | null) => {
   try {
-    if (s) localStorage.setItem(SIZE_KEY, JSON.stringify(s))
+    if (w) localStorage.setItem(SIZE_KEY, String(w))
     else localStorage.removeItem(SIZE_KEY)
   } catch {
-    // storage blocked — the size lasts for this page only
+    // storage blocked — the width lasts for this page only
   }
 }
 
@@ -141,7 +137,7 @@ export function CallDock() {
   const [offset, setOffset] = useState(CORNER)
   const [tabOffset, setTabOffset] = useState(CORNER)
   const panelRef = useRef<HTMLElement>(null)
-  const [size, setSize] = useState<Size | null>(readSize)
+  const [width, setWidth] = useState<number | null>(readWidth)
   const tabRef = useRef<HTMLButtonElement>(null)
   const dragged = useRef(false)
   const { data } = useDialerProgressQuery(undefined, { skip: !dialerOn, pollingInterval: dialerOn ? 3000 : 0 })
@@ -306,31 +302,30 @@ export function CallDock() {
   }
   const resetPosition = () => setOffset(CORNER)
 
-  // resize by the top edge (height), the right edge (width) or the top-right corner (both): the dock sits in the
-  // bottom-left corner, so it grows up and to the right; a double-click on an edge puts the default size back
-  const startResize = (e: ReactPointerEvent, axis: { x: boolean; y: boolean }) => {
+  // wider / narrower by the right edge (the height follows its content); a double-click puts the default width back
+  const startResize = (e: ReactPointerEvent) => {
     if (e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
     const rect = panelRef.current?.getBoundingClientRect()
     if (!rect) return
-    const start = { px: e.clientX, py: e.clientY, w: rect.width, h: rect.height }
-    let last: Size = { w: start.w, h: start.h }
+    const start = { px: e.clientX, w: rect.width }
+    let last = start.w
     const move = (ev: PointerEvent) => {
-      last = fit({ w: axis.x ? start.w + (ev.clientX - start.px) : start.w, h: axis.y ? start.h - (ev.clientY - start.py) : start.h })
-      setSize(last)
+      last = fitWidth(start.w + (ev.clientX - start.px))
+      setWidth(last)
     }
     const up = () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
-      saveSize(last)
+      saveWidth(last)
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
   }
-  const resetSize = () => {
-    setSize(null)
-    saveSize(null)
+  const resetWidth = () => {
+    setWidth(null)
+    saveWidth(null)
   }
 
   // it opens in the bottom-left corner every time: a drag moves it only while it is open
@@ -374,38 +369,16 @@ export function CallDock() {
   return (
     <aside
       ref={panelRef}
-      style={{
-        transform: `translate(${offset.x}px, ${offset.y}px)`,
-        width: size?.w ?? DEFAULT_W,
-        minWidth: MIN_W,
-        ...(size ? { height: size.h, maxHeight: 'calc(100vh - 2rem)' } : {}),
-      }}
-      className={cn(
-        'fixed bottom-4 left-4 z-[55] flex max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl',
-        !size && 'max-h-[min(32rem,calc(100vh-6rem))]'
-      )}
+      style={{ transform: `translate(${offset.x}px, ${offset.y}px)`, width: width ?? DEFAULT_W, minWidth: MIN_W }}
+      className="fixed bottom-4 left-4 z-[55] flex max-h-[min(32rem,calc(100vh-6rem))] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
       data-testid="call-dock"
     >
-      {/* resize: top edge = height, right edge = width, top-right corner = both */}
+      {/* the right edge: drag for a wider / narrower dock */}
       <div
-        className="absolute inset-x-3 top-0 z-10 h-1.5 cursor-ns-resize touch-none hover:bg-brand-200/70"
-        onPointerDown={(e) => startResize(e, { x: false, y: true })}
-        onDoubleClick={resetSize}
-        title="Drag to resize · double-click for the default size"
-        aria-hidden
-      />
-      <div
-        className="absolute inset-y-3 right-0 z-10 w-1.5 cursor-ew-resize touch-none hover:bg-brand-200/70"
-        onPointerDown={(e) => startResize(e, { x: true, y: false })}
-        onDoubleClick={resetSize}
-        title="Drag to resize · double-click for the default size"
-        aria-hidden
-      />
-      <div
-        className="absolute right-0 top-0 z-20 h-3 w-3 cursor-nesw-resize touch-none rounded-tr-xl hover:bg-brand-300/80"
-        onPointerDown={(e) => startResize(e, { x: true, y: true })}
-        onDoubleClick={resetSize}
-        title="Drag to resize · double-click for the default size"
+        className="absolute inset-y-3 right-0 z-10 w-1.5 cursor-ew-resize touch-none rounded hover:bg-brand-200/70"
+        onPointerDown={startResize}
+        onDoubleClick={resetWidth}
+        title="Drag to change the width · double-click for the default"
         aria-hidden
       />
       <div
@@ -461,22 +434,22 @@ export function CallDock() {
             </div>
             {talk && <span className="font-mono text-base font-semibold tabular-nums text-emerald-700">{talk}</span>}
           </div>
-          <div className="mt-2.5 flex items-center gap-2">
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
             {phone.inCall && (
-              <Button size="sm" variant={phone.inCall.muted ? 'secondary' : 'outline'} title={phone.inCall.muted ? 'Unmute' : 'Mute'} onClick={toggleMute}>
+              <Button size="sm" className={COMPACT} variant={phone.inCall.muted ? 'secondary' : 'outline'} title={phone.inCall.muted ? 'Unmute' : 'Mute'} onClick={toggleMute}>
                 {phone.inCall.muted ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
                 {phone.inCall.muted ? 'Unmute' : 'Mute'}
               </Button>
             )}
             {current.leadId && location.pathname !== leadPath(current.leadId) && (
-              <Button size="sm" variant="outline" onClick={() => navigate(leadPath(current.leadId!), quietly())}>
+              <Button size="sm" className={COMPACT} variant="outline" onClick={() => navigate(leadPath(current.leadId!), quietly())}>
                 <ExternalLink className="h-3.5 w-3.5" /> Lead
               </Button>
             )}
             <Button
               size="sm"
               variant="danger"
-              className="ml-auto"
+              className={cn(COMPACT, 'ml-auto')}
               loading={ending || hangingUp}
               onClick={endCall}
               title={current.state === 'line' ? 'Ends your dialer line' : 'End this call'}
@@ -515,11 +488,11 @@ export function CallDock() {
               <p className="text-xs text-brand-800">
                 Next call in <b className="font-mono text-base tabular-nums">{secondsLeft}s</b> — save the outcome meanwhile
               </p>
-              <div className="mt-2 flex gap-2">
-                <Button size="sm" onClick={resume}>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <Button size="sm" className={COMPACT} onClick={resume}>
                   <PhoneForwarded className="h-3.5 w-3.5" /> Call next now
                 </Button>
-                <Button size="sm" variant="outline" onClick={pause}>
+                <Button size="sm" className={COMPACT} variant="outline" onClick={pause}>
                   <Pause className="h-3.5 w-3.5" /> Pause
                 </Button>
               </div>
@@ -570,14 +543,14 @@ export function CallDock() {
           </ul>
 
           {!run.done && !nextAt && (
-            <div className="flex items-center justify-between gap-2 border-t border-slate-200 px-3 py-2">
-              <span className="text-[11px] text-slate-500">{paused ? 'Paused — no new calls' : current ? 'Next lead after this call' : 'Calling the next lead…'}</span>
+            <div className="flex flex-wrap items-center justify-between gap-1.5 border-t border-slate-200 px-3 py-2">
+              <span className="min-w-0 text-[11px] text-slate-500">{paused ? 'Paused — no new calls' : current ? 'Next lead after this call' : 'Calling the next lead…'}</span>
               {paused ? (
-                <Button size="sm" onClick={resume}>
+                <Button size="sm" className={COMPACT} onClick={resume}>
                   <Play className="h-3.5 w-3.5" /> {run.auto === false && control?.at !== run.at ? 'Start' : 'Resume'}
                 </Button>
               ) : (
-                <Button size="sm" variant="ghost" onClick={pause}>
+                <Button size="sm" className={COMPACT} variant="ghost" onClick={pause}>
                   <Pause className="h-3.5 w-3.5" /> Pause
                 </Button>
               )}

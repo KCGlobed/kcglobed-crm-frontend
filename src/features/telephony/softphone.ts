@@ -270,15 +270,19 @@ function isRingingTone(spectrum: Float32Array, hz: number): boolean {
   }
   let near = 0
   for (let i = Math.max(from, peak - Math.round(130 / hz)); i <= Math.min(to, peak + Math.round(130 / hz)); i++) near += 10 ** (spectrum[i] / 10)
-  return all <= 0 || near / all > 0.7
+  return all <= 0 || near / all > 0.85 // a ringing tone is ~95% there; a deep voice can reach ~70%
 }
 
 const ANSWER_FALLBACK_MS = 60_000
+// Indian ringing: 0.4 s on, 0.2 s off, 0.4 s on, 2 s off — heard, then silent for longer than that: someone picked up
+const RINGING_STOPPED_MS = 3500
+const LOUD = 0.012 // the quietest sound counted (telephone audio is quiet)
 
 /**
- * A call the CRM placed: "Ringing" until the lead's side speaks. Smartflo already plays the lead's ringing (or their
+ * A call the CRM placed: "Ringing" until the lead picks up — their voice is heard, or the ringing they hear stops
+ * for longer than its own pause (they may pick up and say nothing yet). Smartflo already plays the lead's ringing (or their
  * caller tune) down this line — seen live: any sound at all counted the call as picked up 3–5 s after the click —
- * so no ringback of our own, and only a voice counts as the pick-up. This drives only the live timer and opening the
+ * so no ringback of our own, and the ringing itself never counts as the pick-up. This drives only the live timer and opening the
  * lead: whether the lead picked up, and the talk time, come from Smartflo's call record.
  */
 function ringbackUntilAnswered(stream: MediaStream) {
@@ -295,6 +299,8 @@ function ringbackUntilAnswered(stream: MediaStream) {
     const spectrum = new Float32Array(analyser.frequencyBinCount)
     const hz = c.sampleRate / analyser.fftSize
     const recent: { voice: boolean; at: number }[] = [] // the last 1.5 s: was it a voice, and when
+    let rings = 0 // ringing-tone frames heard
+    let lastRing = 0 // when the ringing was last heard
     if (level !== null) window.clearInterval(level)
     level = window.setInterval(() => {
       if (state.inCall?.id !== callId || !state.inCall.calling) {
@@ -305,17 +311,23 @@ function ringbackUntilAnswered(stream: MediaStream) {
       analyser.getByteTimeDomainData(wave)
       let sum = 0
       for (const v of wave) sum += ((v - 128) / 128) ** 2
+      const now = Date.now()
       let voice = false
-      if (Math.sqrt(sum / wave.length) > 0.02) {
+      if (Math.sqrt(sum / wave.length) > LOUD) {
         analyser.getFloatFrequencyData(spectrum)
-        voice = !isRingingTone(spectrum, hz)
+        if (isRingingTone(spectrum, hz)) {
+          rings += 1
+          lastRing = now
+        } else voice = true
       }
-      recent.push({ voice, at: Date.now() })
+      recent.push({ voice, at: now })
       if (recent.length > 10) recent.shift()
       const heard = recent.filter((r) => r.voice)
       // the timer starts from the first word heard, not from when enough of the voice was heard to be sure
-      if (heard.length >= 4) leadAnswered(heard[0].at)
-      else if (Date.now() > until) leadAnswered()
+      if (heard.length >= 3) leadAnswered(heard[0].at)
+      // the ringing was heard and has stopped for longer than its own pause: picked up, even before they speak
+      else if (rings >= 3 && now - lastRing > RINGING_STOPPED_MS) leadAnswered(lastRing + 300)
+      else if (now > until) leadAnswered()
     }, 150)
   } catch {
     window.setTimeout(() => state.inCall?.id === callId && leadAnswered(), 15_000)

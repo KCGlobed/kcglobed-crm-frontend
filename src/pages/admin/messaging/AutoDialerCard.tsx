@@ -21,7 +21,7 @@ import type { DialerConfig, DialerOverview } from '../../../types/models'
 const NUMBER_FIELDS: { key: keyof DialerConfig; label: string; hint: string }[] = [
   { key: 'retries', label: 'Retries', hint: 'unanswered leads are tried again' },
   { key: 'retryAfterMinutes', label: 'Retry after (min)', hint: '' },
-  { key: 'wrapUpSeconds', label: 'Gap before next call (s)', hint: 'Progressive call: seconds after a call ends (to save its outcome) before the next lead is called — 15 by default' },
+  { key: 'wrapUpSeconds', label: 'Gap before next call (s)', hint: 'Progressive call: the most it waits after a call (to save its outcome) before the next lead — 45 by default; saving the outcome sooner calls the next lead at once' },
   { key: 'redialRounds', label: 'Call again (rounds)', hint: 'progressive call: once every lead was called, the ones who did not pick up are called again (0 = off)' },
   { key: 'ringTimeout', label: 'Ring time (s)', hint: '' },
 ]
