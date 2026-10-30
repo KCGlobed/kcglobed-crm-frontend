@@ -1740,21 +1740,6 @@ export interface DashboardRecentLead {
   createdAt: string
 }
 
-/** The call cards' figures (telephony call_activity): connected = the lead / caller picked up. */
-export interface CallActivity {
-  dialCalls: number
-  dialConnected: number
-  dialNotConnected: number
-  inbound: number
-  inboundAnswered: number
-  inboundMissed: number
-  calls: number
-  connected: number
-  connectRate: number
-  talktimeSeconds: number
-  avgTalkSeconds: number
-}
-
 export interface DashboardSummary {
   totals: {
     total: number
@@ -1775,8 +1760,6 @@ export interface DashboardSummary {
   byOwner: { _id: string; name: string; count: number }[]
   /** the eight newest leads in scope */
   recentLeads: DashboardRecentLead[]
-  /** admins: the calls of everyone they can see, today (the same figures as the Calls page each card opens) */
-  teamCallsToday?: CallActivity
   /** the signed-in employee's day: calls they logged, the sum of those calls' durations, and their breaks (a running
    * one up to now) (absent for Super Admin) */
   activityToday?: {
