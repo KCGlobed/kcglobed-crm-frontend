@@ -56,7 +56,6 @@ import { formatHms } from '../../lib/durations'
 import { CallButton } from '../../features/telephony/CallButton'
 import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
 import { SettlingBadge } from '../../features/telephony/SettlingBadge'
-import { markOutcomeShown, outcomeShown } from '../../features/telephony/outcomeOnce'
 import { OPEN_DISPOSITION_EVENT, type OpenDispositionDetail } from '../../features/telephony/events'
 import { isFinalStatus, statusLabel, statusTone } from '../../features/telephony/callState'
 import { useLiveCalls, useStartCall } from '../../features/telephony/useLiveCalls'
@@ -416,9 +415,8 @@ export default function LeadDetailPage() {
   const lead = data?.data
   const canEdit = can(user, 'leads', 'edit')
 
-  // --- dialer: the outcome drawer for a call that ended — asked for by ?disposition=<callId> (a notification,
-  // the popover from another page), by the popover's button on this page (window event), or found by the
-  // live feed (a pending outcome of this lead) — and ?dial=1 from the "Start calling" list
+  // --- dialer: the outcome drawer for a call (only ever by the window event, nothing opens it by itself), and
+  // ?dial=1 from the "Start calling" list
   const { pending, enabled: dialerEnabled } = useLiveCalls()
   // on a call in the CRM phone: the lead page stays as it is; the outcome opens once the call ends
   const { startCall } = useStartCall()
@@ -435,34 +433,21 @@ export default function LeadDetailPage() {
     (callId: string): CallLog | undefined => pending.find((c) => c._id === callId) ?? callRows?.data.find((c) => c._id === callId),
     [pending, callRows]
   )
-  // the outcome drawer opens by itself only once per call — when that call ends (the CRM phone opens this page with
-  // ?disposition=<call>); opening the lead never opens it, and a call it already opened for never opens it again.
-  // It shows the call as it is now (its result arrives after the call ends), not as it was when opened.
-  const openDialer = modal === 'dialer' && dialerCall ? (findCall(dialerCall._id) ?? dialerCall) : null
+  // the outcome drawer never opens by itself. It shows the call as it is now, not as it was when opened.
+  const dialerNow = dialerCall ? findCall(dialerCall._id) : undefined
+  const openDialer = modal === 'dialer' && dialerCall ? (dialerNow && isFinalStatus(dialerNow.status) ? dialerNow : dialerCall) : null
   const close = () => {
     setModal(null)
     setDialerCall(null)
   }
-  const [urlCallDone, setUrlCallDone] = useState<string | null>(null) // the ?disposition call already handled
-  const urlCall = requestedCallId && lead ? findCall(requestedCallId) : undefined
-  if (requestedCallId && lead && requestedCallId !== urlCallDone && (urlCall || callRows)) {
-    setUrlCallDone(requestedCallId)
-    // `again=1`: asked for by a click (a notification) — opens even for a call it opened for before
-    if (urlCall && canEdit && isFinalStatus(urlCall.status) && (!outcomeShown(urlCall._id) || searchParams.get('again') === '1')) {
-      markOutcomeShown(urlCall._id)
-      setDialerCall(urlCall)
-      setModal('dialer')
-    }
-  }
-  // the URL parameter has done its job once the call is known (or cannot be found in the loaded calls)
+  // an older link asking for a call's outcome (?disposition=): just the lead
   useEffect(() => {
-    if (!requestedCallId || requestedCallId !== urlCallDone) return
+    if (!requestedCallId) return
     const next = new URLSearchParams(searchParams)
     next.delete('disposition')
     next.delete('again')
     setSearchParams(next, { replace: true })
-    if (urlCall && !isFinalStatus(urlCall.status)) toast.message('The call is still in progress — its outcome can be saved once it ends')
-  }, [requestedCallId, urlCallDone, urlCall, searchParams, setSearchParams])
+  }, [requestedCallId, searchParams, setSearchParams])
   useEffect(() => {
     if (searchParams.get('dial') !== '1' || !lead || dialled.current) return
     const next = new URLSearchParams(searchParams)

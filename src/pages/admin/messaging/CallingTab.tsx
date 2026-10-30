@@ -11,12 +11,14 @@ import {
   RotateCw,
   Save,
   UserPlus,
+  UserX,
   XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import dayjs from 'dayjs'
 import {
   useApplyTelephonyRoutingMutation,
+  useDialerAgentActionMutation,
   useProvisionTelephonyAgentMutation,
   useRetryTelephonyEventMutation,
   useSyncTelephonyAgentsMutation,
@@ -31,7 +33,7 @@ import { useUpdateUserMutation } from '../../../services/adminApi'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { Input, Select } from '../../../components/ui/fields'
-import { EmptyState, Skeleton } from '../../../components/ui/feedback'
+import { ConfirmDialog, EmptyState, Skeleton } from '../../../components/ui/feedback'
 import { Card } from '../../../components/ui/misc'
 import { cn, formatDateTime, parseApiError } from '../../../lib/utils'
 import { CallLog } from '../../../features/telephony/CallLog'
@@ -197,6 +199,18 @@ function AgentRow({ agent }: { agent: TelephonyAgentRow }) {
   const [number, setNumber] = useState(agent.telephonyAgentNumber ?? '')
   const [update, { isLoading: saving }] = useUpdateUserMutation()
   const [provision, { isLoading: creating }] = useProvisionTelephonyAgentMutation()
+  const [dialerAction, { isLoading: deleting }] = useDialerAgentActionMutation()
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const removeFromSmartflo = async () => {
+    try {
+      await dialerAction({ userId: agent._id, action: 'remove' }).unwrap()
+      toast.success(`${agent.name}: deleted from Smartflo — the seat is free`)
+      setConfirmDelete(false)
+    } catch (err) {
+      setConfirmDelete(false)
+      toast.error(parseApiError(err).message)
+    }
+  }
   const dirty = agentId !== (agent.telephonyAgentId ?? '') || number !== (agent.telephonyAgentNumber ?? '')
   const save = async () => {
     try {
@@ -248,7 +262,22 @@ function AgentRow({ agent }: { agent: TelephonyAgentRow }) {
               <UserPlus className="h-3.5 w-3.5" /> Create in Smartflo
             </Button>
           )}
+          {agent.smartflo && (
+            <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50" title="Delete their Smartflo user (frees the calling seat)" onClick={() => setConfirmDelete(true)}>
+              <UserX className="h-3.5 w-3.5" /> Delete from Smartflo
+            </Button>
+          )}
         </div>
+        <ConfirmDialog
+          open={confirmDelete}
+          onClose={() => setConfirmDelete(false)}
+          onConfirm={() => void removeFromSmartflo()}
+          loading={deleting}
+          title={`Delete ${agent.name} from Smartflo?`}
+          message={`Their Smartflo user is deleted and its calling seat is freed. ${agent.name} cannot call from the CRM until you Turn on again (that creates a new Smartflo user and keeps their lead list, campaign and number).`}
+          confirmLabel="Delete from Smartflo"
+          danger
+        />
       </td>
     </tr>
   )
