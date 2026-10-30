@@ -297,9 +297,63 @@ const STATUS_TILES: { key: DashboardStatusTile['key']; label: string; icon: Luci
   { key: 'enrolled', label: 'Enrolled', icon: GraduationCap, accent: 'green' },
 ]
 
-/** The two stages a lead sits on until a call gets through; every other stage counts as Connected. */
+/**
+ * Not Connected = the leads a call never got through to: these two stages, plus the Closed leads who stopped
+ * answering (the sub-stage below). Every other lead counts as Connected.
+ */
 const UNTOUCHED_STAGE = 'Untouched'
 const NOT_CONNECTED_STAGE = 'Not Connected'
+const CLOSED_STAGE = 'Closed'
+const STOPPED_ANSWERING_SUB = 'Stopped answering after counselling (5-7 attempts)'
+
+/** The period's Not Connected figure (undefined while it loads) and the lists both cards open. */
+interface NotConnected {
+  count?: number
+  loading: boolean
+  params: ListParams
+  /** the Connected leads: on neither stage and not stopped answering */
+  connectedParams: ListParams
+}
+
+/**
+ * Not Connected for the period: the two stages' rows plus the Closed leads who stopped answering — a sub-stage, so
+ * counted off the list within the period's bounds (the stage rows count whole stages); 0 for what Masters lacks.
+ */
+function useNotConnected(masters: Stage[] | undefined, stages: BarItem[] | undefined, bounds: DateBounds | undefined, range: ListParams): NotConnected {
+  const closed = masters?.find((s) => s.isActive !== false && nameKey(s.name) === nameKey(CLOSED_STAGE))
+  const sub = closed?.subStages?.find((s) => s.isActive && nameKey(s.name) === nameKey(STOPPED_ANSWERING_SUB))
+  const stopped = useLeadCount(closed && sub ? { stage: closed._id, sub_stage: sub._id, ...(bounds ?? {}) } : undefined)
+  const stoppedCount = sub ? stopped.count : 0
+  const rows = [NOT_CONNECTED_STAGE, UNTOUCHED_STAGE].map((name) => stages?.find((s) => nameKey(s.name) === nameKey(name)))
+  const ids = rows.flatMap((r) => (r ? [r.id] : []))
+  const onStages = ids.length ? [{ field: 'stage', op: 'any_of', value: ids }] : []
+  const onStopped = sub ? [{ field: 'subStage', op: 'any_of', value: [sub._id] }] : []
+  const not = (conditions: object[]) => conditions.map((c) => ({ ...c, op: 'none_of' }))
+  return {
+    count: stages && stoppedCount !== undefined ? rows.reduce((n, r) => n + (r?.count ?? 0), 0) + stoppedCount : undefined,
+    loading: stopped.loading,
+    // on one of the stages, or on the stopped-answering sub-stage (an OR group)
+    params: { ...range, filters: JSON.stringify([{ any: [...onStages, ...onStopped] }]) },
+    connectedParams: { ...range, filters: JSON.stringify([...not(onStages), ...not(onStopped)]) },
+  }
+}
+
+/** The Not Connected card, the same on both dashboards. */
+function NotConnectedCard({ notConnected, total, loading, onOpen }: { notConnected: NotConnected; total?: number; loading: boolean; onOpen: (params: ListParams) => void }) {
+  const { count, params } = notConnected
+  return (
+    <KpiCard
+      label="Not Connected"
+      value={count}
+      progress={share(count, total)}
+      hint="Not connected, untouched or stopped answering"
+      icon={PhoneOff}
+      color={STAGE_COLORS[NOT_CONNECTED_STAGE]}
+      loading={loading || notConnected.loading}
+      onClick={count ? () => onOpen(params) : undefined}
+    />
+  )
+}
 
 /** The counsellor's stage cards on the second row, in display order. */
 const MY_LEADS_STAGES: { name: string; icon: LucideIcon }[] = [
@@ -314,14 +368,15 @@ const MY_LEADS_STAGES: { name: string; icon: LucideIcon }[] = [
  * as the admin's Leads section, two rows of four: Total / Connected / Not Connected /
  * Untouched, then Interested / Not Interested / Registration & Fee / Enrolled; then today's
  * calling activity. Every figure comes from the page's stage rows for the period (the
- * Stage Distribution data): Connected is every stage but Untouched and Not Connected, and
- * Total is Connected + Not Connected + Untouched. Replaces the admin's Leads / Lead Status
- * / Pipeline cards.
+ * Stage Distribution data) plus the stopped-answering count: Total is every lead, Not
+ * Connected is Untouched + Not Connected + the Closed leads who stopped answering, and
+ * Connected is the rest. Replaces the admin's Leads / Lead Status / Pipeline cards.
  */
 function CounsellorCards({
   summary,
   period: state,
   stages,
+  notConnected,
   stagesLoading,
   loading,
   onOpen,
@@ -330,22 +385,15 @@ function CounsellorCards({
   period: PeriodState
   /** the period's lead count on every stage (plus "No stage"), undefined while they load */
   stages?: BarItem[]
+  notConnected: NotConnected
   stagesLoading: boolean
   loading: boolean
   onOpen: (params: ListParams) => void
 }) {
   const { key, setKey, custom, setCustom, range, hint } = state
   const stageOf = (name: string) => stages?.find((s) => nameKey(s.name) === nameKey(name))
-  const untouched = stageOf(UNTOUCHED_STAGE)
-  const notConnected = stageOf(NOT_CONNECTED_STAGE)
-  const count = (rows?: BarItem[]) => rows?.reduce((n, r) => n + r.count, 0)
-  const connected = count(stages?.filter((s) => s !== untouched && s !== notConnected))
-  const total = connected === undefined ? undefined : connected + (notConnected?.count ?? 0) + (untouched?.count ?? 0)
-  // Connected opens the leads on any stage but those two (a stage with no leads needs no excluding)
-  const notCalled = [untouched, notConnected].flatMap((s) => (s?.count ? [s.id] : []))
-  const connectedParams: ListParams = notCalled.length
-    ? { ...range, filters: JSON.stringify([{ field: 'stage', op: 'none_of', value: notCalled }]) }
-    : range
+  const total = stages?.reduce((n, r) => n + r.count, 0)
+  const connected = total === undefined || notConnected.count === undefined ? undefined : total - notConnected.count
   const busy = loading || stagesLoading || !stages
   /** a card for a stage row: its count (0 when the stage has no row), opening its leads */
   const stageCard = (name: string, icon: LucideIcon, accent?: KpiAccent) => {
@@ -402,10 +450,10 @@ function CounsellorCards({
             icon={PhoneCall}
             accent="leaf"
             loading={busy}
-            onClick={connected ? () => onOpen(connectedParams) : undefined}
+            onClick={connected ? () => onOpen(notConnected.connectedParams) : undefined}
           />
           {/* Not Connected takes its palette amber; Untouched, outside the palette, a blue of its own */}
-          {stageCard(NOT_CONNECTED_STAGE, PhoneOff, 'red')}
+          <NotConnectedCard notConnected={notConnected} total={total} loading={busy} onOpen={onOpen} />
           {stageCard(UNTOUCHED_STAGE, CircleDashed, 'azure')}
           {MY_LEADS_STAGES.map((s) => stageCard(s.name, s.icon))}
         </div>
@@ -482,8 +530,8 @@ const FUNNEL_STEPS: { label: string; stages: string[]; subStages?: string[] }[] 
   { label: 'Interested', stages: ['Interested'] },
   // a step up from Interested: the Interested leads on its Interview Preparation sub-stage
   { label: 'Interview Preparation', stages: ['Interested'], subStages: ['Interview Preparation'] },
-  // a step up from Interview: the leads who cleared it
-  { label: 'Interview Done', stages: ['Interview'], subStages: ['Interview Cleared'] },
+  // a step up from Interview: the leads who cleared the technical interview (the prescreening is not "done")
+  { label: 'Interview Done', stages: ['Interview'], subStages: ['Technical Interview Cleared'] },
   { label: 'Registration Fees', stages: ['Registration Fees', 'Registration Fees Done', 'Registration & Fee'] },
   // the program fees stage, every sub-stage (direct payment, loan, part EMI)
   { label: 'Banking/Payment', stages: ['Program Fees – Payment Stages', 'Program Fees Payment', 'Banking/Payment', 'Banking', 'Payment'] },
@@ -870,6 +918,8 @@ export default function DashboardPage() {
       return { id: s._id ?? 'none', name: s.name, count: s.count, color: stageColor(s) ?? NEUTRAL_STAGE_DOT, params }
     })
   const stages = usePeriodRows(stageRows, bounds)
+  // the Not Connected card of both dashboards (and the counsellor's Connected = the rest)
+  const notConnected = useNotConnected(masters?.data.stages, stages, bounds, range)
   const sources = usePeriodRows(counsellor ? undefined : sourceRows, bounds)
   const owners = usePeriodRows(ownerRows, bounds)
   // the period's lead total: the summary's figure, or for a custom range the same count the Leads cards make (shared through the cache)
@@ -968,13 +1018,13 @@ export default function DashboardPage() {
       </section>
 
       {counsellor ? (
-        <CounsellorCards summary={summary} period={period} stages={stages} stagesLoading={rowsLoading} loading={isLoading} onOpen={open} />
+        <CounsellorCards summary={summary} period={period} stages={stages} notConnected={notConnected} stagesLoading={rowsLoading} loading={isLoading} onOpen={open} />
       ) : user?.isSuperAdmin ? (
         // Super Admin: one grid of nine cards in this order, every one following the period switch except
         // Follow-ups Due (overdue right now); a stage with no leads shows 0. The palette stages keep their colours;
         // the other cards take hues none of them use (azure, slate, orange beside Not Connected's amber)
         <LeadsSection period={period} loading={isLoading} onOpen={open} unassignedLabel="Not Assigned Leads">
-          {stageCard('Not Connected', PhoneOff)}
+          <NotConnectedCard notConnected={notConnected} total={total} loading={rowsLoading} onOpen={open} />
           {stageCard(statusName('notInterested', 'Not Interested'), ThumbsDown, 'red')}
           {stageCard(statusName('interested', 'Interested'), ThumbsUp, 'blue')}
           <FollowUpsDueCard onOpen={() => navigate('/app/tasks?view=overdue&who=team')} />
