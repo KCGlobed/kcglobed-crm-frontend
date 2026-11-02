@@ -94,7 +94,7 @@ export function CrmPhone() {
   // a call not on this phone (it rings the counsellor's mobile): the CRM's call row says so
   const { call: serverCall, incoming } = useLiveCalls()
   const offPhone = serverCall ?? incoming[0] ?? null
-  const offPhoneLead = !live ? offPhone?.lead?._id : undefined
+  const offPhoneLead = !live && offPhone?.lead?.canOpen !== false ? offPhone?.lead?._id : undefined // never a lead they cannot open
   useEffect(() => {
     if (!offPhone || !offPhoneLead || opened.current === offPhone._id) return
     // the row of a call just ended on this phone can still show as live for a few seconds
@@ -110,6 +110,12 @@ export function CrmPhone() {
 function IncomingCard({ call }: { call: PhoneCall }) {
   const { data } = useSoftphoneCallerQuery(call.number, { skip: !call.number })
   const lead = data?.data.lead ?? null
+  // another counsellor's lead: turned down at once (busy), so Smartflo's ring group moves on towards its owner
+  const otherOwner = data?.data.otherOwner ?? null
+  useEffect(() => {
+    if (otherOwner) decline(call.id)
+  }, [otherOwner, call.id])
+  if (otherOwner) return null
   const who = lead ? lead.name : call.name && call.name !== call.number ? call.name : call.number || 'Smartflo'
   const sub = lead ? [lead.leadNo, lead.stage, call.number].filter(Boolean).join(' · ') : call.number && who !== call.number ? `${call.number} · not a lead yet` : 'Not a lead yet'
   const initials = (lead?.name || who).replace(/[^A-Za-z ]/g, '').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase()

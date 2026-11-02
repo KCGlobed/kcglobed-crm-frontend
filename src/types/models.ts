@@ -914,6 +914,8 @@ export interface LiveCallLead {
   leadNo: string
   stage?: string | null
   owner?: Ref | null
+  /** the live feed only: false = another counsellor's lead, which this user cannot open */
+  canOpen?: boolean
 }
 
 /** A dialer call from GET /telephony/calls/live or /telephony/calls. */
