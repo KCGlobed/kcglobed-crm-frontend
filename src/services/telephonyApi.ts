@@ -10,6 +10,7 @@ import type {
   DialerRingOn,
   MyDialer,
   LiveCall,
+  Ref,
   LiveCallLead,
   LiveCallsPayload,
   SoftphoneLogin,
@@ -182,7 +183,7 @@ export const telephonyApi = api.injectEndpoints({
       query: () => '/telephony/dialer/me/phone',
       keepUnusedDataFor: 0,
     }),
-    softphoneCaller: build.query<ApiResponse<{ lead: LiveCallLead | null }>, string>({
+    softphoneCaller: build.query<ApiResponse<{ lead: LiveCallLead | null; otherOwner?: Ref | null }>, string>({
       query: (number) => ({ url: '/telephony/dialer/me/caller', params: { number } }),
     }),
     queueForDialer: build.mutation<ApiResponse<DialerQueueResult>, { leadIds: string[] }>({

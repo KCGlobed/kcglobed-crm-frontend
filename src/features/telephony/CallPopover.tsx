@@ -96,7 +96,8 @@ export function CallPopover() {
   const remaining = remainingInQueue(queue)
   void queueTick
   // ringing the CRM phone: its own card (Answer / Decline) stands for the call
-  const visibleIncoming = phone.ringing || phone.inCall ? [] : incoming.filter((c) => !hiddenIncoming.includes(c._id))
+  // never another counsellor's lead: it is theirs to take
+  const visibleIncoming = phone.ringing || phone.inCall ? [] : incoming.filter((c) => !hiddenIncoming.includes(c._id) && c.lead?.canOpen !== false)
   const newestPending = pending[0]
   const nextInQueue = () => {
     const next = advanceQueue()
