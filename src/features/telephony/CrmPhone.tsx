@@ -94,7 +94,7 @@ export function CrmPhone() {
   // a call not on this phone (it rings the counsellor's mobile): the CRM's call row says so
   const { call: serverCall, incoming } = useLiveCalls()
   const offPhone = serverCall ?? incoming[0] ?? null
-  const offPhoneLead = !live ? offPhone?.lead?._id : undefined
+  const offPhoneLead = !live && offPhone?.lead?.canOpen !== false ? offPhone?.lead?._id : undefined // never a lead they cannot open
   useEffect(() => {
     if (!offPhone || !offPhoneLead || opened.current === offPhone._id) return
     // the row of a call just ended on this phone can still show as live for a few seconds
