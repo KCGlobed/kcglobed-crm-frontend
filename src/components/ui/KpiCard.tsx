@@ -65,7 +65,7 @@ export function KpiCard({
       {...(onClick ? { type: 'button' as const, onClick } : {})}
       className={cn(
         'group relative flex w-full flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-md transition duration-200 sm:p-5',
-        onClick && 'hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg'
+        onClick && 'cursor-pointer hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg'
       )}
     >
       <svg

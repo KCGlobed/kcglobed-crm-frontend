@@ -97,7 +97,7 @@ export default function BulkUploadPage() {
   const [source, setSource] = useState('')
   const [assignMode, setAssignMode] = useState<'unassigned' | 'one' | 'split'>('unassigned')
   const [owners, setOwners] = useState<string[]>([])
-  const [duplicates, setDuplicates] = useState<'skip' | 'update_empty' | 'update_all' | 'reenquire' | 'reenquire_replace'>('skip')
+  const [duplicates, setDuplicates] = useState<'skip' | 'update_empty' | 'update_all' | 'update_full' | 'reenquire' | 'reenquire_replace'>('skip')
   const [sendWelcome, setSendWelcome] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   /** full-file dry run shown before the Confirm button; cleared by any mapping/value change */
@@ -660,6 +660,7 @@ export default function BulkUploadPage() {
                         <option value="skip">Skip (default)</option>
                         <option value="update_empty">Update Empty Fields</option>
                         <option value="update_all">Update All Fields (except email &amp; phone)</option>
+                        <option value="update_full">Update All Fields + Owner &amp; Disposition (no re-enquiry, no alerts)</option>
                         <option value="reenquire">Mark as Re-enquiry (fills empty fields, floats to top, owner notified)</option>
                         <option value="reenquire_replace">Mark as Re-enquiry (fills empty fields, replaces all data except email &amp; phone)</option>
                       </Select>
