@@ -38,7 +38,7 @@ export function DateRangeFilter({ from = '', to = '', onChange, label = 'Created
     ['This Month', `${isoDay().slice(0, 8)}01`, isoDay()],
   ] as const
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative [&_button]:cursor-pointer', className)}>
       <Button variant={active ? 'secondary' : 'outline'} size="sm" onClick={() => setOpen((o) => !o)}>
         <CalendarRange className="h-3.5 w-3.5" />
         {active ? `${from || '…'} → ${to || '…'}` : label}

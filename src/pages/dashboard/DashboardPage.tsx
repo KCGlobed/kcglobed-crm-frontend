@@ -41,12 +41,6 @@ function SectionHeading({ title, hint }: { title: string; hint?: string }) {
 
 type PeriodKey = 'overall' | 'thisWeek' | 'today' | 'custom'
 
-/** Pipeline cards: each shows the count of the stage of that name from the summary's `byStage` rows. */
-const PIPELINE_CARDS: { label: string; icon: LucideIcon }[] = [
-  { label: 'Registration & Fee', icon: Receipt },
-  { label: 'Not Connected', icon: PhoneOff },
-  { label: 'Interview', icon: CalendarCheck },
-]
 const PERIODS: { key: PeriodKey; label: string }[] = [
   { key: 'overall', label: 'Overall' },
   { key: 'thisWeek', label: 'This Week' },
@@ -162,7 +156,7 @@ function PeriodSectionHeader({
               aria-pressed={value === p.key}
               onClick={() => onChange(p.key)}
               className={cn(
-                'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                'cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-colors',
                 value === p.key
                   ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
                   : 'border-slate-300 bg-white text-slate-600 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700'
@@ -299,8 +293,9 @@ const STATUS_TILES: { key: DashboardStatusTile['key']; label: string; icon: Luci
 ]
 
 /**
- * Not Connected = the leads a call never got through to: these two stages, plus the Closed leads who stopped
- * answering (the sub-stage below). Every other lead counts as Connected.
+ * Not Connected = the leads a call never got through to: the Not Connected stage, plus the Closed leads who stopped
+ * answering (the sub-stage below). Untouched is counted on its own, and every other lead counts as Connected, so
+ * Total = Connected + Not Connected + Untouched.
  */
 const UNTOUCHED_STAGE = 'Untouched'
 const NOT_CONNECTED_STAGE = 'Not Connected'
@@ -317,7 +312,7 @@ interface NotConnected {
 }
 
 /**
- * Not Connected for the period: the two stages' rows plus the Closed leads who stopped answering — a sub-stage, so
+ * Not Connected for the period: the stage's row plus the Closed leads who stopped answering — a sub-stage, so
  * counted off the list within the period's bounds (the stage rows count whole stages); 0 for what Masters lacks.
  */
 function useNotConnected(masters: Stage[] | undefined, stages: BarItem[] | undefined, bounds: DateBounds | undefined, range: ListParams): NotConnected {
@@ -325,21 +320,23 @@ function useNotConnected(masters: Stage[] | undefined, stages: BarItem[] | undef
   const sub = closed?.subStages?.find((s) => s.isActive && nameKey(s.name) === nameKey(STOPPED_ANSWERING_SUB))
   const stopped = useLeadCount(closed && sub ? { stage: closed._id, sub_stage: sub._id, ...(bounds ?? {}) } : undefined)
   const stoppedCount = sub ? stopped.count : 0
-  const rows = [NOT_CONNECTED_STAGE, UNTOUCHED_STAGE].map((name) => stages?.find((s) => nameKey(s.name) === nameKey(name)))
-  const ids = rows.flatMap((r) => (r ? [r.id] : []))
-  const onStages = ids.length ? [{ field: 'stage', op: 'any_of', value: ids }] : []
+  const [row, untouched] = [NOT_CONNECTED_STAGE, UNTOUCHED_STAGE].map((name) => stages?.find((s) => nameKey(s.name) === nameKey(name)))
+  const onStages = (...list: (BarItem | undefined)[]) => {
+    const ids = list.flatMap((r) => (r ? [r.id] : []))
+    return ids.length ? [{ field: 'stage', op: 'any_of', value: ids }] : []
+  }
   const onStopped = sub ? [{ field: 'subStage', op: 'any_of', value: [sub._id] }] : []
   const not = (conditions: object[]) => conditions.map((c) => ({ ...c, op: 'none_of' }))
   return {
-    count: stages && stoppedCount !== undefined ? rows.reduce((n, r) => n + (r?.count ?? 0), 0) + stoppedCount : undefined,
+    count: stages && stoppedCount !== undefined ? (row?.count ?? 0) + stoppedCount : undefined,
     loading: stopped.loading,
-    // on one of the stages, or on the stopped-answering sub-stage (an OR group)
-    params: { ...range, filters: JSON.stringify([{ any: [...onStages, ...onStopped] }]) },
-    connectedParams: { ...range, filters: JSON.stringify([...not(onStages), ...not(onStopped)]) },
+    // on the stage, or on the stopped-answering sub-stage (an OR group)
+    params: { ...range, filters: JSON.stringify([{ any: [...onStages(row), ...onStopped] }]) },
+    connectedParams: { ...range, filters: JSON.stringify([...not(onStages(row, untouched)), ...not(onStopped)]) },
   }
 }
 
-/** The Not Connected card, the same on both dashboards. */
+/** The Not Connected card, the same on every dashboard. */
 function NotConnectedCard({ notConnected, total, loading, onOpen }: { notConnected: NotConnected; total?: number; loading: boolean; onOpen: (params: ListParams) => void }) {
   const { count, params } = notConnected
   return (
@@ -370,8 +367,9 @@ const MY_LEADS_STAGES: { name: string; icon: LucideIcon }[] = [
  * Untouched, then Interested / Not Interested / Registration & Fee / Enrolled; then today's
  * calling activity. Every figure comes from the page's stage rows for the period (the
  * Stage Distribution data) plus the stopped-answering count: Total is every lead, Not
- * Connected is Untouched + Not Connected + the Closed leads who stopped answering, and
- * Connected is the rest. Replaces the admin's Leads / Lead Status / Pipeline cards.
+ * Connected is the Not Connected stage + the Closed leads who stopped answering, Untouched
+ * is its stage, and Connected is the rest. Replaces the admin's Leads / Lead Status /
+ * Pipeline cards.
  */
 function CounsellorCards({
   summary,
@@ -382,6 +380,7 @@ function CounsellorCards({
   loading,
   onOpen,
   onOpenCalls,
+  onOpenDialled,
 }: {
   summary?: DashboardSummary
   period: PeriodState
@@ -393,11 +392,13 @@ function CounsellorCards({
   onOpen: (params: ListParams) => void
   /** a call card's "view all": the calls it counted */
   onOpenCalls: (metric: CallMetric) => void
+  /** Unique Numbers Dialled's "view all": the leads dialled today, each once */
+  onOpenDialled: () => void
 }) {
   const { key, setKey, custom, setCustom, range, hint } = state
   const stageOf = (name: string) => stages?.find((s) => nameKey(s.name) === nameKey(name))
   const total = stages?.reduce((n, r) => n + r.count, 0)
-  const connected = total === undefined || notConnected.count === undefined ? undefined : total - notConnected.count
+  const connected = total === undefined || notConnected.count === undefined ? undefined : total - notConnected.count - (stageOf(UNTOUCHED_STAGE)?.count ?? 0)
   const busy = loading || stagesLoading || !stages
   /** a card for a stage row: its count (0 when the stage has no row), opening its leads */
   const stageCard = (name: string, icon: LucideIcon, accent?: KpiAccent) => {
@@ -483,8 +484,8 @@ function CounsellorCards({
           <KpiCard label="Talk Time" value={formatHms(activity?.talktimeSeconds)} progress={pct(activity?.talktimeSeconds, loggedIn)} hint="From pick-up, connected calls only" icon={Timer} accent="leaf" loading={loading} onClick={calls('connected', activity?.talktimeSeconds)} />
           <KpiCard label="Break Time" value={formatHms(activity?.breakSeconds)} progress={pct(activity?.breakSeconds, loggedIn)} hint="Time on break" icon={Coffee} accent="slate" loading={loading} />
 
-          {/* the numbers row: distinct numbers out of the attempts, every attempt, and today's Pause Break time */}
-          <KpiCard label="Unique Numbers Dialled" value={unique} progress={pct(unique, dialCalls)} hint="Distinct numbers called today" icon={Hash} accent="cyan" loading={loading} />
+          {/* the numbers row: distinct leads out of the attempts, every attempt, and today's Pause Break time */}
+          <KpiCard label="Unique Numbers Dialled" value={unique} progress={pct(unique, dialCalls)} hint="Distinct leads called today" icon={Hash} accent="cyan" loading={loading} onClick={unique ? onOpenDialled : undefined} />
           <KpiCard label="Total Dial Attempts" value={dialCalls} progress={dialCalls ? 100 : 0} hint="Outgoing attempts, repeats included" icon={Repeat} accent="amber" loading={loading} onClick={calls('dial', dialCalls)} />
           <KpiCard label="Pause Break" value={formatHms(activity?.pauseSeconds)} progress={pct(activity?.pauseSeconds, loggedIn)} hint="Campus visit, training, calibration" icon={Pause} accent="fuchsia" loading={loading} />
         </div>
@@ -798,7 +799,7 @@ function DistributionCard({
               onClick={open}
               disabled={!open}
               title={open ? `Open ${item.name} leads` : undefined}
-              className="group block w-full rounded-md text-left disabled:cursor-default"
+              className="group block w-full rounded-md text-left enabled:cursor-pointer"
             >
               <div className="mb-1 flex items-center justify-between gap-2 text-xs">
                 <span className="flex min-w-0 items-center gap-1 text-slate-600 group-enabled:group-hover:text-brand-700">
@@ -842,7 +843,7 @@ function RecentLeadsCard({
       bodyClassName="p-0"
       title="Recent Leads"
       actions={
-        <button type="button" onClick={onViewAll} className="text-xs font-medium text-brand-600 hover:underline">
+        <button type="button" onClick={onViewAll} className="cursor-pointer text-xs font-medium text-brand-600 hover:underline">
           View All
         </button>
       }
@@ -861,7 +862,7 @@ function RecentLeadsCard({
             type="button"
             onClick={() => onOpenLead(lead._id)}
             title={`Open ${fullName(lead)}`}
-            className="group flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50"
+            className="group flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50"
           >
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-slate-800 group-hover:text-brand-700">
@@ -953,11 +954,13 @@ export default function DashboardPage() {
   const open = (params: ListParams) => navigate(`/app/leads?${new URLSearchParams({ ...params, from: 'dashboard' }).toString()}`)
   const openLead = (id: string) => navigate(`/app/leads/${id}`)
   // a counsellor's call card: the Calls page with the card's own filters (today, their calls)
+  const day = summary?.today?.from ?? dayjs().format('YYYY-MM-DD')
   const openCalls = (metric: CallMetric) => {
-    const date = summary?.today?.from ?? dayjs().format('YYYY-MM-DD')
-    const query = new URLSearchParams({ metric, from: date, to: date, back: 'dashboard', ...(user ? { userId: user._id } : {}) })
+    const query = new URLSearchParams({ metric, from: day, to: day, back: 'dashboard', ...(user ? { userId: user._id } : {}) })
     navigate(`/app/calls?${query.toString()}`)
   }
+  // Unique Numbers Dialled: the leads they dialled today, each once however often it was dialled
+  const openDialled = () => open({ dialled_on: day, ...(user ? { dialled_by: user._id } : {}) })
   // Recent Leads' "View all" is a drill-down too: the list then shows the way back to the dashboard
   const viewAllLeads = () => navigate('/app/leads?from=dashboard')
   const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
@@ -1039,6 +1042,7 @@ export default function DashboardPage() {
           loading={isLoading}
           onOpen={open}
           onOpenCalls={openCalls}
+          onOpenDialled={openDialled}
         />
       ) : user?.isSuperAdmin ? (
         // Super Admin: one grid of nine cards in this order, every one following the period switch except
@@ -1060,7 +1064,9 @@ export default function DashboardPage() {
           <section className="mt-3 sm:mt-4" aria-label="Lead stages">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
               {STATUS_TILES.map(({ key: tileKey, label, icon, accent }) => stageCard(statusName(tileKey, label), icon, accent))}
-              {PIPELINE_CARDS.map(({ label, icon }) => stageCard(label, icon))}
+              {stageCard('Registration & Fee', Receipt)}
+              <NotConnectedCard notConnected={notConnected} total={total} loading={rowsLoading} onOpen={open} />
+              {stageCard('Interview', CalendarCheck)}
             </div>
           </section>
         </>
