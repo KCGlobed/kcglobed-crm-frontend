@@ -1230,11 +1230,15 @@ export interface LeadDocumentFile {
   contentType: string
   size: number
   isCurrent: boolean
+  /** uploaded in the CRM or sent by the GCC website */
+  source?: 'crm' | 'website'
   uploadedBy?: string | null
   uploadedAt: string
   /** deleted from the profile: kept in the history, the file is still there */
   deletedAt?: string | null
   deletedBy?: string | null
+  /** upload answer: the slot already holds this exact file, nothing was added */
+  unchanged?: boolean
 }
 
 export interface DocumentSlot {
@@ -1243,6 +1247,11 @@ export interface DocumentSlot {
   mandatory: boolean
   accept: string[]
   maxMb: number
+  /** how many current files the type holds: 1 = a new upload replaces the file */
+  maxFiles: number
+  /** the current files, in upload order */
+  files: LeadDocumentFile[]
+  /** the newest current file (the one file of a single-file type) */
   current: LeadDocumentFile | null
   history: LeadDocumentFile[]
 }
