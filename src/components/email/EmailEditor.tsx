@@ -25,7 +25,7 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useDeleteMessageAssetMutation, useListMessageAssetsQuery, useUploadMessageAssetMutation } from '../../services/messagingApi'
+import { useDeleteMessageAssetMutation, useListMessageAssetsQuery, useListSavedTextsQuery, useUploadMessageAssetMutation } from '../../services/messagingApi'
 import { Button } from '../ui/Button'
 import { sanitizeHtml } from '../../lib/sanitize'
 import { cn, parseApiError } from '../../lib/utils'
@@ -94,6 +94,7 @@ export function EmailEditor({
   height = '24rem',
   frameless = false,
   className,
+  savedTexts = false,
 }: {
   value: string
   onChange: (html: string) => void
@@ -103,6 +104,8 @@ export function EmailEditor({
   /** no outer border / rounding: the editor sits inside a compose window */
   frameless?: boolean
   className?: string
+  /** show the "Saved text…" dropdown (Communication → Texts), as the SMS send offers for its variables */
+  savedTexts?: boolean
 }) {
   const document_ = isHtmlDocument(value)
   const [chosenMode, setMode] = useState<Mode>(document_ ? 'code' : 'visual')
@@ -124,6 +127,8 @@ export function EmailEditor({
   const [upload, { isLoading: uploading }] = useUploadMessageAssetMutation()
   const [deleteAsset, { isLoading: deleting }] = useDeleteMessageAssetMutation()
   const { data: assets } = useListMessageAssetsQuery(undefined, { skip: !imageMenu })
+  const { data: savedData } = useListSavedTextsQuery({ active: true }, { skip: !savedTexts })
+  const saved = savedData?.data ?? []
 
   // the visual editor shows `value` whenever it changed elsewhere (mode switch, template loaded) — not on
   // its own keystrokes, which would move the caret
@@ -204,6 +209,11 @@ export function EmailEditor({
     setPlaceholderMenu(false)
     if (mode === 'visual') exec('insertText', `{${p}}`)
     else insertAtCursor(`{${p}}`)
+  }
+  /** A text from Communication → Texts goes in at the cursor, as typed text (escaped in HTML mode). */
+  const insertSavedText = (text: string) => {
+    if (mode === 'visual') exec('insertText', text)
+    else insertAtCursor(text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'))
   }
 
   const addLink = () => {
@@ -485,6 +495,30 @@ export function EmailEditor({
             </>
           )}
         </div>
+        {savedTexts && (
+          <select
+            className={cn(select, 'ml-1 w-36')}
+            value=""
+            aria-label="Insert a saved text"
+            title="Insert a saved text (Communication → Texts)"
+            onChange={(e) => {
+              const text = saved.find((s) => s._id === e.target.value)?.text
+              if (text) insertSavedText(text)
+            }}
+          >
+            <option value="">Saved text…</option>
+            {saved.length === 0 && (
+              <option value="" disabled>
+                No saved texts yet
+              </option>
+            )}
+            {saved.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name} · {s.text}
+              </option>
+            ))}
+          </select>
+        )}
         <div className="ml-auto flex items-center gap-1">
           {!visual && !document_ && (
             <button

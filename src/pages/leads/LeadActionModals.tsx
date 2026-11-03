@@ -183,7 +183,7 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
     <Modal
       open
       onClose={onClose}
-      size={channel === 'email' ? 'xl' : 'lg'}
+      size={channel === 'email' ? '2xl' : 'lg'}
       title={`Send ${label}`}
       description={`To ${channel === 'email' ? lead.email ?? 'no email' : lead.mobile ?? 'no mobile'}`}
       footer={
@@ -299,7 +299,7 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
             {previewingBody ? (
               <EmailPreview html={body} height="24rem" className="rounded-none border-0" />
             ) : (
-              <EmailEditor frameless value={body} onChange={setBody} placeholders={shown.template.placeholders ?? []} height="24rem" />
+              <EmailEditor frameless value={body} onChange={setBody} placeholders={shown.template.placeholders ?? []} height="24rem" savedTexts />
             )}
             <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] text-slate-500">
               <span>{previewingBody ? 'As the lead will see it.' : 'Edit the text, add images or a button; placeholders are already filled for this lead.'}</span>
