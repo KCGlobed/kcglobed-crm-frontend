@@ -48,6 +48,13 @@ const schema = z.object({
     .trim()
     .regex(/^(\+?91)?(\d{10})?$/, 'Mobile must be 10 digits')
     .optional(),
+  // Partner Lead API: a lead sent with this utm_source is assigned to this user
+  utmSource: z
+    .string()
+    .trim()
+    .max(60, 'At most 60 characters')
+    .regex(/^([A-Za-z0-9][A-Za-z0-9._-]*)?$/, 'Letters, numbers, dot, dash or underscore, no spaces')
+    .optional(),
   password: z
     .string()
     .optional()
@@ -131,6 +138,7 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
       mobile: user?.mobile ?? '',
       telephonyAgentId: user?.telephonyAgentId ?? '',
       telephonyAgentNumber: user?.telephonyAgentNumber ?? '',
+      utmSource: user?.utmSource ?? '',
       password: '',
       team: refId(user?.team),
       reportingManager: refId(user?.reportingManager),
@@ -205,6 +213,7 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
       mobile: values.mobile || null,
       telephonyAgentId: values.telephonyAgentId || null,
       telephonyAgentNumber: values.telephonyAgentNumber || null,
+      utmSource: values.utmSource || null,
       team: values.team || null,
       reportingManager: values.reportingManager || null,
       isActive: values.isActive,
@@ -298,6 +307,9 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
             </FormField>
             <FormField label="Dialer mobile (if different)" error={errors.telephonyAgentNumber?.message} hint="Only when the number registered in Smartflo is not the mobile above">
               <Input placeholder="10 digits" aria-invalid={!!errors.telephonyAgentNumber} {...register('telephonyAgentNumber')} data-testid="telephony-agent-number" />
+            </FormField>
+            <FormField label="UTM source (Partner API)" error={errors.utmSource?.message} hint="Leads a partner sends with this utm_source are assigned to this user · one user per value">
+              <Input maxLength={60} placeholder="e.g. bhavna01" aria-invalid={!!errors.utmSource} {...register('utmSource')} data-testid="utm-source" />
             </FormField>
             <FormField
               label={isEdit ? 'Reset password (optional)' : 'Password (optional)'}
