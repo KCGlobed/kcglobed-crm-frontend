@@ -68,6 +68,7 @@ export function RunsTab() {
           <p className="truncate text-xs font-medium text-slate-800">{r.name}</p>
           <p className="truncate text-[11px] text-slate-500">
             {r.periodLabel}
+            {r.filters.map((f) => ` · ${f.label}: ${f.value}`).join('')}
             {r.hasFile ? ` · ${r.rowCount} row${r.rowCount === 1 ? '' : 's'}` : ''}
           </p>
         </div>

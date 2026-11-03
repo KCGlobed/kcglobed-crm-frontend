@@ -14,6 +14,7 @@ import { EmptyState, ErrorState, LoadingState } from '../../components/ui/feedba
 import { Input } from '../../components/ui/fields'
 import type { ReportDefinition, ReportRow } from '../../types/models'
 import { formatValue, periodRange } from './reportFormat'
+import { TeamSelect } from './TeamSelect'
 
 /** A report row on screen: its Sr. No., or the Grand Total line. */
 interface TableRow {
@@ -24,7 +25,7 @@ interface TableRow {
 }
 
 /** The catalog grouped by category, the selected report with its dates, totals and downloads. */
-export function ReportViewer({ onSchedule }: { onSchedule: (reportKey: string) => void }) {
+export function ReportViewer({ onSchedule }: { onSchedule: (reportKey: string, team?: string) => void }) {
   const user = useCurrentUser()
   const canExport = can(user, 'reports', 'export')
   const canSchedule = can(user, 'reports', 'create')
@@ -37,8 +38,11 @@ export function ReportViewer({ onSchedule }: { onSchedule: (reportKey: string) =
   const [defaultFrom, defaultTo] = report ? periodRange(report.defaultPeriod) : [today, today]
   const dateFrom = params.get('date_from') || defaultFrom
   const dateTo = report?.oneDay ? dateFrom : params.get('date_to') || defaultTo
+  // kept when another report is picked; only a report that takes it gets it
+  const byTeam = !!report?.filters.includes('team')
+  const team = byTeam ? params.get('team') ?? '' : ''
   const data = useReportDataQuery(
-    { key: report?.key ?? '', dateFrom, dateTo: report?.oneDay ? undefined : dateTo },
+    { key: report?.key ?? '', dateFrom, dateTo: report?.oneDay ? undefined : dateTo, team: team || undefined },
     { skip: !report }
   )
   // currentData: nothing from the previous report or dates while the new one loads
@@ -58,7 +62,7 @@ export function ReportViewer({ onSchedule }: { onSchedule: (reportKey: string) =
 
   const download = async (fmt: 'xlsx' | 'csv') => {
     if (!report) return
-    const qs = new URLSearchParams({ dateFrom, ...(report.oneDay ? {} : { dateTo }), format: fmt })
+    const qs = new URLSearchParams({ dateFrom, ...(report.oneDay ? {} : { dateTo }), ...(team ? { team } : {}), format: fmt })
     setDownloading(fmt)
     try {
       await authorizedDownload(`/reports/${report.key}/export?${qs.toString()}`, `${report.key}-${dateFrom}.${fmt}`)
@@ -124,7 +128,7 @@ export function ReportViewer({ onSchedule }: { onSchedule: (reportKey: string) =
                 </>
               )}
               {canSchedule && (
-                <Button size="sm" onClick={() => onSchedule(report.key)}>
+                <Button size="sm" onClick={() => onSchedule(report.key, team || undefined)}>
                   <CalendarClock className="h-3.5 w-3.5" /> Schedule email
                 </Button>
               )}
@@ -179,6 +183,15 @@ export function ReportViewer({ onSchedule }: { onSchedule: (reportKey: string) =
                 </>
               )}
             </div>
+            {byTeam && (
+              <TeamSelect
+                className="!h-8 !w-auto text-xs"
+                aria-label="Team"
+                title="A team includes the teams below it"
+                value={team}
+                onChange={(value) => update({ team: value || undefined })}
+              />
+            )}
           </div>
         </div>
 
@@ -201,7 +214,7 @@ export function ReportViewer({ onSchedule }: { onSchedule: (reportKey: string) =
           error={data.isError}
           errorDetail={data.error}
           onRetry={data.refetch}
-          period={result?.periodLabel}
+          period={result && [result.periodLabel, ...result.filters.map((f) => f.value)].join(' · ')}
         />
 
         {report.notes.map((note) => (

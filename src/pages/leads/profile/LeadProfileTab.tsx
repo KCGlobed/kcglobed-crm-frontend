@@ -263,7 +263,8 @@ export function LeadProfileTab({ leadId, actions }: { leadId: string; actions?: 
       {step === 0 && <PersonalStep key={formKey} {...props} onSaved={next} />}
       {step === 1 && <AcademicStep key={formKey} {...props} onSaved={next} />}
       {step === 2 && <WorkStep key={formKey} {...props} onSaved={next} />}
-      {step === 3 && <DocumentsStep leadId={leadId} readOnly={readOnly} />}
+      {/* documents need no Edit: every upload and delete is its own confirmed action, saved at once */}
+      {step === 3 && <DocumentsStep leadId={leadId} readOnly={!canEdit} locked={profile.locked} />}
       {step === 4 && <DeclarationStep key={formKey} {...props} />}
       {unlockOpen && <UnlockModal leadId={leadId} onClose={() => setUnlockOpen(false)} />}
     </div>
