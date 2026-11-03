@@ -2032,6 +2032,15 @@ export interface ReportDefinition {
   periods: { value: ReportPeriodKey; label: string }[]
   columns: ReportColumn[]
   notes: string[]
+  /** filters besides the period: 'team' (a team covers the teams below it) */
+  filters: string[]
+}
+
+/** A filter a report was run with, for display: { label: 'Team', value: 'Sales' }. */
+export interface ReportFilterLabel {
+  key: string
+  label: string
+  value: string
 }
 
 export type ReportRow = Record<string, string | number | null>
@@ -2048,6 +2057,8 @@ export interface ReportResult {
   dateFrom: string
   dateTo: string
   periodLabel: string
+  params: Record<string, string>
+  filters: ReportFilterLabel[]
   rows: ReportRow[]
   totals: ReportRow | null
   summary: ReportSummaryItem[]
@@ -2066,6 +2077,7 @@ export interface ReportSchedule {
   period: ReportPeriodKey
   periodLabel: string
   params: Record<string, unknown>
+  filters: ReportFilterLabel[]
   frequency: ReportFrequency
   /** HH:MM, IST */
   sendTime: string
@@ -2092,6 +2104,7 @@ export interface ReportRun {
   trigger: ReportRunTrigger
   scheduledFor: string | null
   params: Record<string, unknown>
+  filters: ReportFilterLabel[]
   periodLabel: string
   recipients: string[]
   cc: string[]

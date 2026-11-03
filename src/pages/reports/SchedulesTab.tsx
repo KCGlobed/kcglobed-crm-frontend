@@ -89,6 +89,7 @@ export function SchedulesTab({
           <p className="truncate text-xs font-medium text-slate-800">{s.name}</p>
           <p className="truncate text-[11px] text-slate-500">
             {s.reportName} · {s.periodLabel}
+            {s.filters.map((f) => ` · ${f.label}: ${f.value}`).join('')}
           </p>
         </div>
       ),

@@ -18,6 +18,8 @@ export interface ReportScheduleBody {
   name: string
   reportKey: string
   period: ReportPeriodKey
+  /** the report's filters: { team } — {} for everyone */
+  params: Record<string, string>
   frequency: ReportFrequency
   sendTime: string
   weekdays: number[]
@@ -34,7 +36,7 @@ export const reportsApi = api.injectEndpoints({
       query: () => '/reports',
       providesTags: ['Reports'],
     }),
-    reportData: build.query<ApiResponse<ReportResult>, { key: string; dateFrom: string; dateTo?: string }>({
+    reportData: build.query<ApiResponse<ReportResult>, { key: string; dateFrom: string; dateTo?: string; team?: string }>({
       query: ({ key, ...params }) => ({ url: `/reports/${key}/data`, params: cleanParams(params) }),
       providesTags: ['Reports'],
       keepUnusedDataFor: 30,

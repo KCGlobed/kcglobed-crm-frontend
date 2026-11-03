@@ -7,11 +7,13 @@ import {
   useUpdateReportScheduleMutation,
   type ReportScheduleBody,
 } from '../../services/reportsApi'
+import { useTeamOptionsQuery } from '../../services/adminApi'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
 import { FormField, Input, Select, Switch, Textarea } from '../../components/ui/fields'
 import type { ReportFrequency, ReportPeriodKey, ReportSchedule } from '../../types/models'
 import { WEEKDAYS, scheduleWhen } from './reportFormat'
+import { TeamSelect } from './TeamSelect'
 
 const FREQUENCIES: { value: ReportFrequency; label: string }[] = [
   { value: 'daily', label: 'Daily' },
@@ -26,6 +28,9 @@ const splitEmails = (text: string) =>
     .map((e) => e.trim())
     .filter(Boolean)
 
+/** The name a schedule gets until one is typed: the report's, with the team ("Daily EOD Report — Sales"). */
+const autoName = (reportName?: string, teamName?: string) => (reportName ? (teamName ? `${reportName} — ${teamName}` : reportName) : '')
+
 /** A server error key ("recipients.0", "weekdays") → the field it belongs to. */
 function fieldErrors(errors: Record<string, string>) {
   const out: Record<string, string> = {}
@@ -38,17 +43,33 @@ function fieldErrors(errors: Record<string, string>) {
 
 /**
  * Create or edit a scheduled report email: which report, the period it covers (relative to the day it goes
- * out), when it goes out (IST) and who gets it. `reportKey` preselects the report (from the report screen).
+ * out), when it goes out (IST), the team it covers and who gets it. `reportKey` and `team` preselect the report
+ * and the team (from the report screen).
  */
-export function ScheduleFormModal({ schedule, reportKey, onClose }: { schedule?: ReportSchedule; reportKey?: string; onClose: () => void }) {
+export function ScheduleFormModal({
+  schedule,
+  reportKey,
+  team: initialTeam,
+  onClose,
+}: {
+  schedule?: ReportSchedule
+  reportKey?: string
+  team?: string
+  onClose: () => void
+}) {
   const { data: catalog } = useReportCatalogQuery()
   const reports = catalog?.data ?? []
+  const { data: teamOptions } = useTeamOptionsQuery()
+  const savedTeam = schedule?.filters.find((f) => f.key === 'team')?.value
+  const teamName = (id: string) =>
+    id ? (teamOptions?.data.find((t) => t._id === id)?.name ?? (id === schedule?.params.team ? savedTeam : undefined)) : undefined
   const [createSchedule, { isLoading: creating }] = useCreateReportScheduleMutation()
   const [updateSchedule, { isLoading: updating }] = useUpdateReportScheduleMutation()
 
   const initialReport = reports.find((r) => r.key === (schedule?.reportKey ?? reportKey))
   const [report, setReport] = useState(schedule?.reportKey ?? reportKey ?? '')
-  const [name, setName] = useState(schedule?.name ?? initialReport?.name ?? '')
+  const [team, setTeam] = useState(String(schedule ? (schedule.params.team ?? '') : (initialTeam ?? '')))
+  const [name, setName] = useState(schedule?.name ?? autoName(initialReport?.name, teamName(team)))
   const [period, setPeriod] = useState<ReportPeriodKey | ''>(schedule?.period ?? initialReport?.periods[0]?.value ?? '')
   const [frequency, setFrequency] = useState<ReportFrequency>(schedule?.frequency ?? 'daily')
   const [sendTime, setSendTime] = useState(schedule?.sendTime ?? '20:00')
@@ -60,14 +81,20 @@ export function ScheduleFormModal({ schedule, reportKey, onClose }: { schedule?:
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   const selected = reports.find((r) => r.key === report)
+  const byTeam = !!selected?.filters.includes('team')
+  // keep a name the user typed; replace one that was just the previous report's (and team's) name
+  const isAutoName = !name || name === autoName(selected?.name, byTeam ? teamName(team) : undefined)
 
   const changeReport = (key: string) => {
     const next = reports.find((r) => r.key === key)
-    const previous = reports.find((r) => r.key === report)
     setReport(key)
-    // keep a name the user typed; replace one that was just the previous report's name
-    if (next && (!name || name === previous?.name)) setName(next.name)
+    if (next && isAutoName) setName(autoName(next.name, next.filters.includes('team') ? teamName(team) : undefined))
     if (next && !next.periods.some((p) => p.value === period)) setPeriod(next.periods[0]?.value ?? '')
+  }
+
+  const changeTeam = (value: string) => {
+    setTeam(value)
+    if (isAutoName) setName(autoName(selected?.name, teamName(value)))
   }
 
   const changeFrequency = (value: ReportFrequency) => {
@@ -96,6 +123,7 @@ export function ScheduleFormModal({ schedule, reportKey, onClose }: { schedule?:
       name: name.trim(),
       reportKey: report,
       period: period as ReportPeriodKey,
+      params: byTeam && team ? { team } : {},
       frequency,
       sendTime,
       weekdays: frequency === 'monthly' ? [] : weekdays,
@@ -155,6 +183,11 @@ export function ScheduleFormModal({ schedule, reportKey, onClose }: { schedule?:
             ))}
           </Select>
         </FormField>
+        {byTeam && (
+          <FormField label="Team" error={errors.team} className="sm:col-span-2" hint="Only this team's people — a team includes the teams below it">
+            <TeamSelect value={team} current={savedTeam} aria-invalid={!!errors.team} onChange={changeTeam} />
+          </FormField>
+        )}
         <FormField label="Name" required error={errors.name} className="sm:col-span-2" hint="The email subject: name — period">
           <Input value={name} maxLength={150} aria-invalid={!!errors.name} onChange={(e) => setName(e.target.value)} />
         </FormField>

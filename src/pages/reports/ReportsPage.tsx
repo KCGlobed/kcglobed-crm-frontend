@@ -27,7 +27,7 @@ export default function ReportsPage() {
   const canCreate = can(user, 'reports', 'create')
   const [params, setParams] = useSearchParams()
   const tab: Tab = TABS.find((t) => t.key === params.get('tab'))?.key ?? 'reports'
-  const [form, setForm] = useState<{ schedule?: ReportSchedule; reportKey?: string } | null>(null)
+  const [form, setForm] = useState<{ schedule?: ReportSchedule; reportKey?: string; team?: string } | null>(null)
 
   // each tab keeps only its own URL state
   const switchTab = (key: string, extra: Record<string, string> = {}) =>
@@ -50,7 +50,7 @@ export default function ReportsPage() {
         <Tabs tabs={TABS} active={tab} onChange={(key) => switchTab(key)} />
       </div>
 
-      {tab === 'reports' && <ReportViewer onSchedule={(reportKey) => setForm({ reportKey })} />}
+      {tab === 'reports' && <ReportViewer onSchedule={(reportKey, team) => setForm({ reportKey, team })} />}
       {tab === 'schedules' && (
         <SchedulesTab
           onNew={() => setForm({})}
@@ -60,7 +60,7 @@ export default function ReportsPage() {
       )}
       {tab === 'history' && <RunsTab />}
 
-      {form && <ScheduleFormModal schedule={form.schedule} reportKey={form.reportKey} onClose={() => setForm(null)} />}
+      {form && <ScheduleFormModal schedule={form.schedule} reportKey={form.reportKey} team={form.team} onClose={() => setForm(null)} />}
     </div>
   )
 }
