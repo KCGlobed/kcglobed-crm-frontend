@@ -76,6 +76,8 @@ export interface User {
   /** Smartflo agent id (050…) / registered mobile the dialer rings for click-to-call; blank = the user's mobile */
   telephonyAgentId?: string | null
   telephonyAgentNumber?: string | null
+  /** Partner Lead API: leads sent with this utm_source are assigned to this user */
+  utmSource?: string | null
 }
 
 export type TeamType = 'department' | 'team' | 'counsellor_group'
