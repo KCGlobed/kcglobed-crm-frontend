@@ -20,13 +20,15 @@ import { ColumnChooser } from '../../components/ui/ColumnChooser'
 import { FilterBar, PageHeader, SearchInput } from '../../components/ui/misc'
 import { Button } from '../../components/ui/Button'
 import { DateRangeFilter } from '../../components/ui/DateRangeFilter'
-import { Checkbox, Input, Select } from '../../components/ui/fields'
+import { Checkbox, Input } from '../../components/ui/fields'
 import { Modal } from '../../components/ui/Modal'
 import { cn, formatDate, parseApiError } from '../../lib/utils'
 import { useColumnPrefs } from '../../hooks/useColumnPrefs'
 import type { FilterField, Lead } from '../../types/models'
 import { QuickAddDrawer } from './QuickAddDrawer'
 import { ExportLeadsModal } from './ExportLeadsModal'
+import { OwnerMultiSelect } from './OwnerMultiSelect'
+import { CheckboxMultiSelect } from '../../components/ui/CheckboxMultiSelect'
 import { LeadFilterPanel } from './LeadFilterPanel'
 import { BulkAssignModal } from './BulkAssignModal'
 import { parseConditions, type LeadSelection } from './leadSelection'
@@ -147,7 +149,22 @@ export default function LeadsListPage() {
   })
   const { data: meta } = useFilterFieldsQuery()
   const { data: masters } = useMasterBootstrapQuery()
-  const currentStage = masters?.data.stages.find((s) => s._id === params.get('stage'))
+  // Stage / Sub-stage are multiselects: ?stage=id1,id2&sub_stage=id3,id4
+  const stageIds = (params.get('stage') ?? '').split(',').filter(Boolean)
+  const subStageIds = (params.get('sub_stage') ?? '').split(',').filter(Boolean)
+  const chosenStages = (masters?.data.stages ?? []).filter((s) => stageIds.includes(s._id))
+  const subStageOptions = chosenStages.flatMap((s) => activeSubStages(s).map((sub) => ({ value: sub._id, label: sub.name, group: s.name })))
+  const setStages = (ids: string[]) => {
+    const next = new URLSearchParams(params)
+    if (ids.length) next.set('stage', ids.join(','))
+    else next.delete('stage')
+    // a sub-stage only makes sense under a chosen stage: keep the ones whose stage is still chosen
+    const allowed = new Set((masters?.data.stages ?? []).filter((s) => ids.includes(s._id)).flatMap((s) => activeSubStages(s).map((sub) => sub._id)))
+    const keep = subStageIds.filter((id) => allowed.has(id))
+    if (keep.length) next.set('sub_stage', keep.join(','))
+    else next.delete('sub_stage')
+    replaceParams(next)
+  }
   const { data: saved } = useSavedFiltersQuery()
   const [saveFilter, { isLoading: savingFilter }] = useSaveFilterMutation()
   const [deleteSaved] = useDeleteSavedFilterMutation()
@@ -181,13 +198,16 @@ export default function LeadsListPage() {
 
   const createdFrom = params.get('created_from') ?? ''
   const createdTo = params.get('created_to') ?? ''
-  // both dates in one URL update, so a preset never loses half the range
-  const setDateRange = (from: string, to: string) => {
+  const createdFromTime = params.get('created_from_time') ?? ''
+  const createdToTime = params.get('created_to_time') ?? ''
+  // both dates (and their optional HH:MM times) in one URL update, so a preset never loses half the range
+  const setDateRange = (from: string, to: string, fromTime = '', toTime = '') => {
     const next = new URLSearchParams(params)
-    if (from) next.set('created_from', from)
-    else next.delete('created_from')
-    if (to) next.set('created_to', to)
-    else next.delete('created_to')
+    const put = (key: string, value: string) => (value ? next.set(key, value) : next.delete(key))
+    put('created_from', from)
+    put('created_to', to)
+    put('created_from_time', from ? fromTime : '')
+    put('created_to_time', to ? toTime : '')
     replaceParams(next)
   }
 
@@ -372,19 +392,11 @@ export default function LeadsListPage() {
             : []),
         ])}
         {ownerField?.options?.length ? (
-          <Select
-            aria-label="Owner"
-            className="!h-7 !w-auto max-w-48 !py-0 text-xs"
-            value={params.get('owner') ?? ''}
-            onChange={(e) => setParam('owner', e.target.value || undefined)}
-          >
-            <option value="">All Owners</option>
-            {ownerField.options.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </Select>
+          <OwnerMultiSelect
+            options={ownerField.options}
+            value={(params.get('owner') ?? '').split(',').filter(Boolean)}
+            onChange={(ids) => setParam('owner', ids.length ? ids.join(',') : undefined)}
+          />
         ) : null}
       </div>
 
@@ -415,39 +427,25 @@ export default function LeadsListPage() {
           placeholder="Search name, mobile, email, ID…"
         />
         {/* Lead Stages sheet: stage, then its sub-stages */}
-        <Select
-          aria-label="Stage"
-          className="!w-auto max-w-48"
-          value={params.get('stage') ?? ''}
-          onChange={(e) => {
-            const next = new URLSearchParams(params)
-            next.delete('sub_stage') // a sub-stage only makes sense under its own stage
-            if (e.target.value) next.set('stage', e.target.value)
-            else next.delete('stage')
-            replaceParams(next)
-          }}
-        >
-          <option value="">All Stages</option>
-          {masters?.data.stages.map((s) => (
-            <option key={s._id} value={s._id}>
-              {s.name}
-            </option>
-          ))}
-        </Select>
-        {activeSubStages(currentStage).length > 0 && (
-          <Select
-            aria-label="Sub-stage"
-            className="!w-auto max-w-60"
-            value={params.get('sub_stage') ?? ''}
-            onChange={(e) => setParam('sub_stage', e.target.value)}
-          >
-            <option value="">All Sub-stages</option>
-            {activeSubStages(currentStage).map((s) => (
-              <option key={s._id} value={s._id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
+        <CheckboxMultiSelect
+          ariaLabel="Stage"
+          allLabel="All Stages"
+          plural="Stages"
+          searchPlaceholder="Search stage…"
+          options={(masters?.data.stages ?? []).map((s) => ({ value: s._id, label: s.name }))}
+          value={stageIds}
+          onChange={setStages}
+        />
+        {subStageOptions.length > 0 && (
+          <CheckboxMultiSelect
+            ariaLabel="Sub-stage"
+            allLabel="All Sub-stages"
+            plural="Sub-stages"
+            searchPlaceholder="Search sub-stage…"
+            options={subStageOptions}
+            value={subStageIds}
+            onChange={(ids) => setParam('sub_stage', ids.length ? ids.join(',') : undefined)}
+          />
         )}
         <Button variant={conditions.length ? 'secondary' : 'outline'} size="sm" onClick={() => setFilterOpen(true)}>
           <Filter className="h-3.5 w-3.5" /> Filters{conditions.length ? ` (${conditions.length})` : ''}
@@ -495,7 +493,7 @@ export default function LeadsListPage() {
           )}
         </div>
         {/* created-date range dropdown — filters on the lead's Created On date (backend created_from/created_to) */}
-        <DateRangeFilter from={createdFrom} to={createdTo} onChange={setDateRange} />
+        <DateRangeFilter withTime from={createdFrom} to={createdTo} fromTime={createdFromTime} toTime={createdToTime} onChange={setDateRange} />
       </FilterBar>
 
       {shownChips.length > 0 && (
