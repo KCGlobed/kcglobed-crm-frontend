@@ -83,6 +83,7 @@ function linkedFilterChips(params: URLSearchParams, fields: FilterField[] | unde
   if (status) chips.push({ key: 'status', text: `Status: ${label('status', status) ?? status}` })
   if (params.get('assigned') === 'true') chips.push({ key: 'assigned', text: 'Assigned to a Counsellor' })
   if (params.get('unassigned') === 'true') chips.push({ key: 'unassigned', text: 'Unassigned' })
+  if (params.get('rr_pool') === 'true') chips.push({ key: 'rr_pool', text: 'In round-robin pool' })
   if (params.get('target')) chips.push({ key: 'target', text: `Target: ${params.get('target_label') || 'selected target'}` })
   const dialled = params.get('dialled_on')
   if (dialled) chips.push({ key: 'dialled_on', text: `Dialled on ${formatDate(dialled)}` })

@@ -48,7 +48,7 @@ const schema = z.object({
     .trim()
     .regex(/^(\+?91)?(\d{10})?$/, 'Mobile must be 10 digits')
     .optional(),
-  // Partner Lead API: a lead sent with this utm_source is assigned to this user
+  // a new lead that comes with this utm_source (website, partner API, bulk upload…) is assigned to this user
   utmSource: z
     .string()
     .trim()
@@ -308,7 +308,7 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
             <FormField label="Dialer mobile (if different)" error={errors.telephonyAgentNumber?.message} hint="Only when the number registered in Smartflo is not the mobile above">
               <Input placeholder="10 digits" aria-invalid={!!errors.telephonyAgentNumber} {...register('telephonyAgentNumber')} data-testid="telephony-agent-number" />
             </FormField>
-            <FormField label="UTM source (Partner API)" error={errors.utmSource?.message} hint="Leads a partner sends with this utm_source are assigned to this user · one user per value">
+            <FormField label="UTM source" error={errors.utmSource?.message} hint="New leads that come with this utm_source are assigned to this user · one user per value">
               <Input maxLength={60} placeholder="e.g. bhavna01" aria-invalid={!!errors.utmSource} {...register('utmSource')} data-testid="utm-source" />
             </FormField>
             <FormField

@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Activity,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   FileSpreadsheet,
   FileText,
@@ -45,18 +47,44 @@ const CHANNELS: { value: RoundRobinChannel; label: string }[] = [
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const NOT_THEIR_HOD = "Only the team's manager or the Super Admin can change this member"
 
-function Stat({ label, value, hint, icon: Icon, accent }: { label: string; value: ReactNode; hint?: string; icon: LucideIcon; accent: string }) {
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-md">
+/** A summary tile; with `to` the whole tile is a link (e.g. the pool → those leads on the leads list). */
+function Stat({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  accent,
+  to,
+  title,
+}: {
+  label: string
+  value: ReactNode
+  hint?: string
+  icon: LucideIcon
+  accent: string
+  to?: string
+  title?: string
+}) {
+  const box = 'flex items-center gap-3 rounded-2xl border border-slate-100 bg-white p-4 shadow-md'
+  const body = (
+    <>
       <span className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br text-white shadow-lg', accent)}>
         <Icon className="h-[18px] w-[18px]" />
       </span>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-slate-500">{label}</p>
         <div className="truncate text-base font-bold leading-6 text-slate-900">{value}</div>
         {hint && <p className="truncate text-[11px] text-slate-400">{hint}</p>}
       </div>
-    </div>
+      {to && <ChevronRight aria-hidden className="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-brand-600" />}
+    </>
+  )
+  return to ? (
+    <Link to={to} title={title} className={cn(box, 'group transition-colors hover:border-brand-200 hover:bg-brand-50/40')}>
+      {body}
+    </Link>
+  ) : (
+    <div className={box}>{body}</div>
   )
 }
 
@@ -545,6 +573,8 @@ export default function RoundRobinPage() {
               hint={poolHint(data.data)}
               icon={Inbox}
               accent={data.data.unassignedPoolCount ? 'from-gold-300 to-gold-500 shadow-gold-400/50' : 'from-slate-400 to-slate-500 shadow-slate-400/40'}
+              to={can(me, 'leads', 'view') ? '/app/leads?rr_pool=true' : undefined}
+              title="Open these leads on the leads list"
             />
           </div>
 
