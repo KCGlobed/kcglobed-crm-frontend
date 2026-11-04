@@ -286,6 +286,10 @@ export default function LeadsListPage() {
   }
   const smart = params.get('smart')
   const chips = linkedFilterChips(params, meta?.data.fields)
+  // Owner dropdown: the backend sends the owner field only to team managers and above, with options already scoped to them
+  const ownerField = meta?.data.fields.find((f) => f.key === 'owner')
+  // the dropdown already shows the chosen owner, so its "Counsellor: …" chip is left out
+  const shownChips = chips.filter((c) => !(ownerField?.options?.length && c.key === 'owner'))
   // "Not Connected" pill: the backend lists it as a smart filter from this release on. Against an
   // older backend (e.g. production before deploy) it falls back to the plain stage filter instead.
   const notConnectedStage = masters?.data.stages.find((s) => s.name.trim().toLowerCase() === 'not connected')
@@ -367,6 +371,21 @@ export default function LeadsListPage() {
             ? [pill('not_connected', 'Not Connected', notConnectedActive, toggleNotConnected, 'Stage = Not Connected')]
             : []),
         ])}
+        {ownerField?.options?.length ? (
+          <Select
+            aria-label="Owner"
+            className="!h-7 !w-auto max-w-48 !py-0 text-xs"
+            value={params.get('owner') ?? ''}
+            onChange={(e) => setParam('owner', e.target.value || undefined)}
+          >
+            <option value="">All Owners</option>
+            {ownerField.options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        ) : null}
       </div>
 
       <FilterBar
@@ -479,10 +498,10 @@ export default function LeadsListPage() {
         <DateRangeFilter from={createdFrom} to={createdTo} onChange={setDateRange} />
       </FilterBar>
 
-      {chips.length > 0 && (
+      {shownChips.length > 0 && (
         <div className="-mt-2 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Filtered By</span>
-          {chips.map((c) => (
+          {shownChips.map((c) => (
             <span key={c.key} className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 py-0.5 pl-2.5 pr-1 font-medium text-brand-700">
               {c.text}
               <button
