@@ -1273,7 +1273,7 @@ export interface MessageTemplate {
   dltTemplateId?: string
   senderId?: string
   /** SMS only: the DLT template type. Explicit (promotional category) goes on the gateway's promotional channel, 10 am – 9 pm */
-  dltType?: 'implicit' | 'explicit'
+  dltType?: 'implicit' | 'explicit' | 'promo'
   /** WhatsApp only: the template as approved in WhatsApp Manager (name + language), its review status and category */
   waTemplateName?: string
   waLanguage?: string
