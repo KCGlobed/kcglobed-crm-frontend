@@ -42,7 +42,7 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
   const [body, setBody] = useState(template?.body ?? '')
   const [dlt, setDlt] = useState(template?.dltTemplateId ?? '')
   const [sender, setSender] = useState(template?.senderId ?? '')
-  const [dltType, setDltType] = useState<'implicit' | 'explicit'>(template?.dltType ?? 'implicit')
+  const [dltType, setDltType] = useState<'implicit' | 'explicit' | 'promo'>(template?.dltType ?? 'implicit')
   const [active, setActive] = useState(template?.isActive ?? true)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -110,11 +110,12 @@ function TemplateDrawer({ template, onClose }: { template?: MessageTemplate; onC
               label="DLT Template Type"
               required
               error={errors.dltType}
-              hint={dltType === 'explicit' ? 'Promotional channel · delivered 10 am – 9 pm, not to DND numbers' : 'Service / OTP · any time, DND numbers too'}
+              hint={dltType !== 'implicit' ? 'Promotional channel · delivered 10 am – 9 pm, not to DND numbers' : 'Service / OTP · any time, DND numbers too'}
             >
-              <Select value={dltType} onChange={(e) => setDltType(e.target.value as 'implicit' | 'explicit')}>
+              <Select value={dltType} onChange={(e) => setDltType(e.target.value as 'implicit' | 'explicit' | 'promo')}>
                 <option value="implicit">Implicit</option>
                 <option value="explicit">Explicit</option>
+                <option value="promo">Promotional</option>
               </Select>
             </FormField>
           </div>
