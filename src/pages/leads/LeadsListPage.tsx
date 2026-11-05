@@ -29,6 +29,7 @@ import { QuickAddDrawer } from './QuickAddDrawer'
 import { ExportLeadsModal } from './ExportLeadsModal'
 import { OwnerMultiSelect } from './OwnerMultiSelect'
 import { CheckboxMultiSelect } from '../../components/ui/CheckboxMultiSelect'
+import { TimelineFilter, type TimelineValue } from './TimelineFilter'
 import { LeadFilterPanel } from './LeadFilterPanel'
 import { BulkAssignModal } from './BulkAssignModal'
 import { parseConditions, type LeadSelection } from './leadSelection'
@@ -208,6 +209,38 @@ export default function LeadsListPage() {
     put('created_to', to)
     put('created_from_time', from ? fromTime : '')
     put('created_to_time', to ? toTime : '')
+    replaceParams(next)
+  }
+  // the same, for another <prefix>_from / _to / _from_time / _to_time range (Last Activity)
+  const rangeOf = (prefix: string) => ({
+    from: params.get(`${prefix}_from`) ?? '',
+    to: params.get(`${prefix}_to`) ?? '',
+    fromTime: params.get(`${prefix}_from_time`) ?? '',
+    toTime: params.get(`${prefix}_to_time`) ?? '',
+  })
+  const setRangeParams = (prefix: string) => (from: string, to: string, fromTime = '', toTime = '') => {
+    const next = new URLSearchParams(params)
+    const put = (key: string, value: string) => (value ? next.set(key, value) : next.delete(key))
+    put(`${prefix}_from`, from)
+    put(`${prefix}_to`, to)
+    put(`${prefix}_from_time`, from ? fromTime : '')
+    put(`${prefix}_to_time`, to ? toTime : '')
+    replaceParams(next)
+  }
+  const lastActivity = rangeOf('last_activity')
+  // Timeline filter: ?activity_type=sms,stage&activity_from=…&activity_to=…&activity_from_time=…&activity_to_time=…
+  const timeline: TimelineValue = {
+    types: (params.get('activity_type') ?? '').split(',').filter(Boolean),
+    ...rangeOf('activity'),
+  }
+  const setTimeline = (v: TimelineValue) => {
+    const next = new URLSearchParams(params)
+    const put = (key: string, value: string) => (value ? next.set(key, value) : next.delete(key))
+    put('activity_type', v.types.join(','))
+    put('activity_from', v.from)
+    put('activity_to', v.to)
+    put('activity_from_time', v.from ? v.fromTime : '')
+    put('activity_to_time', v.to ? v.toTime : '')
     replaceParams(next)
   }
 
@@ -494,6 +527,19 @@ export default function LeadsListPage() {
         </div>
         {/* created-date range dropdown — filters on the lead's Created On date (backend created_from/created_to) */}
         <DateRangeFilter withTime from={createdFrom} to={createdTo} fromTime={createdFromTime} toTime={createdToTime} onChange={setDateRange} />
+        {/* last activity on the lead (Lead.last_activity_at, backend last_activity_from/_to + times) */}
+        <DateRangeFilter
+          withTime
+          label="Last Activity"
+          heading="Last Activity Between"
+          from={lastActivity.from}
+          to={lastActivity.to}
+          fromTime={lastActivity.fromTime}
+          toTime={lastActivity.toTime}
+          onChange={setRangeParams('last_activity')}
+        />
+        {/* what happened on the lead's timeline, and when (backend activity_type / activity_from / activity_to) */}
+        <TimelineFilter value={timeline} onApply={setTimeline} />
       </FilterBar>
 
       {shownChips.length > 0 && (
