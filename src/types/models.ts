@@ -19,6 +19,7 @@ export type ModuleKey =
   | 'audit'
   | 'attendance'
   | 'targets'
+  | 'analytics'
 
 export type ActionKey =
   | 'view'
@@ -214,6 +215,8 @@ export interface Stage {
   isActive: boolean
   /** set only by the CRM (e.g. Untouched for new leads) — not selectable */
   isSystem?: boolean
+  /** Analytics → Sales funnel step */
+  inFunnel?: boolean
   subStages?: SubStage[]
 }
 
