@@ -31,7 +31,7 @@ export type ActionKey =
   | 'reassign'
   | 'approve'
 
-export type DataScope = 'own' | 'team' | 'location' | 'program' | 'cohort' | 'all'
+export type DataScope = 'own' | 'team' | 'team_unassigned' | 'location' | 'program' | 'cohort' | 'all'
 export type FieldRuleMode = 'hidden' | 'readonly' | 'masked'
 
 export interface ModulePermission {

@@ -43,6 +43,7 @@ export const ACTIONS: { key: ActionKey; label: string }[] = [
 export const DATA_SCOPES: { key: string; label: string; hint: string }[] = [
   { key: 'own', label: 'Own records', hint: 'Only records this user owns' },
   { key: 'team', label: 'Team', hint: 'Their team, managed teams and direct reports' },
+  { key: 'team_unassigned', label: 'Team + Unassigned', hint: "Their team's leads and every lead with no owner" },
 ]
 
 export function can(
