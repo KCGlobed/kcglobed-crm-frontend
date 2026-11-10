@@ -5,6 +5,7 @@ interface StoredPrefs {
   visible: string[]
 }
 
+
 interface Options {
   /** every column key, in the default order */
   allKeys: string[]
@@ -88,7 +89,7 @@ export function useColumnPrefs(storageKey: string, { allKeys, defaultVisible, lo
     const from = order.indexOf(key)
     const to = from + by
     if (from < 0 || to < 0 || to >= order.length) return
-    ;[order[from], order[to]] = [order[to], order[from]]
+      ;[order[from], order[to]] = [order[to], order[from]]
     update({ ...prefs, order })
   }
 
