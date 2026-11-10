@@ -44,7 +44,7 @@ import { useQueueForDialerMutation } from '../../services/telephonyApi'
 
 /** URL params that are not lead filters: paging, sorting, the dashboard's `from` marker and the name a
  * Target Manager link carries for its chip */
-const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order', 'from', 'target_label']
+const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order', 'from', 'target_label', 'an_title']
 // HIDDEN for now: filter fields the backend offers but the panel leaves out.
 // - tag: no screen assigns tags to leads yet
 const HIDDEN_FILTER_FIELDS = ['tag']
@@ -90,6 +90,8 @@ function linkedFilterChips(params: URLSearchParams, fields: FilterField[] | unde
   if (params.get('target')) chips.push({ key: 'target', text: `Target: ${params.get('target_label') || 'selected target'}` })
   const dialled = params.get('dialled_on')
   if (dialled) chips.push({ key: 'dialled_on', text: `Dialled on ${formatDate(dialled)}` })
+  // Analytics click-through: an_metric / an_key (+ the analytics filters as an_*)
+  if (params.get('an_metric')) chips.push({ key: 'an_metric', text: `Analytics: ${params.get('an_title') || 'selected chart'}` })
   return chips
 }
 
@@ -557,6 +559,7 @@ export default function LeadsListPage() {
                   next.delete(c.key)
                   if (c.key === 'target') next.delete('target_label')
                   if (c.key === 'dialled_on') next.delete('dialled_by')
+                  if (c.key === 'an_metric') [...params.keys()].filter((k) => k.startsWith('an_')).forEach((k) => next.delete(k))
                   replaceParams(next)
                 }}
                 className="rounded-full p-0.5 text-brand-500 hover:bg-brand-100 hover:text-brand-800"

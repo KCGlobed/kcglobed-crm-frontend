@@ -23,6 +23,7 @@ const TasksPage = lazy(() => import('../pages/tasks/TasksPage'))
 const CallsPage = lazy(() => import('../pages/calls/CallsPage'))
 const TargetsPage = lazy(() => import('../pages/targets/TargetsPage'))
 const ReportsPage = lazy(() => import('../pages/reports/ReportsPage'))
+const AnalyticsPage = lazy(() => import('../pages/analytics/AnalyticsPage'))
 const UsersPage = lazy(() => import('../pages/admin/users/UsersPage'))
 const TeamsPage = lazy(() => import('../pages/admin/teams/TeamsPage'))
 const TeamDetailPage = lazy(() => import('../pages/admin/teams/TeamDetailPage'))
@@ -95,6 +96,7 @@ export default function AppRoutes() {
         <Route path="tasks" element={<RequirePermission module="tasks"><Lazy><TasksPage /></Lazy></RequirePermission>} />
         <Route path="targets" element={<RequirePermission module="targets"><Lazy><TargetsPage /></Lazy></RequirePermission>} />
         <Route path="reports" element={<RequirePermission module="reports"><Lazy><ReportsPage /></Lazy></RequirePermission>} />
+        <Route path="analytics" element={<RequirePermission module="analytics"><Lazy><AnalyticsPage /></Lazy></RequirePermission>} />
         <Route path="admin/users" element={<RequirePermission module="users"><Lazy><UsersPage /></Lazy></RequirePermission>} />
         <Route path="admin/teams" element={<RequirePermission module="teams"><Lazy><TeamsPage /></Lazy></RequirePermission>} />
         <Route path="admin/teams/:id" element={<RequirePermission module="teams"><Lazy><TeamDetailPage /></Lazy></RequirePermission>} />

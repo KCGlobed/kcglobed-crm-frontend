@@ -21,6 +21,7 @@ export const MODULES: { key: ModuleKey; label: string; slice1: boolean }[] = [
   { key: 'audit', label: 'Audit Log', slice1: true },
   { key: 'attendance', label: 'Attendance', slice1: true },
   { key: 'targets', label: 'Target Manager', slice1: true },
+  { key: 'analytics', label: 'Analytics', slice1: false },
 ]
 
 export const ACTIONS: { key: ActionKey; label: string }[] = [

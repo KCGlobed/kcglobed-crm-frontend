@@ -37,6 +37,9 @@ const EMPTY_TIMELINE: TimelineValue = { types: [], from: '', to: '', fromTime: '
  */
 export function TimelineFilter({ value, onApply }: { value: TimelineValue; onApply: (next: TimelineValue) => void }) {
   const [open, setOpen] = useState(false)
+  // the panel opens toward the side with room: left-aligned when the button sits in the left half of the screen
+  // (e.g. wrapped onto a new filter row), right-aligned otherwise — so it never runs off either edge
+  const [alignLeft, setAlignLeft] = useState(true)
   const [draft, setDraft] = useState<TimelineValue>(value)
   const active = value.types.length > 0 || !!value.from || !!value.to
   const names = value.types.map((k) => TIMELINE_TYPES.find((t) => t.key === k)?.label ?? k)
@@ -53,8 +56,10 @@ export function TimelineFilter({ value, onApply }: { value: TimelineValue; onApp
         variant={active ? 'secondary' : 'outline'}
         size="sm"
         title={active ? [names.join(', ') || 'Any activity', when].filter(Boolean).join(' · ') : 'Leads by what happened on their timeline, and when'}
-        onClick={() => {
+        onClick={(e) => {
           setDraft(value) // reopening starts from what is applied
+          const box = e.currentTarget.getBoundingClientRect()
+          setAlignLeft(box.left + 416 <= window.innerWidth - 16) // 416 px = the panel's 26rem width
           setOpen((o) => !o)
         }}
       >
@@ -64,7 +69,7 @@ export function TimelineFilter({ value, onApply }: { value: TimelineValue; onApp
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full z-50 mt-1.5 flex max-h-[min(30rem,calc(100vh-10rem))] w-[26rem] max-w-[calc(100vw-2rem)] flex-col rounded-xl border border-slate-200 bg-white shadow-xl">
+          <div className={`absolute ${alignLeft ? 'left-0' : 'right-0'} top-full z-50 mt-1.5 flex max-h-[min(30rem,calc(100vh-10rem))] w-[26rem] max-w-[calc(100vw-2rem)] flex-col rounded-xl border border-slate-200 bg-white shadow-xl`}>
             <div className="overflow-y-auto px-3 pb-2 pt-3">
               <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">What happened</p>
               <div className="grid grid-cols-3 gap-x-1 gap-y-0.5">
