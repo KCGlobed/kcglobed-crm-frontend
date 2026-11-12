@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Activity,
   ChevronDown,
@@ -7,6 +7,7 @@ import {
   ChevronUp,
   FileSpreadsheet,
   FileText,
+  Handshake,
   Inbox,
   RefreshCw,
   Sunrise,
@@ -26,13 +27,13 @@ import {
 import { useCurrentUser } from '../../app/hooks'
 import { can } from '../../constants/permissions'
 import { DataTable, type Column } from '../../components/ui/DataTable'
-import { Card, PageHeader } from '../../components/ui/misc'
+import { Card, PageHeader, Tabs } from '../../components/ui/misc'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { Checkbox, FormField, Input, Switch } from '../../components/ui/fields'
-import { ErrorState, LoadingState } from '../../components/ui/feedback'
+import { EmptyState, ErrorState, LoadingState } from '../../components/ui/feedback'
 import { cn, parseApiError } from '../../lib/utils'
-import type { RoundRobinChannel, RoundRobinMember, RoundRobinMorning, RoundRobinSettings, RoundRobinStatus } from '../../types/models'
+import type { ModuleKey, RoundRobinChannel, RoundRobinMember, RoundRobinMorning, RoundRobinSettings, RoundRobinStatus } from '../../types/models'
 
 const POLL_MS = 30_000
 
@@ -421,13 +422,13 @@ function moved(rows: RoundRobinMember[], m: RoundRobinMember, step: -1 | 1): str
  * the toggle and moves members up and down. Polls so online state follows
  * members logging in and out.
  */
-export default function RoundRobinPage() {
+function InsideSalesTab() {
   const me = useCurrentUser()
   const { data, isLoading, isFetching, isError, error, refetch } = useRoundRobinStatusQuery(undefined, { pollingInterval: POLL_MS })
   const [setUser] = useSetRoundRobinUserMutation()
   const [setSequence, { isLoading: reordering }] = useSetRoundRobinSequenceMutation()
   const [pendingId, setPendingId] = useState<string | null>(null)
-  const canEdit = can(me, 'round_robin', 'edit')
+  const canEdit = can(me, 'round_robin.inside_sales', 'edit')
 
   const onToggle = async (m: RoundRobinMember, receivesLeads: boolean) => {
     setPendingId(m._id)
@@ -536,15 +537,14 @@ export default function RoundRobinPage() {
 
   return (
     <>
-      <PageHeader
-        title="Round Robin"
-        description="New Meta, Google, Website, Telephony and Chatbot leads go to logged-in members in a fixed sequence. Manual leads are unaffected."
-        actions={
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} /> Refresh
-          </Button>
-        }
-      />
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+        <p className="max-w-3xl text-sm text-slate-500">
+          New Meta, Google, Website, Telephony and Chatbot leads go to logged-in members in a fixed sequence. Manual leads are unaffected.
+        </p>
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
+          <RefreshCw className={cn('h-3.5 w-3.5', isFetching && 'animate-spin')} /> Refresh
+        </Button>
+      </div>
 
       {/* Reports do not depend on the live status, so they sit above it and stay available while it loads */}
       <div className="mb-4">
@@ -602,6 +602,50 @@ export default function RoundRobinPage() {
             </div>
           </div>
         </div>
+      )}
+    </>
+  )
+}
+
+/** Partner Lead API leads shared inside each partner's own team — the next step; the tab and its access are here. */
+function PartnersTab() {
+  return (
+    <Card>
+      <EmptyState
+        icon={Handshake}
+        title="Partner round-robin"
+        description="Leads from the Partner Lead API will be shared here inside each partner's own team: a team per partner, an auto-assign toggle, and the partner's manager handing out the rest. Until then a partner lead goes to the counsellor of its utm_source, or to the Unassigned pool."
+      />
+    </Card>
+  )
+}
+
+/** Round Robin's parts (Users & Access → Round Robin → Inside Sales / Partners); a user sees the tabs they are given. */
+const TABS: { key: string; label: string; module: ModuleKey }[] = [
+  { key: 'inside-sales', label: 'Inside Sales', module: 'round_robin.inside_sales' },
+  { key: 'partners', label: 'Partners', module: 'round_robin.partners' },
+]
+
+export default function RoundRobinPage() {
+  const me = useCurrentUser()
+  const [params, setParams] = useSearchParams()
+  const tabs = TABS.filter((t) => can(me, t.module))
+  const tab = tabs.find((t) => t.key === params.get('tab')) ?? tabs[0]
+
+  return (
+    <>
+      <PageHeader title="Round Robin" description="Who gets each new lead: Inside Sales for Meta, Google, Website, Telephony and Chatbot leads; Partners for Partner Lead API leads." />
+      {tabs.length > 1 && (
+        <div className="mb-4">
+          <Tabs tabs={tabs} active={tab.key} onChange={(key) => setParams({ tab: key }, { replace: true })} />
+        </div>
+      )}
+      {!tab ? (
+        <EmptyState title="No part of Round Robin is given to you" description="Ask the Super Admin for Inside Sales or Partners under Round Robin in Users & Access." />
+      ) : tab.key === 'partners' ? (
+        <PartnersTab />
+      ) : (
+        <InsideSalesTab />
       )}
     </>
   )

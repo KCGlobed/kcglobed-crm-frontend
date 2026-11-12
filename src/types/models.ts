@@ -3,6 +3,8 @@ export type ModuleKey =
   | 'leads'
   | 'tasks'
   | 'round_robin'
+  | 'round_robin.inside_sales'
+  | 'round_robin.partners'
   | 'applications'
   | 'documents'
   | 'exams'

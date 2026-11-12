@@ -1,10 +1,18 @@
 import type { ActionKey, ModuleKey, ModulePermission, User } from '../types/models'
 
-export const MODULES: { key: ModuleKey; label: string; slice1: boolean }[] = [
+export const MODULES: { key: ModuleKey; label: string; slice1: boolean; children?: { key: ModuleKey; label: string }[] }[] = [
   { key: 'dashboard', label: 'Dashboard', slice1: true },
   { key: 'leads', label: 'Leads', slice1: true },
   { key: 'tasks', label: 'Tasks & Follow-ups', slice1: false },
-  { key: 'round_robin', label: 'Round Robin', slice1: true },
+  {
+    key: 'round_robin',
+    label: 'Round Robin',
+    slice1: true,
+    children: [
+      { key: 'round_robin.inside_sales', label: 'Inside Sales' },
+      { key: 'round_robin.partners', label: 'Partners' },
+    ],
+  },
   { key: 'applications', label: 'Applications', slice1: false },
   { key: 'documents', label: 'Documents', slice1: false },
   { key: 'exams', label: 'Exams (NFET)', slice1: false },
@@ -45,6 +53,30 @@ export const DATA_SCOPES: { key: string; label: string; hint: string }[] = [
   { key: 'team_unassigned', label: 'Team + Unassigned', hint: "Their team's leads and every lead with no owner" },
 ]
 
+/** A module's parts by their key ('round_robin.partners' → 'round_robin'), from MODULES. */
+export const PARENT_MODULE: Partial<Record<ModuleKey, ModuleKey>> = Object.fromEntries(
+  MODULES.flatMap((m) => (m.children ?? []).map((c) => [c.key, m.key]))
+)
+
+export const childModules = (module: ModuleKey): ModuleKey[] => MODULES.find((m) => m.key === module)?.children?.map((c) => c.key) ?? []
+
+/** "Round Robin", or "Round Robin › Partners" for a part. */
+export const moduleLabel = (key: string): string => {
+  for (const m of MODULES) {
+    if (m.key === key) return m.label
+    const child = m.children?.find((c) => c.key === key)
+    if (child) return `${m.label} › ${child.label}`
+  }
+  return key
+}
+
+const holds = (permissions: ModulePermission[], module: ModuleKey, action: ActionKey) =>
+  !!permissions.find((p) => p.module === module)?.actions.includes(action)
+
+/**
+ * The backend's has_action (common/permissions_catalog.py): a part needs View on its module, and while none of a
+ * module's parts is ticked the module's own actions cover every part.
+ */
 export function can(
   user: Pick<User, 'isSuperAdmin' | 'permissions'> | null | undefined,
   module: ModuleKey,
@@ -52,6 +84,12 @@ export function can(
 ): boolean {
   if (!user) return false
   if (user.isSuperAdmin) return true
-  const entry = (user.permissions as ModulePermission[] | undefined)?.find((p) => p.module === module)
-  return !!entry && entry.actions.includes(action)
+  const permissions = (user.permissions as ModulePermission[] | undefined) ?? []
+  const parent = PARENT_MODULE[module]
+  if (parent) {
+    if (!holds(permissions, parent, 'view')) return false
+    const parts = childModules(parent)
+    if (!permissions.some((p) => parts.includes(p.module))) return holds(permissions, parent, action)
+  }
+  return holds(permissions, module, action)
 }
