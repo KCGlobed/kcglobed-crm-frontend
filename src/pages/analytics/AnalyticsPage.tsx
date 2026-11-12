@@ -28,7 +28,7 @@ import { can } from '../../constants/permissions'
 import { authorizedDownload } from '../../lib/download'
 import { formatHms } from '../../lib/durations'
 import { cn, formatDateTime } from '../../lib/utils'
-import { useAnalyticsSummaryQuery, useUpdateAnalyticsSettingsMutation, type AnalyticsParams } from '../../services/analyticsApi'
+import { useAnalyticsSummaryQuery, useUpdateAnalyticsSettingsMutation, type AnalyticsParams, type Matrix } from '../../services/analyticsApi'
 import { Bars, Donut, Funnel, Heatmap, LineChart, Ring, StackedBars, TrendCard } from './charts'
 import { COLORS } from './colors'
 
@@ -40,7 +40,7 @@ const FILTER_KEYS = [
 const CARD_STYLE: Record<string, { color: string; goodWhenUp: boolean; sub: string; icon: LucideIcon }> = {
   total: { color: COLORS.brand, goodWhenUp: true, sub: 'matching the filters', icon: Users },
   open: { color: COLORS.brandSoft, goodWhenUp: true, sub: 'still to work', icon: ListChecks },
-  notActed: { color: COLORS.missed, goodWhenUp: false, sub: 'assigned, no work by the counsellor', icon: AlertTriangle },
+  notActed: { color: COLORS.missed, goodWhenUp: false, sub: 'no work done yet', icon: AlertTriangle },
   converted: { color: COLORS.converted, goodWhenUp: true, sub: 'converted', icon: GraduationCap },
   lost: { color: COLORS.lost, goodWhenUp: false, sub: 'closed / not workable', icon: XCircle },
 }
@@ -56,11 +56,28 @@ const CLASS_SLICE = ['open', 'lost', 'converted'] as const
 
 function Panel({ title, hint, children, className, actions }: { title: string; hint?: string; children: ReactNode; className?: string; actions?: ReactNode }) {
   return (
-    <Card title={title} actions={actions} className={cn('flex flex-col rounded-2xl border-slate-100 shadow-md', className)} bodyClassName="flex-1 p-5">
+    <Card title={title} actions={actions} className={cn('flex min-w-0 flex-col rounded-2xl border-slate-100 shadow-md', className)} bodyClassName="min-w-0 flex-1 p-5">
       {hint && <p className="-mt-1 mb-4 text-xs text-slate-500">{hint}</p>}
       {children}
     </Card>
   )
+}
+
+/**
+ * Counsellor × X → X × counsellor: the columns (sources / stages) become rows, counsellors become columns.
+ * `busiestFirst` sorts rows by total; otherwise the backend order (e.g. pipeline order of stages) is kept.
+ */
+function transposeMatrix(m: Matrix, busiestFirst = true) {
+  const rows = m.columns
+    .map((c) => ({ key: c.key, label: c.label, color: c.color, cells: Object.fromEntries(m.rows.map((r) => [r.key, r.cells[c.key] ?? 0])), total: m.totals[c.key] ?? 0 }))
+    .filter((r) => r.total > 0)
+  if (busiestFirst) rows.sort((a, b) => b.total - a.total)
+  return {
+    columns: m.rows.map((r) => ({ key: r.key, label: r.label })),
+    rows,
+    totals: Object.fromEntries(m.rows.map((r) => [r.key, r.total])),
+    total: m.total,
+  }
 }
 
 function Band({ title, sub }: { title: string; sub: string }) {
@@ -189,6 +206,54 @@ export default function AnalyticsPage() {
             ))}
           </div>
 
+          <div className="mt-4 grid min-w-0 grid-cols-1 gap-4">
+            <Panel title="Where each counsellor's leads come from" hint="Source × counsellor. Darker = more leads. Click a number to open those leads.">
+              {d.counsellorSource.rows.length ? (
+                <Heatmap
+                  {...transposeMatrix(d.counsellorSource)}
+                  rowHeader="Source"
+                  onCell={(source, counsellor) => open('cs', `${counsellor}|${source}`, 'Counsellor × source')}
+                />
+              ) : <Empty />}
+            </Panel>
+
+            <Panel title="Lead stage per counsellor" hint="Stage × counsellor (Untouched, Interested, Not Connected …). Click a stage name for its sub-stages, a number to open those leads.">
+              {d.counsellorStage.rows.length ? (
+                <>
+                  <Heatmap
+                    {...transposeMatrix(d.counsellorStage, false)}
+                    rowHeader="Stage"
+                    activeRow={stageOpen}
+                    onRow={(stage) => setStageOpen((c) => (c === stage ? null : stage))}
+                    onCell={(stage, counsellor) => open('cst', `${counsellor}|${stage}`, 'Counsellor × stage')}
+                  />
+                  {stageOpen && (d.counsellorStage.subStages[stageOpen] ?? []).length > 0 && (() => {
+                    const subs = d.counsellorStage.subStages[stageOpen] ?? []
+                    const stageName = d.counsellorStage.columns.find((c) => c.key === stageOpen)?.label ?? 'Stage'
+                    // rows = sub-stages, columns = counsellors who have leads in this stage
+                    const rows = subs
+                      .map((sub) => ({ key: sub.key, label: sub.label, cells: sub.cells, total: Object.values(sub.cells).reduce((x, y) => x + y, 0) }))
+                      .filter((r) => r.total > 0)
+                    const cols = d.counsellorStage.rows
+                      .map((c) => ({ key: c.key, label: c.label, n: subs.reduce((x, sub) => x + (sub.cells[c.key] ?? 0), 0) }))
+                      .filter((c) => c.n > 0)
+                    const totals = Object.fromEntries(cols.map((c) => [c.key, c.n]))
+                    return (
+                      <div className="mt-4 rounded-lg border border-brand-200 bg-brand-50/40 p-3">
+                        <div className="mb-2 flex items-center justify-between text-xs font-semibold text-brand-800">
+                          Sub-stages of {stageName}
+                          <button type="button" onClick={() => setStageOpen(null)} className="cursor-pointer text-slate-500 hover:text-slate-800">Close</button>
+                        </div>
+                        <Heatmap columns={cols} rows={rows} totals={totals} total={rows.reduce((x, r) => x + r.total, 0)} rowHeader="Sub-stage"
+                          onCell={(sub, counsellor) => open('cst', `${counsellor}|${stageOpen}${sub ? `|${sub}` : ''}`, `${stageName} sub-stage`)} />
+                      </div>
+                    )
+                  })()}
+                </>
+              ) : <Empty />}
+            </Panel>
+          </div>
+
           <Band title="Counsellors" sub="Leads with each counsellor, action taken, sources, stages and follow-ups" />
           <div className="grid gap-4">
             <Panel title="Leads with each counsellor and action taken" hint="Green = counsellor worked the lead (call, stage, note, follow-up, message); red = no action yet. Click a part to open those leads.">
@@ -253,44 +318,6 @@ export default function AnalyticsPage() {
                     </tbody>
                   </table>
                 </div>
-              ) : <Empty />}
-            </Panel>
-
-            <Panel title="Where each counsellor's leads come from" hint="Counsellor × source. Darker = more leads. Click a number to open those leads.">
-              {d.counsellorSource.rows.length ? (
-                <Heatmap {...d.counsellorSource} onCell={(row, col) => open('cs', `${row}|${col}`, 'Counsellor × source')} />
-              ) : <Empty />}
-            </Panel>
-
-            <Panel title="Lead stage per counsellor" hint="Counsellor × stage (Untouched, Interested, Not Connected …). Click a stage name for its sub-stages, a number to open those leads.">
-              {d.counsellorStage.rows.length ? (
-                <>
-                  <Heatmap
-                    {...d.counsellorStage}
-                    activeColumn={stageOpen}
-                    onColumn={(col) => setStageOpen((c) => (c === col ? null : col))}
-                    onCell={(row, col) => open('cst', `${row}|${col}`, 'Counsellor × stage')}
-                  />
-                  {stageOpen && (d.counsellorStage.subStages[stageOpen] ?? []).length > 0 && (() => {
-                    const subs = d.counsellorStage.subStages[stageOpen] ?? []
-                    const stageName = d.counsellorStage.columns.find((c) => c.key === stageOpen)?.label ?? 'Stage'
-                    const rows = d.counsellorStage.rows
-                      .map((r) => ({ key: r.key, label: r.label, cells: Object.fromEntries(subs.map((sub) => [sub.key, sub.cells[r.key] ?? 0])) }))
-                      .map((r) => ({ ...r, total: Object.values(r.cells).reduce((x, y) => x + y, 0) }))
-                      .filter((r) => r.total > 0)
-                    const totals = Object.fromEntries(subs.map((sub) => [sub.key, Object.values(sub.cells).reduce((x, y) => x + y, 0)]))
-                    return (
-                      <div className="mt-4 rounded-lg border border-brand-200 bg-brand-50/40 p-3">
-                        <div className="mb-2 flex items-center justify-between text-xs font-semibold text-brand-800">
-                          Sub-stages of {stageName}
-                          <button type="button" onClick={() => setStageOpen(null)} className="cursor-pointer text-slate-500 hover:text-slate-800">Close</button>
-                        </div>
-                        <Heatmap columns={subs} rows={rows} totals={totals} total={rows.reduce((x, r) => x + r.total, 0)}
-                          onCell={(row, col) => open('cst', `${row}|${stageOpen}${col ? `|${col}` : ''}`, `${stageName} sub-stage`)} />
-                      </div>
-                    )
-                  })()}
-                </>
               ) : <Empty />}
             </Panel>
 
