@@ -349,8 +349,8 @@ function CampaignReport({ id, onClose }: { id: string; onClose: () => void }) {
         <Skeleton className="h-32 w-full" />
       ) : (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {(['queued', 'sent', 'delivered', 'failed', 'bounced', 'cancelled'] as const).map((k) => (
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+            {(['queued', 'sent', 'delivered', 'undelivered', 'failed', 'bounced', 'cancelled'] as const).map((k) => (
               <div key={k} className="rounded-lg border border-slate-200 p-2 text-center">
                 <p className="text-lg font-semibold text-slate-800">{c.report[k] ?? 0}</p>
                 <p className="text-[11px] capitalize text-slate-500">{k}</p>
@@ -402,7 +402,8 @@ function CampaignsTab() {
   if (isLoading) return <Skeleton className="h-40 w-full" />
   if (!data?.data.length)
     return <EmptyState title="No bulk sends yet" description="Select leads on the lead list, then Bulk SMS or Bulk Email." />
-  const delivered = (c: CampaignRow) => c.report.sent + c.report.delivered
+  // as the gateway's report shows them: Sent = accepted, no final word yet; Undelivered = the operator dropped it
+  const failed = (c: CampaignRow) => c.report.failed + c.report.bounced
   return (
     <>
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -412,8 +413,11 @@ function CampaignsTab() {
               <th className="px-4 py-2">Campaign</th>
               <th className="px-4 py-2">Status</th>
               <th className="px-4 py-2">Scheduled</th>
-              <th className="px-4 py-2">Sent / Final</th>
-              <th className="px-4 py-2">Failed</th>
+              <th className="px-4 py-2">Final</th>
+              <th className="px-4 py-2" title="Accepted by the gateway, no delivery report yet">Sent</th>
+              <th className="px-4 py-2">Delivered</th>
+              <th className="px-4 py-2" title="Accepted, but the operator could not deliver it (DND, expired, switched off …)">Undelivered</th>
+              <th className="px-4 py-2" title="Never went out (template mismatch, no credits, gateway error …)">Failed</th>
               <th className="px-4 py-2">By</th>
               <th />
             </tr>
@@ -433,10 +437,11 @@ function CampaignsTab() {
                   </Badge>
                 </td>
                 <td className="px-4 py-2 text-xs text-slate-500">{formatDateTime(c.scheduledAt)}</td>
-                <td className="px-4 py-2 text-xs text-slate-700">
-                  {delivered(c)} / {c.counts.final}
-                </td>
-                <td className="px-4 py-2 text-xs text-red-600">{c.report.failed + c.report.bounced || ''}</td>
+                <td className="px-4 py-2 text-xs text-slate-700">{c.counts.final}</td>
+                <td className="px-4 py-2 text-xs text-blue-700">{c.report.sent || ''}</td>
+                <td className="px-4 py-2 text-xs text-green-700">{c.report.delivered || ''}</td>
+                <td className="px-4 py-2 text-xs text-orange-600">{c.report.undelivered || ''}</td>
+                <td className="px-4 py-2 text-xs text-red-600">{failed(c) || ''}</td>
                 <td className="px-4 py-2 text-xs text-slate-500">{c.createdBy}</td>
                 <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-1">

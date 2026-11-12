@@ -374,6 +374,7 @@ export function TrendCard({
     <button
       type="button"
       onClick={onClick}
+      title={previousText}
       className="group relative flex w-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white p-4 text-left shadow-md transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg sm:p-5"
     >
       {/* the KpiCard corner wave, in the card's colour */}
@@ -400,7 +401,6 @@ export function TrendCard({
       <div className="relative mt-2">
         <Sparkline values={series} color={color} />
       </div>
-      {previousText && <span className="relative mt-1 text-[10px] text-slate-400">{previousText}</span>}
     </button>
   )
 }
@@ -417,21 +417,25 @@ export function Heatmap({
   onCell,
   onColumn,
   activeColumn,
+  onRow,
+  activeRow,
   rowHeader = 'Counsellor',
 }: {
   columns: { key: string; label: string; color?: string | null }[]
-  rows: { key: string; label: string; cells: Record<string, number>; total: number }[]
+  rows: { key: string; label: string; color?: string | null; cells: Record<string, number>; total: number }[]
   totals: Record<string, number>
   total: number
   onCell: (rowKey: string, colKey: string) => void
   onColumn?: (colKey: string) => void
   activeColumn?: string | null
+  onRow?: (rowKey: string) => void
+  activeRow?: string | null
   rowHeader?: string
 }) {
   const max = Math.max(1, ...rows.flatMap((r) => columns.map((c) => r.cells[c.key] ?? 0)))
   const shade = (n: number) => (n ? `rgba(95, 61, 158, ${0.08 + (n / max) * 0.72})` : undefined)
   return (
-    <div className="overflow-x-auto">
+    <div className="max-w-full overflow-x-auto">
       <table className="w-full border-separate border-spacing-0 text-xs">
         <thead>
           <tr>
@@ -457,7 +461,21 @@ export function Heatmap({
         <tbody>
           {rows.map((r) => (
             <tr key={r.key} className="group">
-              <td className="sticky left-0 z-10 max-w-[10rem] truncate border-t border-slate-100 bg-white px-2 py-1.5 font-medium text-slate-700 group-hover:bg-slate-50" title={r.label}>{r.label}</td>
+              <td className="sticky left-0 z-10 max-w-[10rem] truncate border-t border-slate-100 bg-white px-2 py-1.5 font-medium text-slate-700 group-hover:bg-slate-50" title={r.label}>
+                {onRow || r.color ? (
+                  <button
+                    type="button"
+                    disabled={!onRow}
+                    onClick={() => onRow?.(r.key)}
+                    className={cn('inline-flex max-w-full items-center gap-1.5 rounded px-1 py-0.5 text-left disabled:cursor-default',
+                      onRow && 'cursor-pointer hover:bg-slate-100', activeRow === r.key && 'bg-brand-50 text-brand-700 ring-1 ring-brand-300')}
+                    title={onRow ? `${r.label} — show sub-stages` : r.label}
+                  >
+                    {r.color && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: r.color }} />}
+                    <span className="truncate">{r.label}</span>
+                  </button>
+                ) : r.label}
+              </td>
               {columns.map((c) => {
                 const n = r.cells[c.key] ?? 0
                 return (

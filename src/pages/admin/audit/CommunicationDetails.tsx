@@ -35,6 +35,7 @@ const RECIPIENT_STATUSES: [string, string][] = [
   ['', 'All statuses'],
   ['delivered', 'Delivered'],
   ['sent', 'Sent'],
+  ['undelivered', 'Undelivered'],
   ['failed,bounced', 'Failed'],
   ['queued', 'Queued'],
 ]
@@ -244,8 +245,8 @@ export function CampaignAuditDetail({ entry }: { entry: AuditLogEntry }) {
       </div>
       <Variables values={snap.variables} />
       {report && (
-        <div className="grid grid-cols-5 gap-2">
-          {(['queued', 'sent', 'delivered', 'failed', 'bounced'] as const).map((k) => (
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {(['queued', 'sent', 'delivered', 'undelivered', 'failed', 'bounced'] as const).map((k) => (
             <div key={k} className="rounded-lg border border-slate-200 p-2 text-center">
               <p className="text-base font-semibold text-slate-800">{report[k] ?? 0}</p>
               <p className="text-[11px] capitalize text-slate-500">{k}</p>

@@ -78,8 +78,9 @@ const smartLabel = (key: string) => SMART_LABELS[key] ?? key.split('_').map((w) 
 function linkedFilterChips(params: URLSearchParams, fields: FilterField[] | undefined): { key: string; text: string }[] {
   const label = (key: string, value: string) => fields?.find((f) => f.key === key)?.options?.find((o) => o.value === value)?.label
   const chips: { key: string; text: string }[] = []
-  const source = params.get('source')
-  if (source) chips.push({ key: 'source', text: `Source: ${label('source', source) ?? 'selected source'}` })
+  const sources = (params.get('source') ?? '').split(',').filter(Boolean)
+  if (sources.length === 1) chips.push({ key: 'source', text: `Source: ${label('source', sources[0]) ?? 'selected source'}` })
+  else if (sources.length > 1) chips.push({ key: 'source', text: `Source: ${sources.length} sources` })
   const owner = params.get('owner')
   if (owner) chips.push({ key: 'owner', text: `Counsellor: ${label('owner', owner) ?? 'selected counsellor'}` })
   const status = params.get('status')
@@ -343,6 +344,7 @@ export default function LeadsListPage() {
   const chips = linkedFilterChips(params, meta?.data.fields)
   // Owner dropdown: the backend sends the owner field only to team managers and above, with options already scoped to them
   const ownerField = meta?.data.fields.find((f) => f.key === 'owner')
+  const sourceField = meta?.data.fields.find((f) => f.key === 'source')
   // the dropdown already shows the chosen owner, so its "Counsellor: …" chip is left out
   const shownChips = chips.filter((c) => !(ownerField?.options?.length && c.key === 'owner'))
   // "Not Connected" pill: the backend lists it as a smart filter from this release on. Against an
@@ -431,6 +433,24 @@ export default function LeadsListPage() {
             options={ownerField.options}
             value={(params.get('owner') ?? '').split(',').filter(Boolean)}
             onChange={(ids) => setParam('owner', ids.length ? ids.join(',') : undefined)}
+          />
+        ) : null}
+        {sourceField?.options?.length ? (
+          <OwnerMultiSelect
+            noun="Latest Source"
+            plural="Latest Sources"
+            options={sourceField.options}
+            value={(params.get('source') ?? '').split(',').filter(Boolean)}
+            onChange={(ids) => setParam('source', ids.length ? ids.join(',') : undefined)}
+          />
+        ) : null}
+        {meta?.data.utmSources?.length ? (
+          <OwnerMultiSelect
+            noun="UTM Source"
+            plural="UTM Sources"
+            options={meta.data.utmSources}
+            value={(params.get('utm_sources') ?? '').split(',').filter(Boolean)}
+            onChange={(ids) => setParam('utm_sources', ids.length ? ids.join(',') : undefined)}
           />
         ) : null}
       </div>

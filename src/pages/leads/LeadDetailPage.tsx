@@ -26,6 +26,7 @@ import { useCurrentUser } from '../../app/hooks'
 import { can } from '../../constants/permissions'
 import { isAdminLike, isCounsellor } from '../../lib/roles'
 import { Badge, StageBadge } from '../../components/ui/Badge'
+import { statusTone as messageTone } from '../../lib/status'
 import { Button } from '../../components/ui/Button'
 import { ProgressRing } from '../../components/ui/ProgressRing'
 import { ConfirmDialog, ErrorState, Skeleton } from '../../components/ui/feedback'
@@ -83,8 +84,8 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 
 /**
  * Console providers only log the message, so their "sent" / "delivered" is not a real delivery
- * status; a backend that does not report the provider yet cannot confirm it either. Failed and
- * bounced are real outcomes whatever the provider.
+ * status; a backend that does not report the provider yet cannot confirm it either. Undelivered,
+ * failed and bounced are real outcomes whatever the provider.
  */
 const isSimulatedStatus = (m: LeadMessage) =>
   (m.status === 'sent' || m.status === 'delivered') && (!m.provider || m.provider.startsWith('console'))
@@ -274,7 +275,7 @@ function OverviewTab({
             </span>
           </span>
           {!isSimulatedStatus(m) && (
-            <Badge tone={m.status === 'delivered' ? 'green' : m.status === 'failed' || m.status === 'bounced' ? 'red' : 'blue'}>{m.status}</Badge>
+            <Badge tone={messageTone(m.status)} title={m.error}>{m.status}</Badge>
           )}
         </div>
       ))}
