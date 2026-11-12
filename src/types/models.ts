@@ -327,8 +327,10 @@ export interface Lead {
   optedOut?: { sms: boolean; email: boolean }
   isOverdue?: boolean
   ownerActive?: boolean | null
-  /** calls logged on the lead (manual + dialer), for the list's "No. of Call Attempts" column */
+  /** outbound calls on the lead (manual + dialer, any outcome), for the list's "No. of Call Attempts" column */
   callsCount?: number
+  /** of those, how many were answered; and how many times the lead called in (not attempts) */
+  callStats?: { connected: number; inbound: number }
   profileValues?: Record<string, unknown>
   discussionValues?: Record<string, unknown>
 }
@@ -837,6 +839,8 @@ export interface FilterCondition {
 export interface FilterFieldsMeta {
   fields: FilterField[]
   smartFilters: { key: string; label: string }[]
+  /** Quick Filters → UTM Source: utm_source values on the viewer's leads (case merged) + "No UTM source" */
+  utmSources?: { value: string; label: string; count: number }[]
   operators: string[]
   exportColumns: { key: string; label: string; group: string }[]
   assignReasons: string[]
@@ -1656,7 +1660,7 @@ export interface CampaignRow {
   counts: { selected?: number; final?: number; excluded?: { optedOut: number; invalid: number; duplicate: number } }
   createdBy?: string
   createdAt: string
-  report: Record<'queued' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'cancelled', number>
+  report: Record<'queued' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'cancelled', number> & { undelivered?: number }
   /** 'sending' with nothing going out for 10 min: its run died with a server restart — Resume or Stop it. */
   stalled?: boolean
   failures?: { lead: string; name: string; to: string; reason: string }[]

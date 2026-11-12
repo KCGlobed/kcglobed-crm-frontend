@@ -433,6 +433,15 @@ export default function LeadsListPage() {
             onChange={(ids) => setParam('owner', ids.length ? ids.join(',') : undefined)}
           />
         ) : null}
+        {meta?.data.utmSources?.length ? (
+          <OwnerMultiSelect
+            noun="UTM Source"
+            plural="UTM Sources"
+            options={meta.data.utmSources}
+            value={(params.get('utm_sources') ?? '').split(',').filter(Boolean)}
+            onChange={(ids) => setParam('utm_sources', ids.length ? ids.join(',') : undefined)}
+          />
+        ) : null}
       </div>
 
       <FilterBar

@@ -90,8 +90,23 @@ const ALL_LEAD_COLUMNS: LeadColumn[] = [
         '—'
       ),
   },
-  // calls logged on the lead (manual + dialer); a dash until the backend sends the count
-  { key: 'callAttempts', header: 'No. of Call Attempts', exportKeys: [], align: 'center', render: (l) => text(l.callsCount ?? null) },
+  // outbound calls on the lead (manual + dialer, any outcome); hover: connected / inbound
+  {
+    key: 'callAttempts',
+    header: 'No. of Call Attempts',
+    exportKeys: [],
+    align: 'center',
+    render: (l) => {
+      if (l.callsCount === undefined || l.callsCount === null) return text(null)
+      const stats = l.callStats
+      const title = `${l.callsCount} outbound${stats ? ` · ${stats.connected} connected · ${stats.inbound} inbound` : ''}`
+      return (
+        <span title={title} className={l.callsCount ? 'text-xs font-semibold text-slate-800' : 'text-xs text-slate-400'}>
+          {l.callsCount}
+        </span>
+      )
+    },
+  },
   {
     key: 'owner',
     header: 'Owner',

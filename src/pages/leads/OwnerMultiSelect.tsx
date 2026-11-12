@@ -11,10 +11,15 @@ export function OwnerMultiSelect({
   options,
   value,
   onChange,
+  noun = 'Owner',
+  plural = 'Owners',
 }: {
-  options: { value: string; label: string }[]
+  options: { value: string; label: string; count?: number }[]
   value: string[]
   onChange: (ids: string[]) => void
+  /** what is picked, e.g. "UTM Source" / "UTM Sources" (the same dropdown serves Quick Filters → UTM Source) */
+  noun?: string
+  plural?: string
 }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -22,17 +27,17 @@ export function OwnerMultiSelect({
   const shown = term ? options.filter((o) => o.label.toLowerCase().includes(term)) : options
   const text =
     value.length === 0
-      ? 'All Owners'
+      ? `All ${plural}`
       : value.length === 1
-        ? (options.find((o) => o.value === value[0])?.label ?? '1 Owner')
-        : `${value.length} Owners`
+        ? (options.find((o) => o.value === value[0])?.label ?? `1 ${noun}`)
+        : `${value.length} ${plural}`
   const toggle = (id: string, on: boolean) => onChange(on ? [...value, id] : value.filter((v) => v !== id))
 
   return (
     <div className="relative">
       <button
         type="button"
-        aria-label="Owner"
+        aria-label={noun}
         aria-expanded={open}
         title={value.length > 1 ? value.map((id) => options.find((o) => o.value === id)?.label ?? id).join(', ') : undefined}
         onClick={() => setOpen((o) => !o)}
@@ -54,22 +59,23 @@ export function OwnerMultiSelect({
                 autoFocus
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search owner…"
-                aria-label="Search owner"
+                placeholder={`Search ${noun.toLowerCase()}…`}
+                aria-label={`Search ${noun.toLowerCase()}`}
                 className="h-8 w-full rounded-lg border border-slate-200 pl-7 pr-2 text-xs focus:border-brand-400 focus:outline-none"
               />
             </div>
             <div className="max-h-64 space-y-0.5 overflow-y-auto">
-              {shown.length === 0 && <p className="px-2 py-1.5 text-xs text-slate-400">No owner matches</p>}
+              {shown.length === 0 && <p className="px-2 py-1.5 text-xs text-slate-400">No {noun.toLowerCase()} matches</p>}
               {shown.map((o) => (
                 <label key={o.value} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-700 hover:bg-slate-50">
                   <input type="checkbox" checked={value.includes(o.value)} onChange={(e) => toggle(o.value, e.target.checked)} />
                   <span className="truncate">{o.label}</span>
+                  {o.count !== undefined && <span className="ml-auto shrink-0 text-[11px] text-slate-400">{o.count.toLocaleString('en-IN')}</span>}
                 </label>
               ))}
             </div>
             <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2">
-              <span className="text-[11px] text-slate-500">{value.length ? `${value.length} selected` : 'All owners'}</span>
+              <span className="text-[11px] text-slate-500">{value.length ? `${value.length} selected` : `All ${plural.toLowerCase()}`}</span>
               <div className="flex gap-1.5">
                 {value.length > 0 && (
                   <Button variant="ghost" size="sm" className="text-red-600" onClick={() => onChange([])}>
