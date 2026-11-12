@@ -263,9 +263,9 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
             )}
           </div>
         )}
-        {shown && channel === 'sms' && shown.template.dltType === 'explicit' && (
+        {shown && channel === 'sms' && (shown.template.dltType === 'explicit' || shown.template.dltType === 'promo') && (
           <p className="text-xs text-slate-500">
-            Explicit (promotional) DLT template: operators deliver it between 10 am and 9 pm only, and not to DND numbers without consent.
+            {shown.template.dltType === 'explicit' ? 'Explicit (promotional)' : 'Promotional'} DLT template: operators deliver it between 10 am and 9 pm only, and not to DND numbers without consent.
           </p>
         )}
         {templated && reviewing && (
@@ -324,8 +324,8 @@ export function SendMessageModal({ lead, channel, onClose }: { lead: Lead; chann
                 label="Date & Time"
                 required
                 hint={
-                  channel === 'sms' && shown.template.dltType === 'explicit'
-                    ? 'Explicit DLT templates are delivered between 10 am and 9 pm only'
+                  channel === 'sms' && (shown.template.dltType === 'explicit' || shown.template.dltType === 'promo')
+                    ? 'Explicit / promotional DLT templates are delivered between 10 am and 9 pm only'
                     : 'Goes out from the server at this time; cancel it any time from Activity Log → Scheduled'
                 }
               >

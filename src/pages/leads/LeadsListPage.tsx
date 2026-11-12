@@ -44,7 +44,7 @@ import { useQueueForDialerMutation } from '../../services/telephonyApi'
 
 /** URL params that are not lead filters: paging, sorting, the dashboard's `from` marker and the name a
  * Target Manager link carries for its chip */
-const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order', 'from', 'target_label']
+const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order', 'from', 'target_label', 'an_title']
 // HIDDEN for now: filter fields the backend offers but the panel leaves out.
 // - tag: no screen assigns tags to leads yet
 const HIDDEN_FILTER_FIELDS = ['tag']
@@ -78,8 +78,9 @@ const smartLabel = (key: string) => SMART_LABELS[key] ?? key.split('_').map((w) 
 function linkedFilterChips(params: URLSearchParams, fields: FilterField[] | undefined): { key: string; text: string }[] {
   const label = (key: string, value: string) => fields?.find((f) => f.key === key)?.options?.find((o) => o.value === value)?.label
   const chips: { key: string; text: string }[] = []
-  const source = params.get('source')
-  if (source) chips.push({ key: 'source', text: `Source: ${label('source', source) ?? 'selected source'}` })
+  const sources = (params.get('source') ?? '').split(',').filter(Boolean)
+  if (sources.length === 1) chips.push({ key: 'source', text: `Source: ${label('source', sources[0]) ?? 'selected source'}` })
+  else if (sources.length > 1) chips.push({ key: 'source', text: `Source: ${sources.length} sources` })
   const owner = params.get('owner')
   if (owner) chips.push({ key: 'owner', text: `Counsellor: ${label('owner', owner) ?? 'selected counsellor'}` })
   const status = params.get('status')
@@ -90,6 +91,8 @@ function linkedFilterChips(params: URLSearchParams, fields: FilterField[] | unde
   if (params.get('target')) chips.push({ key: 'target', text: `Target: ${params.get('target_label') || 'selected target'}` })
   const dialled = params.get('dialled_on')
   if (dialled) chips.push({ key: 'dialled_on', text: `Dialled on ${formatDate(dialled)}` })
+  // Analytics click-through: an_metric / an_key (+ the analytics filters as an_*)
+  if (params.get('an_metric')) chips.push({ key: 'an_metric', text: `Analytics: ${params.get('an_title') || 'selected chart'}` })
   return chips
 }
 
@@ -341,6 +344,7 @@ export default function LeadsListPage() {
   const chips = linkedFilterChips(params, meta?.data.fields)
   // Owner dropdown: the backend sends the owner field only to team managers and above, with options already scoped to them
   const ownerField = meta?.data.fields.find((f) => f.key === 'owner')
+  const sourceField = meta?.data.fields.find((f) => f.key === 'source')
   // the dropdown already shows the chosen owner, so its "Counsellor: …" chip is left out
   const shownChips = chips.filter((c) => !(ownerField?.options?.length && c.key === 'owner'))
   // "Not Connected" pill: the backend lists it as a smart filter from this release on. Against an
@@ -429,6 +433,24 @@ export default function LeadsListPage() {
             options={ownerField.options}
             value={(params.get('owner') ?? '').split(',').filter(Boolean)}
             onChange={(ids) => setParam('owner', ids.length ? ids.join(',') : undefined)}
+          />
+        ) : null}
+        {sourceField?.options?.length ? (
+          <OwnerMultiSelect
+            noun="Latest Source"
+            plural="Latest Sources"
+            options={sourceField.options}
+            value={(params.get('source') ?? '').split(',').filter(Boolean)}
+            onChange={(ids) => setParam('source', ids.length ? ids.join(',') : undefined)}
+          />
+        ) : null}
+        {meta?.data.utmSources?.length ? (
+          <OwnerMultiSelect
+            noun="UTM Source"
+            plural="UTM Sources"
+            options={meta.data.utmSources}
+            value={(params.get('utm_sources') ?? '').split(',').filter(Boolean)}
+            onChange={(ids) => setParam('utm_sources', ids.length ? ids.join(',') : undefined)}
           />
         ) : null}
       </div>
@@ -557,6 +579,7 @@ export default function LeadsListPage() {
                   next.delete(c.key)
                   if (c.key === 'target') next.delete('target_label')
                   if (c.key === 'dialled_on') next.delete('dialled_by')
+                  if (c.key === 'an_metric') [...params.keys()].filter((k) => k.startsWith('an_')).forEach((k) => next.delete(k))
                   replaceParams(next)
                 }}
                 className="rounded-full p-0.5 text-brand-500 hover:bg-brand-100 hover:text-brand-800"

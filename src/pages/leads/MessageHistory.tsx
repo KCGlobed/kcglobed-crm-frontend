@@ -39,7 +39,7 @@ const CHANNEL = {
 const isSimulated = (m: LeadMessage) =>
   (m.status === 'sent' || m.status === 'delivered') && (!m.provider || m.provider.startsWith('console'))
 
-const isFailed = (m: LeadMessage) => m.status === 'failed' || m.status === 'bounced'
+const isFailed = (m: LeadMessage) => m.status === 'failed' || m.status === 'bounced' || m.status === 'undelivered'
 
 const fileSize = (bytes: number) =>
   bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`
@@ -57,9 +57,10 @@ function statusTitle(m: LeadMessage): string {
 /** The WhatsApp-style tick for an SMS bubble. */
 function StatusTick({ m }: { m: LeadMessage }) {
   if (isFailed(m)) {
+    // undelivered: the gateway took it, the operator could not deliver it (DND, expired …); failed: it never went out
     return (
-      <span title={m.error} className="inline-flex items-center gap-0.5 text-red-600">
-        <AlertTriangle className="h-3 w-3" /> {m.status}
+      <span title={m.error} className="inline-flex items-center gap-0.5 font-medium text-red-600">
+        <AlertTriangle className="h-3 w-3" /> {m.status === 'undelivered' ? 'Undelivered' : 'Failed'}
       </span>
     )
   }
@@ -72,15 +73,15 @@ function StatusTick({ m }: { m: LeadMessage }) {
   }
   if (m.status === 'delivered') {
     return (
-      <span title={statusTitle(m)}>
-        <CheckCheck className="h-3.5 w-3.5 text-sky-600" aria-label="Delivered" />
+      <span title={statusTitle(m)} className="inline-flex items-center gap-0.5 text-sky-700">
+        <CheckCheck className="h-3.5 w-3.5 text-sky-600" aria-hidden /> Delivered
       </span>
     )
   }
   if (m.status === 'sent') {
     return (
-      <span title={statusTitle(m)}>
-        <Check className="h-3.5 w-3.5 text-slate-400" aria-label="Sent" />
+      <span title={statusTitle(m)} className="inline-flex items-center gap-0.5">
+        <Check className="h-3.5 w-3.5 text-slate-400" aria-hidden /> Sent
       </span>
     )
   }
