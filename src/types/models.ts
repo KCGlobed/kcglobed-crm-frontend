@@ -1192,6 +1192,46 @@ export interface AttendanceCallRow {
   /** every screenshot, in upload order (`screenshot` is the first) */
   screenshots?: CallProofFile[]
   recording: CallProofFile | null
+  /** what the dialer (Smartflo) said about the call; null for a manually logged call */
+  smartflo?: SmartfloCallDetail | null
+}
+
+export type SmartfloCallResult =
+  | 'connected'
+  | 'not_answered'
+  | 'cancelled'
+  | 'busy'
+  | 'rejected'
+  | 'invalid'
+  | 'unreachable'
+  | 'network'
+  | 'dropped'
+  | 'agent_missed'
+
+export interface SmartfloCallDetail {
+  direction: 'outbound' | 'inbound'
+  result: SmartfloCallResult
+  connected: boolean
+  /** plain words: "Lead didn't answer", "Counsellor cut the call while the lead was ringing", … */
+  label: string
+  /** who put the phone down; null when the network / nobody ended it */
+  endedBy: 'lead' | 'counsellor' | null
+  talkSeconds: number
+  /** null on an incoming call (the lead rang us) */
+  leadRingSeconds: number | null
+  counsellorRingSeconds: number
+  totalSeconds: number
+  /** IST, as Smartflo sends it ("2026-11-13 12:32:05") */
+  startedAt: string | null
+  endedAt: string | null
+  smartfloStatus: string | null
+  smartfloReason: string | null
+  hangupCause: string | null
+  counsellorLine: string | null
+  operator: string | null
+  callId: string | null
+  /** Smartflo's hang-up report never reached this server: built from the call record, with fewer details */
+  fromCallRecord?: boolean
 }
 
 export interface FieldChangeEntry {
