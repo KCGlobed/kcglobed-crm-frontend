@@ -159,3 +159,13 @@ export function SmartfloCallDialog({ call, title, description, onClose }: { call
     </Modal>
   )
 }
+
+/** Just the outcome badge (Connected / Not answered / …) of a Smartflo detail. */
+export function SmartfloResultBadge({ detail }: { detail: SmartfloCallDetail }) {
+  const r = RESULT[detail.result] ?? RESULT.dropped
+  return (
+    <Badge tone={r.tone} dot>
+      {r.text}
+    </Badge>
+  )
+}

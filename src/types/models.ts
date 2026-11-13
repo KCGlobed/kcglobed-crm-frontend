@@ -1234,6 +1234,55 @@ export interface SmartfloCallDetail {
   fromCallRecord?: boolean
 }
 
+/** Attendance → Auto Dialer: one progressive run of a counsellor */
+export interface DialerRunRow {
+  _id: string
+  user: { _id: string; name: string | null }
+  /** running: a call on now or in the last 5 min · idle: still the current run, nothing for 5 min · finished */
+  status: 'running' | 'idle' | 'finished'
+  /** still the counsellor's current run in the dialer */
+  current: boolean
+  startedAt: string
+  firstCallAt: string | null
+  lastActivityAt: string | null
+  /** null while running */
+  endedAt: string | null
+  runSeconds: number
+  leads: number
+  called: number
+  connected: number
+  notConnected: number
+  onCallNow: number
+  notCalled: number
+  totalCalls: number
+  talkSeconds: number
+  rounds: number
+}
+
+export interface DialerRunCall {
+  _id: string
+  createdAt: string
+  endedAt: string | null
+  status: string
+  live: boolean
+  connected: boolean
+  talkSeconds: number
+  user: { _id: string; name: string } | null
+  stage: string | null
+  subStage: string | null
+  smartflo: SmartfloCallDetail | null
+  recording: CallProofFile | null
+}
+
+export interface DialerRunDetail extends DialerRunRow {
+  rows: {
+    lead: { _id: string; name: string; leadNo: string | null; stage: string | null }
+    calls: DialerRunCall[]
+    outcome: 'on_call' | 'connected' | 'not_connected' | 'not_called'
+    talkSeconds: number
+  }[]
+}
+
 export interface FieldChangeEntry {
   _id: string
   section: string
