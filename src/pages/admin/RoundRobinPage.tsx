@@ -633,8 +633,8 @@ function movedMember(members: PartnerMember[], m: PartnerMember, step: -1 | 1): 
 }
 
 /**
- * One partner: the user its leads land on (Users → UTM source = the partner's Source), the Auto assign switch, and
- * that user's reports and team with a toggle each and a sequence. The members list folds away.
+ * One partner (a Source in the Partner channel): the user its leads land on (Users → UTM source = the Source's name),
+ * the Auto assign switch, and that user's reports and team with a toggle each and a sequence. The members list folds away.
  */
 function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; canEdit: boolean; canOpenLeads: boolean }) {
   const [setAutoAssign, { isLoading: switching }] = useSetPartnerAutoAssignMutation()
@@ -648,7 +648,7 @@ function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; 
 
   const onAutoAssign = async (autoAssign: boolean) => {
     try {
-      const res = await setAutoAssign({ channelId: card._id, autoAssign }).unwrap()
+      const res = await setAutoAssign({ sourceId: card._id, autoAssign }).unwrap()
       const handing = autoAssign && card.waiting && onCount ? ` — ${card.waiting.toLocaleString()} waiting lead(s) are being handed out` : ''
       toast.success(res.message + handing)
     } catch (err) {
@@ -659,7 +659,7 @@ function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; 
   const onToggle = async (m: PartnerMember, on: boolean) => {
     setPendingId(m._id)
     try {
-      const res = await setMember({ channelId: card._id, userId: m._id, on }).unwrap()
+      const res = await setMember({ sourceId: card._id, userId: m._id, on }).unwrap()
       toast.success(res.message)
     } catch (err) {
       toast.error(parseApiError(err).message)
@@ -672,7 +672,7 @@ function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; 
     const order = movedMember(members, m, step)
     if (!order) return
     try {
-      await setSequence({ channelId: card._id, order }).unwrap()
+      await setSequence({ sourceId: card._id, order }).unwrap()
       toast.success(`${m.name} moved ${step < 0 ? 'up' : 'down'}`)
     } catch (err) {
       toast.error(parseApiError(err).message)
@@ -683,12 +683,7 @@ function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; 
 
   return (
     <Card
-      title={
-        <>
-          <span className="truncate">{card.name}</span>
-          {!card.isActive && <Badge tone="red">Key revoked</Badge>}
-        </>
-      }
+      title={<span className="truncate">{card.name}</span>}
       actions={
         <label className="flex shrink-0 items-center gap-2 text-xs font-medium text-slate-600">
           Auto assign
@@ -731,8 +726,18 @@ function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; 
           </div>
         ) : (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
-            No user has <span className="font-mono">{(card.source ?? card.name).toLowerCase()}</span> as their UTM source, so this
-            partner's leads have nobody to land on. Set it on the partner's user in Users &amp; Access.
+            {/\s/.test(card.name.trim()) ? (
+              <>
+                A UTM source cannot have spaces, so no user can match <span className="font-mono">{card.name}</span>. Rename the
+                Source in Masters → Sources (for example <span className="font-mono">{card.name.trim().toLowerCase().replace(/\s+/g, '-')}</span>)
+                and set that as the partner user's UTM source in Users &amp; Access.
+              </>
+            ) : (
+              <>
+                No user has <span className="font-mono">{card.name.trim().toLowerCase()}</span> as their UTM source, so this
+                partner's leads have nobody to land on. Set it on the partner's user in Users &amp; Access.
+              </>
+            )}
           </p>
         )}
 
@@ -804,7 +809,8 @@ function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; 
 }
 
 /**
- * Round Robin → Partners: a card per Partner Lead API partner. A partner's leads land on its user; with Auto assign
+ * Round Robin → Partners: a card per active Source in the Partner channel (Masters → Sources), with or without a
+ * Partner Lead API key. A partner's leads land on its user; with Auto assign
  * on, every lead that reaches that user goes on to the next member who is on, in the card's order — logins and
  * breaks play no part. Which cards a user sees follows their data scope: every card for the Super Admin and "All";
  * a team scope, the partners whose user is them, in their team or anywhere below them through Reporting Manager.
@@ -820,7 +826,8 @@ function PartnersTab() {
     <>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <p className="max-w-3xl text-sm text-slate-500">
-          A partner's leads land on the user whose UTM source is the partner's Source. With Auto assign on, each lead that reaches
+          Every active Source in the Partner channel (Masters → Sources) is a card. A partner's leads land on the user whose UTM
+          source is the Source's name. With Auto assign on, each lead that reaches
           that user goes on to the next team member who is on, in this order, whether they are logged in or not. A member turned
           off keeps the leads they have.
         </p>
@@ -837,7 +844,7 @@ function PartnersTab() {
           <EmptyState
             icon={Handshake}
             title="No partners to show"
-            description="You see a partner when its user is you, is in your team, or is anywhere below you through Reporting Manager. The Super Admin and the All data scope see every partner."
+            description="A partner is a Source in the Partner channel (Masters → Sources). You see it when its user is you, is in your team, or is anywhere below you through Reporting Manager. The Super Admin and the All data scope see every partner."
           />
         </Card>
       ) : (

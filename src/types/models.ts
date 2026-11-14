@@ -1965,16 +1965,13 @@ export interface PartnerMember {
 
 /** Round Robin → Partners: one card per Partner Lead API channel. */
 export interface PartnerCard {
+  /** the Source's id (Masters → Sources, Partner channel) */
   _id: string
-  /** the channel's name */
+  /** the Source's name */
   name: string
-  source: string | null
-  /** the channel's key works (not revoked) */
-  isActive: boolean
-  lastUsedAt: string | null
   /** leads that land on the partner user go on to the next member who is on */
   autoAssign: boolean
-  /** the user whose UTM source is the channel's Source; null when nobody has it */
+  /** the user whose UTM source is the Source's name; null when nobody has it */
   user: { _id: string; name: string; email: string; utmSource: string } | null
   /** leads still with the partner user */
   waiting: number
