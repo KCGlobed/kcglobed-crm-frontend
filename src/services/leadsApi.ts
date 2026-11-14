@@ -352,8 +352,8 @@ export const leadsApi = api.injectEndpoints({
       providesTags: ['RoundRobin'],
     }),
     // turning it on hands out the leads waiting with the partner user (just after the answer)
-    setPartnerAutoAssign: build.mutation<ApiResponse<{ cards: PartnerCard[] }>, { channelId: string; autoAssign: boolean }>({
-      query: ({ channelId, autoAssign }) => ({ url: `/leads/round-robin/partners/${channelId}`, method: 'PATCH', body: { autoAssign } }),
+    setPartnerAutoAssign: build.mutation<ApiResponse<{ cards: PartnerCard[] }>, { sourceId: string; autoAssign: boolean }>({
+      query: ({ sourceId, autoAssign }) => ({ url: `/leads/round-robin/partners/${sourceId}`, method: 'PATCH', body: { autoAssign } }),
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled
@@ -366,9 +366,9 @@ export const leadsApi = api.injectEndpoints({
       },
       invalidatesTags: (_r, error) => (error ? [] : [{ type: 'Leads', id: 'LIST' }, 'Dashboard']),
     }),
-    setPartnerMember: build.mutation<ApiResponse<{ cards: PartnerCard[] }>, { channelId: string; userId: string; on: boolean }>({
-      query: ({ channelId, userId, on }) => ({
-        url: `/leads/round-robin/partners/${channelId}/members/${userId}`,
+    setPartnerMember: build.mutation<ApiResponse<{ cards: PartnerCard[] }>, { sourceId: string; userId: string; on: boolean }>({
+      query: ({ sourceId, userId, on }) => ({
+        url: `/leads/round-robin/partners/${sourceId}/members/${userId}`,
         method: 'PATCH',
         body: { on },
       }),
@@ -385,8 +385,8 @@ export const leadsApi = api.injectEndpoints({
       invalidatesTags: (_r, error) => (error ? [] : [{ type: 'Leads', id: 'LIST' }]),
     }),
     // every member of the card, top first
-    setPartnerSequence: build.mutation<ApiResponse<{ cards: PartnerCard[] }>, { channelId: string; order: string[] }>({
-      query: ({ channelId, order }) => ({ url: `/leads/round-robin/partners/${channelId}/sequence`, method: 'PUT', body: { order } }),
+    setPartnerSequence: build.mutation<ApiResponse<{ cards: PartnerCard[] }>, { sourceId: string; order: string[] }>({
+      query: ({ sourceId, order }) => ({ url: `/leads/round-robin/partners/${sourceId}/sequence`, method: 'PUT', body: { order } }),
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled
