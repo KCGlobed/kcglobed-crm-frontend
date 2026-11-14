@@ -19,14 +19,15 @@ import { Select } from '../../components/ui/fields'
 import { FilterBar, PageHeader, SearchInput, Tabs } from '../../components/ui/misc'
 import type { AttendanceRow, BreakEntry } from '../../types/models'
 import { CallProofsTab } from './attendance/CallProofsTab'
+import { DialerRunsTab } from './attendance/DialerRunsTab'
 
 /**
  * Attendance (Super Admin): per employee per IST day, sign-in hours from the login / logout records,
  * talk time from the logged calls and break-wise time from Punch Break. The tabs are views of the same
  * rows (the spec's tables 4.1, 4.2, 4.3 and the consolidated report); Break Entries lists every break.
  */
-type Tab = 'consolidated' | 'login' | 'talk' | 'breaks' | 'entries' | 'calls'
-type ReportTab = Exclude<Tab, 'entries' | 'calls'>
+type Tab = 'consolidated' | 'login' | 'talk' | 'breaks' | 'entries' | 'calls' | 'dialer'
+type ReportTab = Exclude<Tab, 'entries' | 'calls' | 'dialer'>
 const TABS: { key: Tab; label: string }[] = [
   { key: 'consolidated', label: 'Consolidated' },
   { key: 'login', label: 'Login Hours' },
@@ -34,6 +35,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'breaks', label: 'Breaks' },
   { key: 'entries', label: 'Break Entries' },
   { key: 'calls', label: 'Call Proofs' },
+  { key: 'dialer', label: 'Auto Dialer' },
 ]
 const DESCRIPTIONS: Record<Tab, string> = {
   consolidated: 'Login and logout, talk time and break-wise time for every employee, one row per working day (IST).',
@@ -42,6 +44,7 @@ const DESCRIPTIONS: Record<Tab, string> = {
   breaks: 'Completed break time by type. Pause Break (campus visit, training, call calibration) is listed on its own and is not part of the total. A break still running is shown on its own; one left open past its day is counted as incomplete.',
   entries: 'Every break punched, with its start, end and duration, for auditing.',
   calls: 'Every logged call with the duration the counsellor entered, its call screenshot and recording. Preview to compare the duration with the screenshot.',
+  dialer: 'Progressive dialer runs: who is dialing now, when each run started and how long it ran, how many leads were called and connected, and the talk time. View a run for each lead with its calls and recordings.',
 }
 const FILTER_KEYS = ['tab', 'date_from', 'date_to', 'user', 'search', 'type', 'status']
 
@@ -82,7 +85,8 @@ export default function AttendancePage() {
   const filters = { page: query.page, page_size: query.page_size, date_from: dateFrom, date_to: dateTo, user: query.user, search: query.search }
   const entriesTab = tab === 'entries'
   const callsTab = tab === 'calls'
-  const report = useAttendanceReportQuery(filters, { skip: entriesTab || callsTab })
+  const dialerTab = tab === 'dialer'
+  const report = useAttendanceReportQuery(filters, { skip: entriesTab || callsTab || dialerTab })
   const entries = useBreakEntriesQuery({ ...filters, type: query.type, status: query.status }, { skip: !entriesTab })
   const { data: people } = useUserOptionsQuery()
   const now = useNow(1000)
@@ -234,7 +238,7 @@ export default function AttendancePage() {
         title="Attendance"
         description={DESCRIPTIONS[tab]}
         actions={
-          canExport && !entriesTab && !callsTab ? (
+          canExport && !entriesTab && !callsTab && !dialerTab ? (
             <Button variant="outline" size="sm" onClick={exportCsv}>
               <Download className="h-3.5 w-3.5" /> Export CSV
             </Button>
@@ -288,7 +292,9 @@ export default function AttendancePage() {
           </>
         )}
       </FilterBar>
-      {callsTab ? (
+      {dialerTab ? (
+        <DialerRunsTab filters={filters} setParam={setParam} />
+      ) : callsTab ? (
         <CallProofsTab filters={filters} setParam={setParam} />
       ) : entriesTab ? (
         <DataTable
