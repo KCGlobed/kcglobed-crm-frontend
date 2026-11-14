@@ -112,18 +112,27 @@ export function TeamFormDrawer({ open, onClose, team, defaultParent, onSaved }: 
   }, [open, team, defaultParent, reset])
 
   const parents = useMemo(() => parentOptions(tree?.data ?? [], team?._id), [tree, team?._id])
+  // a unit sits under a department or a team (a counsellor group holds nothing); the saved parent stays listed
+  const parentChoices = useMemo(
+    () => parents.filter(({ node }) => allowedChildTypes(node.type ?? 'team').length > 0 || node._id === team?.parent?._id),
+    [parents, team?.parent?._id]
+  )
 
   // Department → Team → Counsellor group: the type choices follow the chosen parent.
-  // Editing keeps the saved type on offer even if it no longer fits, so nothing changes silently.
+  // Editing keeps the saved type on offer while the parent is unchanged, so an older unit saves as it is.
   const parentNode = parents.find((p) => p.node._id === parentId)?.node
   const types = useMemo(() => {
     const allowed = allowedChildTypes(parentId ? parentNode?.type ?? 'team' : null)
-    return TEAM_TYPES.filter((t) => allowed.includes(t.key) || (team && t.key === team.type))
+    const sameParent = !!team && parentId === (team.parent?._id ?? '')
+    return TEAM_TYPES.filter((t) => allowed.includes(t.key) || (sameParent && t.key === team?.type))
   }, [parentId, parentNode?.type, team])
   useEffect(() => {
     if (types.length && !types.some((t) => t.key === type)) setValue('type', types[0].key)
   }, [types, type, setValue])
   const topLevelCreate = !team && !defaultParent
+  // only a department is top level: it has no "Reports into", a unit inside one cannot be moved out to the top
+  const topLevelDepartment = !!team && !team.parent && team.type === 'department'
+  const offerTopLevel = !!team && !team.parent && team.type !== 'department'
 
   // A sub-team may have its own manager; left blank it follows the nearest
   // ancestor (the parent itself first) that has one — the department head.
@@ -190,8 +199,9 @@ export function TeamFormDrawer({ open, onClose, team, defaultParent, onSaved }: 
 
         <FormField
           label="Type"
+          error={errors.type?.message}
           hint={
-            topLevelCreate
+            topLevelCreate || topLevelDepartment
               ? 'Top-level units are departments. Open a department to add its teams and counsellor groups.'
               : parentNode
                 ? `Units that can sit under ${parentNode.name} (${TEAM_TYPE_LABEL[parentNode.type ?? 'team'].toLowerCase()})`
@@ -225,15 +235,26 @@ export function TeamFormDrawer({ open, onClose, team, defaultParent, onSaved }: 
         </FormField>
 
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {/* a new top-level unit has no parent; a sub-team's parent is the unit it was opened from */}
-          {!topLevelCreate && (
-            <FormField label="Reports into" error={errors.parent?.message} hint={team ? 'Moving a unit changes which types it can be' : undefined}>
-              {defaultParent && !team ? (
+          {/* a department has no parent; a sub-team's parent is the unit it was opened from */}
+          {!topLevelCreate && !topLevelDepartment && (
+            <FormField
+              label="Reports into"
+              error={errors.parent?.message}
+              hint={
+                offerTopLevel
+                  ? 'Only departments are top level now: pick the department this unit belongs to'
+                  : team
+                    ? 'Moving a unit changes which types it can be'
+                    : undefined
+              }
+            >
+              {(defaultParent && !team) || !tree ? (
+                // the select waits for the tree, so the saved parent is among its options when it is filled in
                 <Input value={parentNode ? `${parentNode.name} · ${TEAM_TYPE_LABEL[parentNode.type ?? 'team']}` : '…'} disabled />
               ) : (
                 <Select aria-invalid={!!errors.parent} {...register('parent')}>
-                  <option value="">None (top level)</option>
-                  {parents.map(({ node, depth }) => (
+                  {offerTopLevel && <option value="">None (top level)</option>}
+                  {parentChoices.map(({ node, depth }) => (
                     <option key={node._id} value={node._id}>
                       {'  '.repeat(depth * 2)}
                       {depth > 0 ? '└ ' : ''}

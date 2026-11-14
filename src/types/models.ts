@@ -111,6 +111,8 @@ export interface Team {
   createdAt?: string
   updatedAt?: string
   memberCount?: number
+  /** list only: active members here and in every team below (a department's people sit in its teams) */
+  totalMembers?: number
   subTeamCount?: number
   /** detail only */
   ancestors?: TeamRef[]

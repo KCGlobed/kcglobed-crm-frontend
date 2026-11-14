@@ -36,7 +36,7 @@ import type { Team, TeamMember, TeamStats } from '../../../types/models'
 import { TeamFormDrawer } from './TeamFormDrawer'
 import { AddMembersModal } from './AddMembersModal'
 import { TeamTypeBadge } from './TeamTypeBadge'
-import { allowedChildTypes } from './teamMeta'
+import { allowedChildTypes, TEAM_TYPE_LABEL } from './teamMeta'
 
 type MemberStat = TeamStats['byMember'][number]
 type SubTeam = NonNullable<Team['children']>[number]
@@ -66,7 +66,8 @@ export default function TeamDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const me = useCurrentUser()
-  const [tab, setTab] = useState('members')
+  // the tab picked on this unit's page; opening another unit starts again on its first tab
+  const [picked, setPicked] = useState<{ id: string; tab: string } | null>(null)
   const [includeSubTeams, setIncludeSubTeams] = useState(false)
   const [form, setForm] = useState<{ open: boolean; mode?: 'edit' | 'sub' }>({ open: false })
   const [addOpen, setAddOpen] = useState(false)
@@ -85,6 +86,11 @@ export default function TeamDetailPage() {
   const s = stats.data?.data
   const canEdit = can(me, 'teams', 'edit')
   const statsByUser = useMemo(() => new Map(s?.byMember.map((m) => [m.user._id, m])), [s])
+  // a department (or team) opens on its sub-teams, members second; a counsellor group has no sub-teams
+  const childTypes = team ? allowedChildTypes(team.type) : []
+  const showSubTeams = !team || childTypes.length > 0 || !!team.children?.length
+  const tab = picked?.id === id ? picked.tab : showSubTeams ? 'subteams' : 'members'
+  const setTab = (key: string) => setPicked({ id, tab: key })
 
   if (isError) {
     return (
@@ -337,7 +343,7 @@ export default function TeamDetailPage() {
                   <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
                     <UserPlus className="h-3.5 w-3.5" /> Add members
                   </Button>
-                  {can(me, 'teams', 'create') && allowedChildTypes(team.type).length > 0 && (
+                  {can(me, 'teams', 'create') && childTypes.length > 0 && (
                     <Button variant="outline" size="sm" onClick={() => setForm({ open: true, mode: 'sub' })}>
                       <Plus className="h-3.5 w-3.5" /> Sub-team
                     </Button>
@@ -401,8 +407,8 @@ export default function TeamDetailPage() {
 
       <Tabs
         tabs={[
+          ...(showSubTeams ? [{ key: 'subteams', label: 'Sub-teams', count: team?.children?.length }] : []),
           { key: 'members', label: 'Members', count: team?.members?.length },
-          { key: 'subteams', label: 'Sub-teams', count: team?.children?.length },
           { key: 'performance', label: 'Performance' },
           { key: 'details', label: 'Details' },
         ]}
@@ -429,7 +435,11 @@ export default function TeamDetailPage() {
             rowKey={(c) => c._id}
             loading={isLoading}
             emptyTitle="No sub-teams"
-            emptyDescription="Add counsellor groups or teams under this unit to build the hierarchy."
+            emptyDescription={
+              childTypes.length
+                ? `Use “Sub-team” to add a ${childTypes.map((t) => TEAM_TYPE_LABEL[t].toLowerCase()).join(' or a ')} under ${team?.name ?? 'this unit'}.`
+                : undefined
+            }
             onRowClick={(c) => navigate(`/app/admin/teams/${c._id}`)}
           />
         )}
