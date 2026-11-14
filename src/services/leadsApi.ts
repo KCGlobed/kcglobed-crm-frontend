@@ -24,6 +24,7 @@ import type {
   MyDay,
   ProfileStepKey,
   Note,
+  PartnerCard,
   RoundRobinSettings,
   RoundRobinStatus,
   SavedFilter,
@@ -345,6 +346,58 @@ export const leadsApi = api.injectEndpoints({
         }
       },
     }),
+    // Round Robin → Partners. Every mutation answers with the fresh cards, written straight into the cache.
+    partnerCards: build.query<ApiResponse<{ cards: PartnerCard[] }>, void>({
+      query: () => '/leads/round-robin/partners',
+      providesTags: ['RoundRobin'],
+    }),
+    // turning it on hands out the leads waiting with the partner user (just after the answer)
+    setPartnerAutoAssign: build.mutation<ApiResponse<{ cards: PartnerCard[] }>, { channelId: string; autoAssign: boolean }>({
+      query: ({ channelId, autoAssign }) => ({ url: `/leads/round-robin/partners/${channelId}`, method: 'PATCH', body: { autoAssign } }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+          dispatch(leadsApi.util.updateQueryData('partnerCards', undefined, (draft) => {
+            draft.data = data.data
+          }))
+        } catch {
+          // the card shows the error
+        }
+      },
+      invalidatesTags: (_r, error) => (error ? [] : [{ type: 'Leads', id: 'LIST' }, 'Dashboard']),
+    }),
+    setPartnerMember: build.mutation<ApiResponse<{ cards: PartnerCard[] }>, { channelId: string; userId: string; on: boolean }>({
+      query: ({ channelId, userId, on }) => ({
+        url: `/leads/round-robin/partners/${channelId}/members/${userId}`,
+        method: 'PATCH',
+        body: { on },
+      }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+          dispatch(leadsApi.util.updateQueryData('partnerCards', undefined, (draft) => {
+            draft.data = data.data
+          }))
+        } catch {
+          // the row shows the error
+        }
+      },
+      invalidatesTags: (_r, error) => (error ? [] : [{ type: 'Leads', id: 'LIST' }]),
+    }),
+    // every member of the card, top first
+    setPartnerSequence: build.mutation<ApiResponse<{ cards: PartnerCard[] }>, { channelId: string; order: string[] }>({
+      query: ({ channelId, order }) => ({ url: `/leads/round-robin/partners/${channelId}/sequence`, method: 'PUT', body: { order } }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+          dispatch(leadsApi.util.updateQueryData('partnerCards', undefined, (draft) => {
+            draft.data = data.data
+          }))
+        } catch {
+          // the card shows the error
+        }
+      },
+    }),
   }),
 })
 
@@ -394,4 +447,8 @@ export const {
   useUpdateRoundRobinSettingsMutation,
   useSetRoundRobinUserMutation,
   useSetRoundRobinSequenceMutation,
+  usePartnerCardsQuery,
+  useSetPartnerAutoAssignMutation,
+  useSetPartnerMemberMutation,
+  useSetPartnerSequenceMutation,
 } = leadsApi

@@ -3,6 +3,8 @@ export type ModuleKey =
   | 'leads'
   | 'tasks'
   | 'round_robin'
+  | 'round_robin.inside_sales'
+  | 'round_robin.partners'
   | 'applications'
   | 'documents'
   | 'exams'
@@ -1942,6 +1944,42 @@ export interface RoundRobinStatus {
   lastAssigned: Ref | null
   /** leads waiting (nobody online / outside window) */
   unassignedPoolCount: number
+}
+
+/** A member of a partner's card: the partner user's direct report, or someone in a team they manage. */
+export interface PartnerMember {
+  _id: string
+  name: string
+  email: string
+  team?: string | null
+  via: 'reports' | 'team'
+  /** the card's toggle; a member who joins starts on */
+  on: boolean
+  /** place in the card's sequence (1 = first) */
+  sequence: number
+  /** active, not a Super Admin, View on Leads — without it the member is skipped */
+  canOwnLeads: boolean
+  assignedToday: number
+  lastAssignedAt: string | null
+}
+
+/** Round Robin → Partners: one card per Partner Lead API channel. */
+export interface PartnerCard {
+  _id: string
+  /** the channel's name */
+  name: string
+  source: string | null
+  /** the channel's key works (not revoked) */
+  isActive: boolean
+  lastUsedAt: string | null
+  /** leads that land on the partner user go on to the next member who is on */
+  autoAssign: boolean
+  /** the user whose UTM source is the channel's Source; null when nobody has it */
+  user: { _id: string; name: string; email: string; utmSource: string } | null
+  /** leads still with the partner user */
+  waiting: number
+  members: PartnerMember[]
+  nextUp: Ref | null
 }
 
 /* ------------------------------------------------------------------ Punch Break & Attendance */
