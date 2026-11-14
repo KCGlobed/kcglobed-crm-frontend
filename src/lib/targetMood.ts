@@ -40,7 +40,9 @@ export function targetMood(t: TargetPace, now: number = Date.now()): Mood {
   const left = end - now
 
   if (t.status === 'completed' || progress >= 100) {
-    return { emoji: '🤩', label: 'Target complete!', expected: 100, timeLeft: left > 0 ? `${span(left)} left` : 'Range over' }
+    // a running target at 100% is reached, not done: a lead leaving the stage takes it back below
+    const label = t.status === 'completed' ? 'Target complete!' : 'Target reached!'
+    return { emoji: '🤩', label, expected: 100, timeLeft: left > 0 ? `${span(left)} left` : 'Range over' }
   }
   if (now < start) {
     return { emoji: '😊', label: 'Starts soon', expected: 0, timeLeft: `Starts in ${span(start - now)}` }
