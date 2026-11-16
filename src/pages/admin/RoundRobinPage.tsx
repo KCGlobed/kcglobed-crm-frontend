@@ -330,7 +330,7 @@ function SettingsCard({ settings, editable }: { settings: RoundRobinSettings; ed
           hint={
             draft.allDay
               ? 'Needs a time window.'
-              : 'From the window start until this time, the leads that waited overnight go out as equal shares (pool ÷ members with the toggle on) to whoever logs in. At this time the rest is split in sequence among those online.'
+              : 'From the window start until this time, the leads that waited overnight go out as equal shares (pool ÷ members with the toggle on) to whoever comes online (punched in and logged in). At this time the rest is split in sequence among those online.'
           }
         >
           <div className="flex flex-wrap items-center gap-3">
@@ -511,7 +511,7 @@ function InsideSalesTab() {
       render: (m) => {
         const s = memberStatus(m)
         return (
-          <span className="inline-flex items-center gap-2" title={m.online ? 'Logged in' : 'Not logged in'}>
+          <span className="inline-flex items-center gap-2" title={m.online ? 'Punched in and logged in' : 'Not punched in, or not logged in'}>
             <span className={cn('h-2 w-2 shrink-0 rounded-full', m.online ? 'bg-emerald-500' : 'bg-slate-300')} />
             <Badge tone={s.tone}>{s.label}</Badge>
           </span>

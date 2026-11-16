@@ -10,16 +10,17 @@ import type {
   BreakType,
   DialerRunDetail,
   DialerRunRow,
+  Punch,
 } from '../types/models'
 
 function cleanParams(params: Record<string, unknown>) {
   return Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''))
 }
 
-/** Punch Break (the signed-in employee) and the Super Admin's Attendance report. */
+/** Punch In / Out and Punch Break (the signed-in employee) and the Super Admin's Attendance report. */
 export const attendanceApi = api.injectEndpoints({
   endpoints: (build) => ({
-    // the top bar's logged-in timer and the Punch Break state in one call; polled, so marked as background
+    // the top bar's punched-in timer, Punch In / Out and the Punch Break state in one call; polled, so marked as background
     attendanceToday: build.query<ApiResponse<AttendanceToday>, void>({
       query: () => ({ url: '/attendance/today', headers: { 'X-Background': '1' } }),
       providesTags: ['Breaks'],
@@ -38,6 +39,15 @@ export const attendanceApi = api.injectEndpoints({
     endBreak: build.mutation<ApiResponse<BreakEntry>, void>({
       query: () => ({ url: '/breaks/end', method: 'POST' }),
       invalidatesTags: ['Breaks', 'Dashboard', 'Attendance'],
+    }),
+    // Punch In / Out change today's time (timer, dashboard, report) and who is online for the round-robin
+    punchIn: build.mutation<ApiResponse<Punch>, void>({
+      query: () => ({ url: '/punch/in', method: 'POST' }),
+      invalidatesTags: ['Breaks', 'Dashboard', 'Attendance', 'RoundRobin'],
+    }),
+    punchOut: build.mutation<ApiResponse<Punch>, void>({
+      query: () => ({ url: '/punch/out', method: 'POST' }),
+      invalidatesTags: ['Breaks', 'Dashboard', 'Attendance', 'RoundRobin'],
     }),
     attendanceReport: build.query<ApiListResponse<AttendanceRow>, Record<string, unknown>>({
       query: (params) => ({ url: '/attendance/report', params: cleanParams(params) }),
@@ -68,6 +78,8 @@ export const {
   useBreaksTodayQuery,
   useStartBreakMutation,
   useEndBreakMutation,
+  usePunchInMutation,
+  usePunchOutMutation,
   useAttendanceReportQuery,
   useAttendanceCallsQuery,
   useAttendanceDialerRunsQuery,

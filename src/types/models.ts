@@ -2069,39 +2069,70 @@ export interface BreaksToday {
   pauseSeconds: number
 }
 
-/** The top bar for the signed-in employee: today's logged-in time plus the Punch Break state. */
+/** One punched-in span: Punch In → Punch Out. Several a day are allowed; the time is the spans added up. */
+export interface Punch {
+  _id: string
+  /** IST date of the Punch In (YYYY-MM-DD) */
+  day: string
+  punchedInAt: string
+  punchedOutAt?: string
+  durationSeconds?: number
+  /** active: punched in now · completed: punched out */
+  status: 'active' | 'completed'
+  /** system: the Punch Out was forgotten and made at the last activity in the CRM that day */
+  endedBy?: 'user' | 'system'
+  /** an open punch only: seconds since the Punch In, when the server answered */
+  elapsedSeconds?: number
+}
+
+/** The top bar for the signed-in employee: today's punched-in time plus the Punch In / Out and Punch Break state. */
 export interface AttendanceToday extends BreaksToday {
+  /** the day's first Punch In (its first sign-in on a day before punches went live) */
   firstLoginAt: string | null
-  /** signed-in time today as of the response, minus time on a pause; keeps running while `live` and not pausing */
+  /** punched-in time today as of the response, a pause included; keeps running while `live` */
   loggedInSeconds: number
+  /** punched in right now: the timer runs and the round-robin can hand out leads (while signed in) */
   live: boolean
+  /** the open punch; null while punched out */
+  punch?: Punch | null
+  /** today's punches, first first */
+  punches?: Punch[]
+  /** while punched out: when the last punch ended */
+  lastPunchOutAt?: string | null
 }
 
 /** One employee on one IST day of the Attendance report. */
 export interface AttendanceRow {
   date: string
   user: { _id: string; name: string; roleLabel: string }
-  /** online: signed in right now (today) · absent: a working day without a sign-in */
+  /** online: punched in right now (today) · absent: a working day without a punch or a sign-in */
   status: 'present' | 'absent' | 'online'
-  /** first sign-in of the day */
+  /** punch: the times below are Punch In / Out · login: a day before punches went live, from the sign-ins */
+  mode: 'punch' | 'login'
+  /** the day's first Punch In (login mode: first sign-in) */
   loginAt?: string
-  /** sign-out of the day's last session */
+  /** the day's last Punch Out (login mode: sign-out of the last session) */
   logoutAt?: string
-  /** signed-in time that day: the sessions added up (overlaps counted once) minus time on a pause, the same
-   * figure as the employee's logged-in timer; running while online; counted up to the last activity when the
-   * logout is missing. null when there was no sign-in */
+  /** punched-in time that day: the spans added up (the gaps between a Punch Out and the next Punch In left out)
+   * with time on a pause included, the same figure as the employee's timer; running while online. null when there was
+   * neither a punch nor a sign-in */
   loginSeconds: number | null
-  /** the day's last session never signed out: flagged, never guessed */
+  /** login mode: the day's last session never signed out — flagged, never guessed */
   logoutMissing: boolean
   /** when logoutMissing: the last time that session was used */
   lastSeenAt?: string
+  /** the last Punch Out was forgotten: made by the system at the last activity in the CRM that day */
+  autoPunchOut: boolean
+  /** signed in (or made calls) that day without ever punching in */
+  notPunchedIn: boolean
+  punches: number
   sessions: number
   calls: number
   talktimeSeconds: number
   breaks: Record<BreakType, number>
   /** every type but the pause */
   breakSeconds: number
-  /** the pause on its own: neither break time nor part of loginSeconds */
+  /** the pause on its own: not break time; part of loginSeconds, left out of the Active Time */
   pauseSeconds: number
   activeBreak: { type: BreakType; label: string; note?: string; startedAt: string } | null
   incompleteBreaks: number

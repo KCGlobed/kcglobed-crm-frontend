@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Header } from '../components/layout/Header'
+import { PunchReminder } from '../components/layout/PunchReminder'
 import { PushNotifications } from '../components/layout/PushNotifications'
 import { CallDock } from '../features/telephony/CallDock'
 import { CallPopover } from '../features/telephony/CallPopover'
@@ -50,6 +51,7 @@ export default function AppLayout() {
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onOpenMenu={() => setMobileOpen(true)} />
+        <PunchReminder />
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto w-full max-w-[1600px] p-4 sm:p-6">
             <ErrorBoundary>

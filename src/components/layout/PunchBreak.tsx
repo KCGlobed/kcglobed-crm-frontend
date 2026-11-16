@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react'
+import { LogIn, LogOut } from 'lucide-react'
 import { NOTE_TYPES, PAUSE_OPTIONS, PUNCH_BREAK_OPTIONS } from '../../constants/breaks'
 import { formatHms } from '../../lib/durations'
 import { cn } from '../../lib/utils'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/fields'
 import type { BreakType } from '../../types/models'
-import { clockTime, useAttendanceToday, useBreakActions } from './useAttendanceToday'
+import { clockTime, useAttendanceToday, useBreakActions, usePunchActions } from './useAttendanceToday'
 
 /** Which "Other" text form is expanded: Punch Break's or Punch Pause Break's. */
 type OpenForm = 'other' | 'pause-other' | null
@@ -16,20 +17,25 @@ const TILE_OPEN = 'border-brand-300 bg-brand-50 text-brand-700'
 const HEADING = 'mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500'
 
 /**
- * The profile menu's two punch sections. Punch Break: Tea / Lunch / Bio / Other Break (Other asks what it is for)
+ * The profile menu's punch sections. Punch In / Out first: the day's time is the punched-in spans, and breaks can
+ * be punched only while punched in. Punch Break: Tea / Lunch / Bio / Other Break (Other asks what it is for)
  * and today's break time. Punch Pause Break, under it: Campus Visit / Call Calibration / Training Session / Other
- * (Other asks what the pause is for) and today's pause time. A pause is time away from the desk: it is neither
- * break time nor signed-in time, so the logged-in timer stands still while one runs. One break of either kind
+ * (Other asks what the pause is for) and today's pause time. A pause is work away from the desk: it is not break
+ * time, and the punched-in timer keeps running while one runs (only Active Time leaves it out). One break of either kind
  * runs at a time: its card (with End Break) replaces its own section's tiles while the other section's tiles wait.
  * A started break opens the break screen in the middle of the page and shows as a chip in the top bar.
  */
 export function PunchBreakPanel({ onDone }: { onDone?: () => void }) {
-  const { today, breakSeconds } = useAttendanceToday()
+  const { today, loggedInSeconds, breakSeconds } = useAttendanceToday()
   const { start, end, starting, ending } = useBreakActions()
+  const { punchIn, punchOut, punchingIn, punchingOut } = usePunchActions()
   const [open, setOpen] = useState<OpenForm>(null)
   const [note, setNote] = useState('')
+  // Punch Out asks once more, here in the menu (a dialog would sit outside it and close it)
+  const [confirmOut, setConfirmOut] = useState(false)
   const active = today?.active ?? null
   const pausing = active?.type === 'pause'
+  const punch = today?.punch ?? null
 
   const reset = () => {
     setOpen(null)
@@ -72,12 +78,73 @@ export function PunchBreakPanel({ onDone }: { onDone?: () => void }) {
         </Button>
       </form>
     )
-  // a section's tiles can start something only while nothing runs (the server allows one break at a time)
-  const tile = { disabled: starting || !!active, title: active ? 'End your current break first' : undefined }
+  // a section's tiles can start something only while punched in and nothing runs (the server allows one break at a time)
+  const tile = {
+    disabled: starting || !!active || !punch,
+    title: !punch ? 'Punch in first' : active ? 'End your current break first' : undefined,
+  }
 
   return (
     <>
       <section className="px-4 py-3">
+        <p className={HEADING}>Punch In / Out</p>
+        {punch ? (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-emerald-800">Punched in since {clockTime(punch.punchedInAt)}</p>
+                <p className="text-lg font-bold tabular-nums text-slate-900">{formatHms(loggedInSeconds)}</p>
+              </div>
+              {!confirmOut && (
+                <Button size="sm" variant="outline" onClick={() => setConfirmOut(true)}>
+                  <LogOut className="h-3.5 w-3.5" /> Punch Out
+                </Button>
+              )}
+            </div>
+            {confirmOut && (
+              <div className="mt-2 border-t border-emerald-200 pt-2">
+                <p className="text-[11px] text-slate-600">
+                  {active ? `Your ${active.label} ends too. ` : ''}Time until your next Punch In is not counted.
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <Button size="sm" variant="outline" className="flex-1" disabled={punchingOut} onClick={() => setConfirmOut(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    loading={punchingOut}
+                    onClick={async () => {
+                      if (await punchOut()) {
+                        setConfirmOut(false)
+                        onDone?.()
+                      }
+                    }}
+                  >
+                    Punch Out
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 p-3">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-slate-700">
+                {today?.lastPunchOutAt ? `Punched out at ${clockTime(today.lastPunchOutAt)}` : 'Not punched in'}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                {today?.punches?.length ? `Today ${formatHms(loggedInSeconds)}` : 'Punch in to start your time'}
+              </p>
+            </div>
+            <Button size="sm" variant="success" loading={punchingIn} onClick={async () => (await punchIn()) && onDone?.()}>
+              <LogIn className="h-3.5 w-3.5" /> Punch In
+            </Button>
+          </div>
+        )}
+      </section>
+
+      <section className="border-t border-slate-100 px-4 py-3">
         <p className={HEADING}>Punch Break</p>
         {active && !pausing ? (
           activeCard
