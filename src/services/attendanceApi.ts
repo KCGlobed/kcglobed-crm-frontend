@@ -1,5 +1,16 @@
 import { api } from './api'
-import type { ApiListResponse, ApiResponse, AttendanceCallRow, AttendanceRow, AttendanceToday, BreakEntry, BreaksToday, BreakType } from '../types/models'
+import type {
+  ApiListResponse,
+  ApiResponse,
+  AttendanceCallRow,
+  AttendanceRow,
+  AttendanceToday,
+  BreakEntry,
+  BreaksToday,
+  BreakType,
+  DialerRunDetail,
+  DialerRunRow,
+} from '../types/models'
 
 function cleanParams(params: Record<string, unknown>) {
   return Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''))
@@ -36,6 +47,15 @@ export const attendanceApi = api.injectEndpoints({
       query: (params) => ({ url: '/attendance/calls', params: cleanParams(params) }),
       providesTags: ['Attendance'],
     }),
+    // Auto Dialer: progressive runs in the range, plus `runningNow` (who is dialing this minute)
+    attendanceDialerRuns: build.query<ApiListResponse<DialerRunRow> & { runningNow: DialerRunRow[] }, Record<string, unknown>>({
+      query: (params) => ({ url: '/attendance/dialer-runs', params: cleanParams(params) }),
+      providesTags: ['Attendance'],
+    }),
+    attendanceDialerRun: build.query<ApiResponse<DialerRunDetail>, string>({
+      query: (id) => `/attendance/dialer-runs/${id}`,
+      providesTags: ['Attendance'],
+    }),
     breakEntries: build.query<ApiListResponse<BreakEntry>, Record<string, unknown>>({
       query: (params) => ({ url: '/attendance/breaks', params: cleanParams(params) }),
       providesTags: ['Attendance'],
@@ -50,5 +70,7 @@ export const {
   useEndBreakMutation,
   useAttendanceReportQuery,
   useAttendanceCallsQuery,
+  useAttendanceDialerRunsQuery,
+  useAttendanceDialerRunQuery,
   useBreakEntriesQuery,
 } = attendanceApi
