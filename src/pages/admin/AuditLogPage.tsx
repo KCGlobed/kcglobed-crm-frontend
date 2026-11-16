@@ -17,6 +17,7 @@ import { formatDateTime, parseApiError } from '../../lib/utils'
 import { useListParams } from '../../hooks/useListParams'
 import type { AuditLogEntry } from '../../types/models'
 import { CampaignAuditDetail, MessageAuditDetail } from './audit/CommunicationDetails'
+import { ChannelCell, LeadCell, ReasonCell, SourceCell, StatusCell } from './audit/CommunicationCells'
 import { NotificationsLog } from './audit/NotificationsLog'
 import { ScheduledLog } from './audit/ScheduledLog'
 
@@ -119,22 +120,35 @@ export default function AuditLogPage() {
       header: 'Action',
       render: (r) => <Badge tone={actionTone(r.action)}>{r.action.replace(/_/g, ' ')}</Badge>,
     },
-    ...(tab === 'communications' ? [] : [{ key: 'module', header: 'Module', render: (r: AuditLogEntry) => <span className="text-xs">{r.module}</span> }]),
-    {
-      key: 'entity',
-      header: 'Details',
-      render: (r) =>
-        r.summary ? (
-          <span className="block max-w-md truncate text-xs text-slate-600" title={r.summary}>
-            {r.summary}
-          </span>
-        ) : (
-          <span className="text-xs text-slate-500">
-            {r.entityType ?? '—'} {r.entityId ? `· ${r.entityId.slice(-6)}` : ''}
-          </span>
-        ),
-    },
-    { key: 'ip', header: 'IP', render: (r) => <span className="text-xs text-slate-400">{r.ip ?? '—'}</span> },
+    ...(tab === 'communications'
+      ? // every SMS / email / WhatsApp: channel, lead, where it was sent from, how it stands now and why
+        ([
+          { key: 'channel', header: 'Channel', render: (r) => <ChannelCell entry={r} /> },
+          { key: 'lead', header: 'Lead', render: (r) => <LeadCell entry={r} /> },
+          { key: 'source', header: 'Sent from', render: (r) => <SourceCell entry={r} /> },
+          { key: 'status', header: 'Status now', render: (r) => <StatusCell entry={r} /> },
+          { key: 'reason', header: 'Reason / details', render: (r) => <ReasonCell entry={r} /> },
+        ] as Column<AuditLogEntry>[])
+      : [{ key: 'module', header: 'Module', render: (r: AuditLogEntry) => <span className="text-xs">{r.module}</span> }]),
+    ...(tab === 'communications'
+      ? []
+      : ([
+          {
+            key: 'entity',
+            header: 'Details',
+            render: (r) =>
+              r.summary ? (
+                <span className="block max-w-md truncate text-xs text-slate-600" title={r.summary}>
+                  {r.summary}
+                </span>
+              ) : (
+                <span className="text-xs text-slate-500">
+                  {r.entityType ?? '—'} {r.entityId ? `· ${r.entityId.slice(-6)}` : ''}
+                </span>
+              ),
+          },
+          { key: 'ip', header: 'IP', render: (r) => <span className="text-xs text-slate-400">{r.ip ?? '—'}</span> },
+        ] as Column<AuditLogEntry>[])),
   ]
 
   return (
@@ -235,7 +249,7 @@ export default function AuditLogPage() {
             onClose={() => setSelected(null)}
             title={selectedKind === 'message' ? 'Message details' : selectedKind === 'campaign' ? 'Bulk send details' : 'Audit entry'}
             description={selected?.summary}
-            size={selectedKind ? 'xl' : 'lg'}
+            size={selectedKind ? '2xl' : 'lg'}
           >
             {selected && selectedKind === 'message' && <MessageAuditDetail entry={selected} />}
             {selected && selectedKind === 'campaign' && <CampaignAuditDetail entry={selected} />}

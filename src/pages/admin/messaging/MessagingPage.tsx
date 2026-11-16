@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Mail, MessageCircle, Pause, Play, Plus, RefreshCw, Square, Trash2 } from 'lucide-react'
+import { Download, Mail, MessageCircle, Pause, Play, Plus, RefreshCw, Square, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
+  useCampaignRecipientsQuery,
   useCancelCampaignMutation,
   useDeleteMessageTemplateMutation,
   useGetCampaignQuery,
@@ -26,8 +27,11 @@ import { Modal } from '../../../components/ui/Modal'
 import { EmptyState, Skeleton } from '../../../components/ui/feedback'
 import { WhatsAppStatusBadge } from '../../../components/whatsapp/TemplateStatusBadge'
 import { formatDateTime, parseApiError } from '../../../lib/utils'
+import { authorizedDownload } from '../../../lib/download'
 import type { CampaignRow, MessageTemplate } from '../../../types/models'
 import { AutomationsTab } from './AutomationsTab'
+import { MetricCell, ReasonBreakdown } from './deliveryMetrics'
+import { REASON_STATUS_LABELS, STATUS_COLUMNS, metricsOf } from './deliveryStatus'
 import { CallingTab } from './CallingTab'
 import { NotificationsTab } from './NotificationsTab'
 import { TextsTab } from './TextsTab'
@@ -340,41 +344,98 @@ function TemplatesTab() {
 /** A 'sending' bulk send whose run died with a server restart shows as 'stalled' (Resume or Stop moves it on). */
 const campaignState = (c: CampaignRow) => (c.status === 'sending' && c.stalled ? 'stalled' : c.status)
 
+const safeFileName = (name: string) => name.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'bulk-send'
+
+function downloadCsv(path: string, filename: string) {
+  authorizedDownload(path, filename).catch((e) => toast.error(parseApiError(e).message || 'Download failed'))
+}
+
 function CampaignReport({ id, onClose }: { id: string; onClose: () => void }) {
   const { data } = useGetCampaignQuery(id, { pollingInterval: 5000 })
   const c = data?.data
+  // a reason picked in the breakdown lists those leads (all of them, paged by the backend)
+  const [reason, setReason] = useState<string | undefined>()
+  const { data: picked, isFetching } = useCampaignRecipientsQuery({ id, reason, page_size: 200 }, { skip: !reason })
+  const metrics = c ? metricsOf(c) : null
+  const rows = reason
+    ? (picked?.data ?? []).map((r) => ({ lead: r.lead?.leadNo ?? '', name: r.lead?.name ?? '', to: r.to ?? '', status: r.status, reason: r.reason ?? '', detail: r.error ?? '' }))
+    : (c?.failures ?? [])
+  const total = reason ? picked?.pagination.total_results ?? 0 : rows.length
   return (
-    <Modal open onClose={onClose} size="lg" title={c?.name ?? 'Campaign'} description={c ? `${c.channel.toUpperCase()} · ${c.template} · ${campaignState(c)}` : undefined}>
-      {!c ? (
+    <Modal open onClose={onClose} size="2xl" title={c?.name ?? 'Campaign'} description={c ? `${c.channel.toUpperCase()} · ${c.template} · ${campaignState(c)}` : undefined}>
+      {!c || !metrics ? (
         <Skeleton className="h-32 w-full" />
       ) : (
         <div className="space-y-3">
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-            {(['queued', 'sent', 'delivered', 'undelivered', 'failed', 'bounced', 'cancelled'] as const).map((k) => (
-              <div key={k} className="rounded-lg border border-slate-200 p-2 text-center">
-                <p className="text-lg font-semibold text-slate-800">{c.report[k] ?? 0}</p>
-                <p className="text-[11px] capitalize text-slate-500">{k}</p>
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+            {STATUS_COLUMNS.map((s) => (
+              <div key={s.key} className="rounded-lg border border-slate-200 p-2 text-center" title={s.title}>
+                <p className="text-lg font-semibold">
+                  <MetricCell value={metrics[s.key]} channel={c.channel} status={s.key} />
+                </p>
+                <p className="text-[11px] text-slate-500">{s.label}</p>
               </div>
             ))}
           </div>
-          <p className="text-xs text-slate-500">
-            Selected {c.counts.selected} · excluded {c.counts.excluded?.optedOut ?? 0} opted out, {c.counts.excluded?.invalid ?? 0} invalid,{' '}
-            {c.counts.excluded?.duplicate ?? 0} duplicate · final {c.counts.final}
-          </p>
-          {!!c.failures?.length && (
-            <div className="max-h-56 overflow-y-auto rounded-lg border border-slate-200">
-              <table className="w-full text-xs">
-                <tbody className="divide-y divide-slate-100">
-                  {c.failures.map((f, i) => (
-                    <tr key={i}>
-                      <td className="px-3 py-1.5 text-slate-500">{f.lead}</td>
-                      <td className="px-3 py-1.5 text-slate-700">{f.name}</td>
-                      <td className="px-3 py-1.5 text-slate-500">{f.to}</td>
-                      <td className="px-3 py-1.5 text-red-600">{f.reason}</td>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-slate-500">
+              Selected {c.counts.selected} · excluded {c.counts.excluded?.optedOut ?? 0} opted out, {c.counts.excluded?.invalid ?? 0} invalid,{' '}
+              {c.counts.excluded?.duplicate ?? 0} duplicate · final {c.counts.final}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              title="Every recipient with status, sent / delivered / read time and the reason"
+              onClick={() => downloadCsv(`/messaging/campaigns/${c._id}/recipients/export`, `${safeFileName(c.name)}-recipients.csv`)}
+            >
+              <Download className="h-3.5 w-3.5" /> Download recipients (CSV)
+            </Button>
+          </div>
+          {c.channel === 'email' && metrics.delivered === null && (
+            <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Delivered and Bounced show N/A: the mail server only tells the CRM that it accepted the email (Sent). Bounces come back to the
+              sender mailbox and are not read by the CRM yet.
+            </p>
+          )}
+          <ReasonBreakdown reasons={c.reasons ?? []} active={reason} onPick={setReason} />
+          {!!rows.length && (
+            <div className="rounded-lg border border-slate-200">
+              <p className="flex items-center justify-between border-b border-slate-100 px-3 py-2 text-xs font-semibold text-slate-700">
+                <span>{reason ? 'Leads with this reason' : 'Leads it did not reach'}</span>
+                <span className="font-normal text-slate-500">
+                  {isFetching ? 'Loading…' : rows.length < total ? `first ${rows.length} of ${total}` : `${rows.length}`}
+                  {!reason && rows.length >= 200 ? ' (first 200 — download for all)' : ''}
+                </span>
+              </p>
+              <div className="max-h-[50vh] overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-slate-50 text-left text-[10px] uppercase text-slate-500">
+                    <tr>
+                      <th className="whitespace-nowrap px-3 py-1.5">Lead</th>
+                      <th className="px-3 py-1.5">Name</th>
+                      <th className="px-3 py-1.5">To</th>
+                      <th className="px-3 py-1.5">Status</th>
+                      <th className="w-1/2 px-3 py-1.5">Reason</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {rows.map((f, i) => (
+                      <tr key={i}>
+                        <td className="whitespace-nowrap px-3 py-1.5 text-slate-500">{f.lead}</td>
+                        <td className="px-3 py-1.5 text-slate-700">{f.name}</td>
+                        <td className="px-3 py-1.5 text-slate-500">{f.to}</td>
+                        <td className="px-3 py-1.5 text-slate-600">
+                          {f.status ? REASON_STATUS_LABELS[f.status as keyof typeof REASON_STATUS_LABELS] ?? f.status : ''}
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <p className={f.status === 'cancelled' ? 'text-slate-700' : 'text-red-600'}>{f.reason}</p>
+                          {f.detail && f.detail !== f.reason && <p className="text-[11px] text-slate-400">{f.detail}</p>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
@@ -402,22 +463,30 @@ function CampaignsTab() {
   if (isLoading) return <Skeleton className="h-40 w-full" />
   if (!data?.data.length)
     return <EmptyState title="No bulk sends yet" description="Select leads on the lead list, then Bulk SMS or Bulk Email." />
-  // as the gateway's report shows them: Sent = accepted, no final word yet; Undelivered = the operator dropped it
-  const failed = (c: CampaignRow) => c.report.failed + c.report.bounced
+  // every status as the gateway's report shows it (Sent = accepted, no final word yet); N/A = the channel cannot report it
   return (
     <>
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-slate-500">
+          N/A = this channel cannot report that status (hover it for why). Click a row for the reasons and the leads it did not reach.
+        </p>
+        <Button variant="outline" size="sm" onClick={() => downloadCsv('/messaging/campaigns/export', 'bulk-sends-report.csv')}>
+          <Download className="h-3.5 w-3.5" /> Download report (CSV)
+        </Button>
+      </div>
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-left text-[11px] uppercase text-slate-500">
             <tr>
               <th className="px-4 py-2">Campaign</th>
               <th className="px-4 py-2">Status</th>
               <th className="px-4 py-2">Scheduled</th>
-              <th className="px-4 py-2">Final</th>
-              <th className="px-4 py-2" title="Accepted by the gateway, no delivery report yet">Sent</th>
-              <th className="px-4 py-2">Delivered</th>
-              <th className="px-4 py-2" title="Accepted, but the operator could not deliver it (DND, expired, switched off …)">Undelivered</th>
-              <th className="px-4 py-2" title="Never went out (template mismatch, no credits, gateway error …)">Failed</th>
+              <th className="px-3 py-2">Final</th>
+              {STATUS_COLUMNS.map((s) => (
+                <th key={s.key} className="px-3 py-2" title={s.title}>
+                  {s.label}
+                </th>
+              ))}
               <th className="px-4 py-2">By</th>
               <th />
             </tr>
@@ -425,6 +494,7 @@ function CampaignsTab() {
           <tbody className="divide-y divide-slate-100">
             {data.data.map((c) => {
               const state = campaignState(c)
+              const metrics = metricsOf(c)
               return (
               <tr key={c._id} className="cursor-pointer hover:bg-slate-50" onClick={() => setOpen(c._id)}>
                 <td className="px-4 py-2 font-medium text-slate-800">{c.name}</td>
@@ -437,11 +507,12 @@ function CampaignsTab() {
                   </Badge>
                 </td>
                 <td className="px-4 py-2 text-xs text-slate-500">{formatDateTime(c.scheduledAt)}</td>
-                <td className="px-4 py-2 text-xs text-slate-700">{c.counts.final}</td>
-                <td className="px-4 py-2 text-xs text-blue-700">{c.report.sent || ''}</td>
-                <td className="px-4 py-2 text-xs text-green-700">{c.report.delivered || ''}</td>
-                <td className="px-4 py-2 text-xs text-orange-600">{c.report.undelivered || ''}</td>
-                <td className="px-4 py-2 text-xs text-red-600">{failed(c) || ''}</td>
+                <td className="px-3 py-2 text-xs text-slate-700">{c.counts.final}</td>
+                {STATUS_COLUMNS.map((s) => (
+                  <td key={s.key} className="px-3 py-2 text-xs">
+                    <MetricCell value={metrics[s.key]} channel={c.channel} status={s.key} />
+                  </td>
+                ))}
                 <td className="px-4 py-2 text-xs text-slate-500">{c.createdBy}</td>
                 <td className="px-4 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                   <div className="flex justify-end gap-1">

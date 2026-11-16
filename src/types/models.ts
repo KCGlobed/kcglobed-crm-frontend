@@ -483,7 +483,49 @@ export interface AuditLogEntry {
   ip?: string
   userAgent?: string
   createdAt: string
+  /** communications: how the message / bulk send stands NOW (status, reason, where it came from) */
+  live?: AuditLive
 }
+
+/** Where a message came from: a bulk send, an automation, a scheduled or lead-page send, or a lead's reply. */
+export interface MessageSource {
+  kind: 'bulk' | 'automation' | 'scheduled' | 'manual' | 'reply'
+  label: string
+  campaignId?: string
+}
+
+export type AuditLive =
+  | {
+      kind: 'message'
+      channel: string
+      status: string
+      direction?: 'in' | 'out'
+      reason?: string
+      error?: string
+      source: MessageSource
+      template?: string
+      lead?: { _id: string; leadNo: string; name: string }
+      to?: string
+      sentAt?: string
+      deliveredAt?: string
+      readAt?: string
+      scheduledAt?: string
+      /** false: the channel cannot report delivery (email today) */
+      deliveryTracked?: boolean
+    }
+  | {
+      kind: 'campaign'
+      channel: string
+      status: string
+      source: MessageSource
+      template?: string
+      final?: number
+      metrics: DeliveryMetrics
+      topReasons?: string
+      scheduledAt?: string
+      startedAt?: string
+      finishedAt?: string
+    }
 
 /** The lead a message went to, as the Activity Log keeps it (the entry outlives the lead). */
 export interface AuditLeadRef {
@@ -587,12 +629,16 @@ export interface CampaignRecipient {
   to?: string
   status: string
   error?: string
+  /** plain-words reason it did not go through (error is the raw detail) */
+  reason?: string
   subject?: string
   body: string
   provider?: string
   providerMessageId?: string
   sentAt?: string
   deliveredAt?: string
+  /** WhatsApp: when the lead read it (blue ticks) */
+  readAt?: string
   createdAt: string
 }
 
@@ -1460,6 +1506,10 @@ export interface LeadMessage {
   body: string
   status: string
   error?: string
+  /** plain-words reason it did not go through (error is the raw detail) */
+  reason?: string
+  /** WhatsApp: when the lead read it (blue ticks) */
+  readAt?: string
   /** console-sms / console-email only log the message, so their sent/delivered status is a stand-in */
   provider?: string
   /** the gateway's id for the message (e.g. Webinfosys MessageId), for delivery reports */
@@ -1517,6 +1567,10 @@ export interface WhatsAppChatMessage {
   sentBy?: string
   sentAt: string
   deliveredAt?: string
+  /** out: when the lead read it (blue ticks) */
+  readAt?: string
+  /** out, failed: the plain-words reason (error is the raw detail) */
+  reason?: string
   createdAt: string
   providerMessageId?: string
 }
@@ -1580,7 +1634,7 @@ export interface AutomationRow {
   runCount: number
   sentCount: number
   /** schedule: the latest run (a bulk send filed under the automation) */
-  lastRun: { _id: string; status: string; scheduledAt: string; final: number; sent: number; failed: number } | null
+  lastRun: { _id: string; status: string; scheduledAt: string; final: number; sent: number; failed: number; metrics?: DeliveryMetrics } | null
   createdBy: string | null
   updatedBy: string | null
   createdAt: string
@@ -1754,9 +1808,26 @@ export interface CampaignRow {
   createdBy?: string
   createdAt: string
   report: Record<'queued' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'cancelled', number> & { undelivered?: number }
+  /** every status with its count; null = the channel cannot report it (shown as N/A) */
+  metrics?: DeliveryMetrics
+  /** the statuses this channel cannot report (N/A) */
+  notReported?: MetricStatus[]
   /** 'sending' with nothing going out for 10 min: its run died with a server restart — Resume or Stop it. */
   stalled?: boolean
-  failures?: { lead: string; name: string; to: string; reason: string }[]
+  /** why messages did not reach the leads, grouped (detail view only) */
+  reasons?: ReasonCount[]
+  failures?: { lead: string; name: string; to: string; status?: string; reason: string; detail?: string }[]
+}
+
+export type MetricStatus = 'queued' | 'sent' | 'delivered' | 'read' | 'undelivered' | 'bounced' | 'failed' | 'cancelled'
+export type DeliveryMetrics = Record<MetricStatus, number | null>
+
+/** One line of a bulk send's "why it did not go through" breakdown. */
+export interface ReasonCount {
+  status: 'undelivered' | 'bounced' | 'failed' | 'cancelled'
+  code: string
+  label: string
+  count: number
 }
 
 export interface CampaignPreview {
