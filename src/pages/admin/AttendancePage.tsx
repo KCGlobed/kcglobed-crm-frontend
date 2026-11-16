@@ -19,29 +19,33 @@ import { Select } from '../../components/ui/fields'
 import { FilterBar, PageHeader, SearchInput, Tabs } from '../../components/ui/misc'
 import type { AttendanceRow, BreakEntry } from '../../types/models'
 import { CallProofsTab } from './attendance/CallProofsTab'
+import { DialerRunsTab } from './attendance/DialerRunsTab'
 
 /**
- * Attendance (Super Admin): per employee per IST day, sign-in hours from the login / logout records,
+ * Attendance (Super Admin): per employee per IST day, punched-in hours from Punch In / Out (sign-in hours on the
+ * days before punches went live),
  * talk time from the logged calls and break-wise time from Punch Break. The tabs are views of the same
  * rows (the spec's tables 4.1, 4.2, 4.3 and the consolidated report); Break Entries lists every break.
  */
-type Tab = 'consolidated' | 'login' | 'talk' | 'breaks' | 'entries' | 'calls'
-type ReportTab = Exclude<Tab, 'entries' | 'calls'>
+type Tab = 'consolidated' | 'login' | 'talk' | 'breaks' | 'entries' | 'calls' | 'dialer'
+type ReportTab = Exclude<Tab, 'entries' | 'calls' | 'dialer'>
 const TABS: { key: Tab; label: string }[] = [
   { key: 'consolidated', label: 'Consolidated' },
-  { key: 'login', label: 'Login Hours' },
+  { key: 'login', label: 'Punch Hours' },
   { key: 'talk', label: 'Talk Time' },
   { key: 'breaks', label: 'Breaks' },
   { key: 'entries', label: 'Break Entries' },
   { key: 'calls', label: 'Call Proofs' },
+  { key: 'dialer', label: 'Auto Dialer' },
 ]
 const DESCRIPTIONS: Record<Tab, string> = {
-  consolidated: 'Login and logout, talk time and break-wise time for every employee, one row per working day (IST).',
-  login: 'First sign-in, last sign-out and the time signed in (sessions added up, as on the employee\'s timer, minus time on a Pause Break). A day whose last session never signed out is flagged and counted only up to the last activity.',
+  consolidated: 'Punch in and out, talk time and break-wise time for every employee, one row per working day (IST).',
+  login: 'First Punch In, last Punch Out and the punched-in time (the spans added up, as on the employee\'s timer, Pause Break included; the time between a Punch Out and the next Punch In is not counted). A forgotten Punch Out is made at the last activity in the CRM that day and flagged. Days before punches went live show the sign-in times.',
   talk: 'Calls logged and the sum of their durations, per employee per day.',
   breaks: 'Completed break time by type. Pause Break (campus visit, training, call calibration) is listed on its own and is not part of the total. A break still running is shown on its own; one left open past its day is counted as incomplete.',
   entries: 'Every break punched, with its start, end and duration, for auditing.',
   calls: 'Every logged call with the duration the counsellor entered, its call screenshot and recording. Preview to compare the duration with the screenshot.',
+  dialer: 'Progressive dialer runs: who is dialing now, when each run started and how long it ran, how many leads were called and connected, and the talk time. View a run for each lead with its calls and recordings.',
 }
 const FILTER_KEYS = ['tab', 'date_from', 'date_to', 'user', 'search', 'type', 'status']
 
@@ -56,6 +60,18 @@ function StatusBadge({ row }: { row: AttendanceRow }) {
     return (
       <span title={row.lastSeenAt ? `Last seen ${clock(row.lastSeenAt)}` : undefined}>
         <Badge tone="red">Logout missing</Badge>
+      </span>
+    )
+  if (row.notPunchedIn)
+    return (
+      <span title="Signed in that day without punching in: no time counted">
+        <Badge tone="amber">Not punched in</Badge>
+      </span>
+    )
+  if (row.autoPunchOut)
+    return (
+      <span title="The Punch Out was forgotten: made at the last activity in the CRM that day">
+        <Badge tone="amber">Auto punch-out</Badge>
       </span>
     )
   return <Badge tone="blue">Present</Badge>
@@ -82,7 +98,8 @@ export default function AttendancePage() {
   const filters = { page: query.page, page_size: query.page_size, date_from: dateFrom, date_to: dateTo, user: query.user, search: query.search }
   const entriesTab = tab === 'entries'
   const callsTab = tab === 'calls'
-  const report = useAttendanceReportQuery(filters, { skip: entriesTab || callsTab })
+  const dialerTab = tab === 'dialer'
+  const report = useAttendanceReportQuery(filters, { skip: entriesTab || callsTab || dialerTab })
   const entries = useBreakEntriesQuery({ ...filters, type: query.type, status: query.status }, { skip: !entriesTab })
   const { data: people } = useUserOptionsQuery()
   const now = useNow(1000)
@@ -112,12 +129,27 @@ export default function AttendancePage() {
     ),
   }
   const statusCol: Column<AttendanceRow> = { key: 'status', header: 'Status', render: (r) => <StatusBadge row={r} /> }
-  const loginCol: Column<AttendanceRow> = { key: 'login', header: 'Login Time', render: (r) => (r.loginAt ? cell(clock(r.loginAt)) : muted('—')) }
+  // a day before punches went live shows its sign-in times under the same columns
+  const signedIn = (r: AttendanceRow) => (r.mode === 'login' ? 'Before punches went live: sign-in time' : undefined)
+  const loginCol: Column<AttendanceRow> = {
+    key: 'login',
+    header: 'Punch In',
+    render: (r) => (r.loginAt ? <span title={signedIn(r)}>{cell(clock(r.loginAt))}</span> : muted('—')),
+  }
   const logoutCol: Column<AttendanceRow> = {
     key: 'logout',
-    header: 'Logout Time',
+    header: 'Punch Out',
     render: (r) =>
-      r.logoutAt ? cell(clock(r.logoutAt)) : r.logoutMissing ? (
+      r.logoutAt ? (
+        <div className="flex flex-col" title={signedIn(r)}>
+          {cell(clock(r.logoutAt))}
+          {r.autoPunchOut && (
+            <span className="text-[11px] text-amber-700" title="The Punch Out was forgotten: made at the last activity in the CRM that day">
+              auto
+            </span>
+          )}
+        </div>
+      ) : r.logoutMissing ? (
         <span className="text-xs font-medium text-red-600" title={r.lastSeenAt ? `Last seen ${clock(r.lastSeenAt)}` : undefined}>
           Missing
         </span>
@@ -127,7 +159,7 @@ export default function AttendancePage() {
   }
   const hoursCol: Column<AttendanceRow> = {
     key: 'hours',
-    header: 'Total Login Hours',
+    header: 'Total Hours',
     render: (r) =>
       r.loginSeconds === null ? (
         muted('—')
@@ -234,7 +266,7 @@ export default function AttendancePage() {
         title="Attendance"
         description={DESCRIPTIONS[tab]}
         actions={
-          canExport && !entriesTab && !callsTab ? (
+          canExport && !entriesTab && !callsTab && !dialerTab ? (
             <Button variant="outline" size="sm" onClick={exportCsv}>
               <Download className="h-3.5 w-3.5" /> Export CSV
             </Button>
@@ -288,7 +320,9 @@ export default function AttendancePage() {
           </>
         )}
       </FilterBar>
-      {callsTab ? (
+      {dialerTab ? (
+        <DialerRunsTab filters={filters} setParam={setParam} />
+      ) : callsTab ? (
         <CallProofsTab filters={filters} setParam={setParam} />
       ) : entriesTab ? (
         <DataTable

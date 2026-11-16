@@ -67,7 +67,7 @@ export function TargetFormModal({ target, onClose }: { target?: Target; onClose:
       open
       onClose={onClose}
       title={target ? 'Edit target' : 'Assign target'}
-      description="Progress counts the leads that reach the chosen stage within the dates while owned by this person. It completes automatically at 100%."
+      description="Progress counts the leads this person brought into the chosen stage within the dates and that are still in it — a lead moved to any other stage drops out. The target is settled when the range ends: completed at 100%, otherwise expired."
       footer={
         <>
           <Button variant="outline" onClick={onClose}>

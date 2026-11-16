@@ -16,11 +16,23 @@ function StatusTick({ m }: { m: WhatsAppChatMessage }) {
   if (m.status === 'failed') {
     return (
       <span title={m.error} className="inline-flex items-center gap-0.5 text-red-600">
-        <AlertTriangle className="h-3 w-3" /> failed
+        <AlertTriangle className="h-3 w-3" /> {m.reason ?? 'failed'}
       </span>
     )
   }
-  if (m.status === 'delivered') return <CheckCheck className="h-3.5 w-3.5 text-sky-600" aria-label="Delivered" />
+  // like WhatsApp itself: grey double tick = delivered, blue double tick = read by the lead
+  if (m.readAt)
+    return (
+      <span title={`Read ${formatDateTime(m.readAt)}`}>
+        <CheckCheck className="h-3.5 w-3.5 text-sky-500" aria-label="Read" />
+      </span>
+    )
+  if (m.status === 'delivered')
+    return (
+      <span title={m.deliveredAt ? `Delivered ${formatDateTime(m.deliveredAt)}` : 'Delivered'}>
+        <CheckCheck className="h-3.5 w-3.5 text-slate-400" aria-label="Delivered" />
+      </span>
+    )
   if (m.status === 'sent') return <Check className="h-3.5 w-3.5 text-slate-400" aria-label="Sent" />
   return <span>{m.status}</span>
 }

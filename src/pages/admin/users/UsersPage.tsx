@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Pencil, Plus, Send, UserCheck, UserX } from 'lucide-react'
 import { toast } from 'sonner'
@@ -23,6 +23,7 @@ import type { User } from '../../../types/models'
 import { useListParams } from '../../../hooks/useListParams'
 import { UserFormDrawer } from './UserFormDrawer'
 import { RoleTemplates } from './RoleTemplates'
+import { TEAM_TYPE_LABEL, teamsInOrder } from '../teams/teamMeta'
 
 const ROLE_TONE = { super_admin: 'violet', admin: 'blue', counsellor: 'green', other: 'slate' } as const
 const refName = (v: User['team'] | User['reportingManager']) => (typeof v === 'object' && v ? v.name : null)
@@ -39,6 +40,8 @@ export default function UsersPage() {
   const { query, setParam, onSort } = useListParams({ sort_by: 'name', sort_order: 'asc' }, ['role', 'team', 'is_active'])
   const { data, isLoading, isFetching, isError, error, refetch } = useListUsersQuery(query, { skip: tab !== 'users' })
   const { data: teams } = useTeamOptionsQuery()
+  // each unit under its department with its type, as in the user form
+  const teamChoices = useMemo(() => teamsInOrder(teams?.data ?? []), [teams])
   const [deactivate, { isLoading: deactivating }] = useDeactivateUserMutation()
   const [reactivate] = useReactivateUserMutation()
   const [resend] = useResendCredentialsMutation()
@@ -219,11 +222,19 @@ export default function UsersPage() {
               <option value="counsellor">Admission Counsellor</option>
               <option value="other">Custom access</option>
             </Select>
-            <Select className="!w-auto" value={(query.team as string) ?? ''} onChange={(e) => setParam('team', e.target.value)} aria-label="Team">
+            {/* the box keeps the other filters' width; the open list widens to show each full "Department › Team" name */}
+            <Select
+              className="!w-48"
+              value={(query.team as string) ?? ''}
+              onChange={(e) => setParam('team', e.target.value)}
+              aria-label="Team"
+              title={teamChoices.find((c) => c.team._id === query.team)?.label}
+            >
               <option value="">All teams</option>
-              {teams?.data.map((t) => (
-                <option key={t._id} value={t._id}>
-                  {t.name}
+              {teamChoices.map(({ team, label }) => (
+                <option key={team._id} value={team._id}>
+                  {label}
+                  {team.type ? ` · ${TEAM_TYPE_LABEL[team.type]}` : ''}
                 </option>
               ))}
             </Select>

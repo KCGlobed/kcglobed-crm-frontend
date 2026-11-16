@@ -1,4 +1,5 @@
-import { ACTIONS, DATA_SCOPES, MODULES } from '../../../constants/permissions'
+import { Fragment } from 'react'
+import { ACTIONS, DATA_SCOPES, MODULES, childModules } from '../../../constants/permissions'
 import type { ActionKey, DataScope, FieldRule, ModuleKey, ModulePermission, PermissionTemplate } from '../../../types/models'
 import { Checkbox, FormField, Select } from '../../../components/ui/fields'
 import { Button } from '../../../components/ui/Button'
@@ -47,32 +48,54 @@ const MASKABLE_FIELDS: { value: string; label: string; group: string }[] = [
 ]
 const FIELD_GROUPS = [...new Set(MASKABLE_FIELDS.map((f) => f.group))]
 
+/** One tick on or off: the first tick on a module implies view so it is usable; removing view removes the module. */
+const setAction = (actions: ActionKey[], action: ActionKey, on: boolean): ActionKey[] => {
+  if (!on) return action === 'view' ? [] : actions.filter((a) => a !== action)
+  if (actions.includes(action)) return actions
+  return action === 'view' || actions.includes('view') ? [...actions, action] : ['view', action]
+}
+
+/** The list with this module's actions set — no actions removes the module's entry. */
+const withActions = (permissions: ModulePermission[], module: ModuleKey, actions: ActionKey[]): ModulePermission[] => {
+  if (!actions.length) return permissions.filter((p) => p.module !== module)
+  return permissions.some((p) => p.module === module)
+    ? permissions.map((p) => (p.module === module ? { ...p, actions } : p))
+    : [...permissions, { module, actions }]
+}
+
 /**
  * The SOW's plug-and-play access builder: pick a template (a saved tick-set),
  * then adjust modules → actions → data scope → field visibility per user.
  */
 export function PermissionBuilder({ value, onChange, templates, showTemplatePicker = true }: Props) {
-  const has = (module: ModuleKey, action: ActionKey) =>
-    value.permissions.find((p) => p.module === module)?.actions.includes(action) ?? false
+  const actionsIn = (permissions: ModulePermission[], module: ModuleKey) => permissions.find((p) => p.module === module)?.actions ?? []
+  const has = (module: ModuleKey, action: ActionKey) => actionsIn(value.permissions, module).includes(action)
+  /** Parts ticked one by one; until then the module's own ticks cover every part (as the backend reads it). */
+  const partsTicked = (parent: ModuleKey) => value.permissions.some((p) => childModules(parent).includes(p.module))
+  const hasPart = (parent: ModuleKey, part: ModuleKey, action: ActionKey) => (partsTicked(parent) ? has(part, action) : has(parent, action))
 
   const toggle = (module: ModuleKey, action: ActionKey) => {
-    const existing = value.permissions.find((p) => p.module === module)
-    let permissions: ModulePermission[]
-    if (!existing) {
-      // First tick on a module implies view so the module is actually usable.
-      const actions: ActionKey[] = action === 'view' ? ['view'] : ['view', action]
-      permissions = [...value.permissions, { module, actions }]
-    } else {
-      let actions = existing.actions.includes(action)
-        ? existing.actions.filter((a) => a !== action)
-        : [...existing.actions, action]
-      if (action === 'view' && !actions.includes('view')) {
-        actions = [] // removing view removes the module entirely
-      }
-      permissions = actions.length
-        ? value.permissions.map((p) => (p.module === module ? { ...p, actions } : p))
-        : value.permissions.filter((p) => p.module !== module)
+    const on = !has(module, action)
+    let permissions = withActions(value.permissions, module, setAction(actionsIn(value.permissions, module), action, on))
+    if (partsTicked(module)) {
+      // the module's tick sets each of its parts the same way
+      for (const part of childModules(module)) permissions = withActions(permissions, part, setAction(actionsIn(permissions, part), action, on))
     }
+    if (!actionsIn(permissions, module).length) permissions = permissions.filter((p) => !childModules(module).includes(p.module)) // a part needs its module
+    onChange({ ...value, permissions, templateKey: undefined })
+  }
+
+  const togglePart = (parent: ModuleKey, part: ModuleKey, action: ActionKey) => {
+    let permissions = value.permissions
+    if (!partsTicked(parent)) {
+      // the first part ticked by hand: every part starts from what the module gave it
+      for (const p of childModules(parent)) permissions = withActions(permissions, p, actionsIn(value.permissions, parent))
+    }
+    const current = actionsIn(permissions, part)
+    permissions = withActions(permissions, part, setAction(current, action, !current.includes(action)))
+    // the module holds what its parts hold together; with no part left the module goes too
+    const together = new Set(childModules(parent).flatMap((p) => actionsIn(permissions, p)))
+    permissions = withActions(permissions, parent, ACTIONS.map((a) => a.key).filter((a) => together.has(a)))
     onChange({ ...value, permissions, templateKey: undefined })
   }
 
@@ -123,7 +146,9 @@ export function PermissionBuilder({ value, onChange, templates, showTemplatePick
 
       <div>
         <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">Modules & actions</p>
-        <p className="mb-2 text-[11px] text-slate-400">Unticked modules are hidden from this user's menu entirely.</p>
+        <p className="mb-2 text-[11px] text-slate-400">
+          Unticked modules are hidden from this user's menu entirely. A module's parts (↳) can be given one by one; with none ticked, the module gives every part.
+        </p>
         <div className="overflow-x-auto rounded-lg border border-slate-200">
           <table className="w-full text-xs">
             <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
@@ -138,17 +163,36 @@ export function PermissionBuilder({ value, onChange, templates, showTemplatePick
             </thead>
             <tbody className="divide-y divide-slate-100">
               {MODULES.map((m) => (
-                <tr key={m.key} className={!m.slice1 ? 'opacity-60' : undefined}>
-                  <td className="px-3 py-1.5 font-medium text-slate-700">
-                    {m.label}
-                    {!m.slice1 && <span className="ml-1 text-[9px] text-slate-400">(upcoming)</span>}
-                  </td>
-                  {ACTIONS.map((a) => (
-                    <td key={a.key} className="px-2 py-1.5 text-center">
-                      <Checkbox checked={has(m.key, a.key)} onChange={() => toggle(m.key, a.key)} />
+                <Fragment key={m.key}>
+                  <tr className={!m.slice1 ? 'opacity-60' : undefined}>
+                    <td className="px-3 py-1.5 font-medium text-slate-700">
+                      {m.label}
+                      {!m.slice1 && <span className="ml-1 text-[9px] text-slate-400">(upcoming)</span>}
                     </td>
+                    {ACTIONS.map((a) => (
+                      <td key={a.key} className="px-2 py-1.5 text-center">
+                        <Checkbox checked={has(m.key, a.key)} onChange={() => toggle(m.key, a.key)} />
+                      </td>
+                    ))}
+                  </tr>
+                  {m.children?.map((c) => (
+                    <tr key={c.key} className="bg-slate-50/60">
+                      <td className="py-1.5 pl-7 pr-3 text-slate-600">
+                        <span aria-hidden className="mr-1 text-slate-400">↳</span>
+                        {c.label}
+                      </td>
+                      {ACTIONS.map((a) => (
+                        <td key={a.key} className="px-2 py-1.5 text-center">
+                          <Checkbox
+                            aria-label={`${m.label} › ${c.label}: ${a.label}`}
+                            checked={hasPart(m.key, c.key, a.key)}
+                            onChange={() => togglePart(m.key, c.key, a.key)}
+                          />
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>

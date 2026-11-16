@@ -78,7 +78,7 @@ export interface Option {
 }
 
 export interface Card {
-  key: 'total' | 'open' | 'notActed' | 'converted' | 'lost'
+  key: 'total' | 'open' | 'lost' | 'notConnected' | 'converted'
   label: string
   value: number
   inPeriod?: number
@@ -187,7 +187,7 @@ export interface AnalyticsSummary {
   filters: AnalyticsParams
   generatedAt: string
   options: { sources: Option[]; counsellors: Option[] }
-  headline: { total: number; open: number; lost: number; converted: number; conversion: number }
+  headline: { total: number; open: number; lost: number; notConnected: number; converted: number; conversion: number }
   stageSplit: Part[]
   leadsPerDay: Part[]
   bySource: SourceRow[]

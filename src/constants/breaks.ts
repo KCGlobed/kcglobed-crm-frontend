@@ -21,7 +21,8 @@ export const NOTE_TYPES = new Set<BreakType>(['pause', 'other'])
 
 /**
  * The Punch Pause Break tiles. A preset starts the pause with that reason at once (it is the break's note);
- * Other asks the employee to type one. A pause is time away from the desk: neither break time nor signed-in time.
+ * Other asks the employee to type one. A pause is work away from the desk: not break time, part of the punched-in
+ * time (only Active Time leaves it out).
  */
 export const PAUSE_OPTIONS: { reason: string | null; label: string; icon: LucideIcon }[] = [
   { reason: 'Campus Visit', label: 'Campus Visit', icon: School },

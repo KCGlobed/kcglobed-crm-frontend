@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -21,6 +21,7 @@ import { cn, parseApiError } from '../../../lib/utils'
 import type { RoleKey, User } from '../../../types/models'
 import { PermissionBuilder, type PermissionState } from './PermissionBuilder'
 import { MenuPreview } from './MenuPreview'
+import { TEAM_TYPE_LABEL, teamsInOrder } from '../teams/teamMeta'
 
 // GL-01 rules for the profile; GL-02 password rules when a password is set by hand
 const schema = z.object({
@@ -97,6 +98,8 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
   const me = useCurrentUser()
   const superAdmin = !!me?.isSuperAdmin
   const { data: teams } = useTeamOptionsQuery()
+  // each unit under its department with its type ("Admissions › Team A · Team"), so a department and its team differ
+  const teamChoices = useMemo(() => teamsInOrder(teams?.data ?? []), [teams])
   const { data: templates } = useListTemplatesQuery(undefined, { skip: !superAdmin })
   const { data: userOptions } = useUserOptionsQuery()
   const [createUser, { isLoading: creating }] = useCreateUserMutation()
@@ -324,12 +327,16 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
 
         <FieldGroup title="Team & reporting" description="Team data scope, dashboards and round-robin follow this structure.">
           <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Team">
+            <FormField
+              label="Team"
+              hint="Counsellors go in their team or counsellor group. Someone placed in a department itself sees the whole department under a Team data scope."
+            >
               <Select {...register('team')}>
                 <option value="">No team</option>
-                {teams?.data.map((t) => (
-                  <option key={t._id} value={t._id}>
-                    {t.name}
+                {teamChoices.map(({ team, label }) => (
+                  <option key={team._id} value={team._id}>
+                    {label}
+                    {team.type ? ` · ${TEAM_TYPE_LABEL[team.type]}` : ''}
                   </option>
                 ))}
               </Select>

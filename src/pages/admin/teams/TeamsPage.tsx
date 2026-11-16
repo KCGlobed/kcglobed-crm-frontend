@@ -24,7 +24,6 @@ import type { Team } from '../../../types/models'
 import { TeamFormDrawer } from './TeamFormDrawer'
 import { TeamTree } from './TeamTree'
 import { TeamTypeBadge } from './TeamTypeBadge'
-import { TEAM_TYPES } from './teamMeta'
 
 /** Deactivate switches a team off (reversible); delete removes it for good. */
 type Confirm = { team: Team; mode: 'deactivate' | 'delete' }
@@ -34,13 +33,16 @@ export default function TeamsPage() {
   const navigate = useNavigate()
   const { query, setParam, onSort } = useListParams({ sort_by: 'name', sort_order: 'asc' }, [
     'is_active',
-    'type',
     'view',
     'include_inactive',
   ])
   const view = query.view === 'tree' ? 'tree' : 'list'
-  // view/include_inactive drive the page itself, not the /teams list call
-  const listQuery = Object.fromEntries(Object.entries(query).filter(([k]) => k !== 'view' && k !== 'include_inactive'))
+  // view/include_inactive drive the page itself, not the /teams list call. The list is the top level (departments):
+  // a department's teams and counsellor groups are on its own page.
+  const listQuery = {
+    ...Object.fromEntries(Object.entries(query).filter(([k]) => k !== 'view' && k !== 'include_inactive')),
+    parent: 'root',
+  }
 
   const list = useListTeamsQuery(listQuery, { skip: view !== 'list' })
   const tree = useTeamTreeQuery({ include_inactive: query.include_inactive === 'true' }, { skip: view !== 'tree' })
@@ -82,29 +84,36 @@ export default function TeamsPage() {
   const columns: Column<Team>[] = [
     {
       key: 'name',
-      header: 'Team',
+      header: 'Department',
       sortable: true,
       render: (t) => (
         <div className="min-w-40">
-          <p className="font-medium text-slate-800">
+          <p className="flex flex-wrap items-center gap-x-1.5 font-medium text-slate-800">
             {t.name}
-            {t.code && <span className="ml-1.5 text-[11px] font-normal text-slate-400">{t.code}</span>}
+            {t.code && <span className="text-[11px] font-normal text-slate-400">{t.code}</span>}
+            {/* a top-level unit from before departments were the only top level */}
+            {t.type !== 'department' && <TeamTypeBadge type={t.type} />}
           </p>
           {t.description && <p className="line-clamp-1 text-[11px] text-slate-400">{t.description}</p>}
         </div>
       ),
     },
-    { key: 'type', header: 'Type', sortable: true, render: (t) => <TeamTypeBadge type={t.type} /> },
     { key: 'manager', header: 'Manager', render: (t) => <span className="text-xs">{t.manager?.name ?? '—'}</span> },
-    { key: 'parent', header: 'Reports into', render: (t) => <span className="text-xs">{t.parent?.name ?? '—'}</span> },
     { key: 'location', header: 'Location', render: (t) => <span className="text-xs">{t.location || '—'}</span> },
     {
-      key: 'memberCount',
+      key: 'subTeamCount',
+      header: 'Sub-teams',
+      render: (t) => <span className="text-xs tabular-nums">{t.subTeamCount ?? 0}</span>,
+    },
+    {
+      key: 'totalMembers',
       header: 'Members',
       render: (t) => (
-        <span className="text-xs tabular-nums">
-          {t.memberCount ?? 0}
-          {!!t.subTeamCount && <span className="text-slate-400"> · {t.subTeamCount} sub</span>}
+        <span
+          className="text-xs tabular-nums"
+          title={`${t.memberCount ?? 0} directly in ${t.name}, the rest in its sub-teams`}
+        >
+          {t.totalMembers ?? t.memberCount ?? 0}
         </span>
       ),
     },
@@ -153,7 +162,7 @@ export default function TeamsPage() {
     <>
       <PageHeader
         title="Teams & Hierarchy"
-        description="Departments, teams and counsellor groups. Team data scope, dashboards and round-robin follow this structure."
+        description="Departments, each with its teams and counsellor groups. Open a department to see its sub-teams and members. Team data scope, dashboards and round-robin follow this structure."
         actions={
           can(me, 'teams', 'create') && (
             <Button size="sm" onClick={() => setFormOpen(true)}>
@@ -193,16 +202,8 @@ export default function TeamsPage() {
               className="w-full sm:w-64"
               value={query.search ?? ''}
               onSearch={(v) => setParam('search', v)}
-              placeholder="Search name, code, location…"
+              placeholder="Search department, code, location…"
             />
-            <Select className="!w-auto" value={(query.type as string) ?? ''} onChange={(e) => setParam('type', e.target.value)}>
-              <option value="">All types</option>
-              {TEAM_TYPES.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.label}
-                </option>
-              ))}
-            </Select>
             <Select
               className="!w-auto"
               value={(query.is_active as string) ?? ''}
@@ -233,8 +234,8 @@ export default function TeamsPage() {
           error={list.isError}
           errorMessage={list.isError ? parseApiError(list.error).message : undefined}
           onRetry={list.refetch}
-          emptyTitle="No teams found"
-          emptyDescription="Try a different filter, or create the first team."
+          emptyTitle="No departments found"
+          emptyDescription="Try a different filter, or create the first department."
           sortBy={query.sort_by}
           sortOrder={query.sort_order}
           onSort={onSort}

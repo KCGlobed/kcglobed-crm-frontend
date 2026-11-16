@@ -7,7 +7,7 @@ import {
   useListTemplatesQuery,
   useUpdateTemplateMutation,
 } from '../../../services/adminApi'
-import { DATA_SCOPES, MODULES } from '../../../constants/permissions'
+import { DATA_SCOPES, moduleLabel } from '../../../constants/permissions'
 import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { Drawer } from '../../../components/ui/Drawer'
@@ -21,7 +21,6 @@ import { PermissionBuilder, type PermissionState } from './PermissionBuilder'
 import { MenuPreview } from './MenuPreview'
 
 const scopeLabel = (key: string) => DATA_SCOPES.find((s) => s.key === key)?.label ?? key
-const moduleLabel = (key: string) => MODULES.find((m) => m.key === key)?.label ?? key
 
 /**
  * The template key is not typed in: it is derived from the name on create and

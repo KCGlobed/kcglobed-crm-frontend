@@ -110,7 +110,19 @@ export default function TargetsPage() {
         </span>
       ),
     },
-    { key: 'status', header: 'Status', render: (t) => <Badge tone={STATUS[t.status].tone}>{STATUS[t.status].label}</Badge> },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (t) =>
+        // reached while the range runs is not final: a lead leaving the stage takes it back below
+        t.status === 'active' && t.achieved >= t.targetCount ? (
+          <span title="Settled when the range ends — a lead leaving the stage takes it back below">
+            <Badge tone="green">Reached</Badge>
+          </span>
+        ) : (
+          <Badge tone={STATUS[t.status].tone}>{STATUS[t.status].label}</Badge>
+        ),
+    },
     { key: 'assignedBy', header: 'Assigned By', render: (t) => <span className="text-xs text-slate-600">{t.assignedBy?.name ?? '—'}</span> },
     ...(canEdit
       ? [
@@ -138,7 +150,7 @@ export default function TargetsPage() {
     <>
       <PageHeader
         title="Target Manager"
-        description="Targets for leads to reach a stage within a date range. Progress counts the leads the assignee owned when they reached the stage; a target completes automatically at 100%. Click a target to see its leads."
+        description="Targets for leads to reach a stage within a date range. Progress counts the leads the assignee owned when they reached the stage and that are still in it; a lead moved to another stage drops out. A target is settled when its range ends. Click a target to see its leads."
         actions={
           canCreate ? (
             <Button size="sm" onClick={() => setEditing('new')}>

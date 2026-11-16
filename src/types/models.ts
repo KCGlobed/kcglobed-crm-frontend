@@ -3,6 +3,8 @@ export type ModuleKey =
   | 'leads'
   | 'tasks'
   | 'round_robin'
+  | 'round_robin.inside_sales'
+  | 'round_robin.partners'
   | 'applications'
   | 'documents'
   | 'exams'
@@ -109,6 +111,8 @@ export interface Team {
   createdAt?: string
   updatedAt?: string
   memberCount?: number
+  /** list only: active members here and in every team below (a department's people sit in its teams) */
+  totalMembers?: number
   subTeamCount?: number
   /** detail only */
   ancestors?: TeamRef[]
@@ -479,7 +483,49 @@ export interface AuditLogEntry {
   ip?: string
   userAgent?: string
   createdAt: string
+  /** communications: how the message / bulk send stands NOW (status, reason, where it came from) */
+  live?: AuditLive
 }
+
+/** Where a message came from: a bulk send, an automation, a scheduled or lead-page send, or a lead's reply. */
+export interface MessageSource {
+  kind: 'bulk' | 'automation' | 'scheduled' | 'manual' | 'reply'
+  label: string
+  campaignId?: string
+}
+
+export type AuditLive =
+  | {
+      kind: 'message'
+      channel: string
+      status: string
+      direction?: 'in' | 'out'
+      reason?: string
+      error?: string
+      source: MessageSource
+      template?: string
+      lead?: { _id: string; leadNo: string; name: string }
+      to?: string
+      sentAt?: string
+      deliveredAt?: string
+      readAt?: string
+      scheduledAt?: string
+      /** false: the channel cannot report delivery (email today) */
+      deliveryTracked?: boolean
+    }
+  | {
+      kind: 'campaign'
+      channel: string
+      status: string
+      source: MessageSource
+      template?: string
+      final?: number
+      metrics: DeliveryMetrics
+      topReasons?: string
+      scheduledAt?: string
+      startedAt?: string
+      finishedAt?: string
+    }
 
 /** The lead a message went to, as the Activity Log keeps it (the entry outlives the lead). */
 export interface AuditLeadRef {
@@ -583,12 +629,16 @@ export interface CampaignRecipient {
   to?: string
   status: string
   error?: string
+  /** plain-words reason it did not go through (error is the raw detail) */
+  reason?: string
   subject?: string
   body: string
   provider?: string
   providerMessageId?: string
   sentAt?: string
   deliveredAt?: string
+  /** WhatsApp: when the lead read it (blue ticks) */
+  readAt?: string
   createdAt: string
 }
 
@@ -1192,6 +1242,95 @@ export interface AttendanceCallRow {
   /** every screenshot, in upload order (`screenshot` is the first) */
   screenshots?: CallProofFile[]
   recording: CallProofFile | null
+  /** what the dialer (Smartflo) said about the call; null for a manually logged call */
+  smartflo?: SmartfloCallDetail | null
+}
+
+export type SmartfloCallResult =
+  | 'connected'
+  | 'not_answered'
+  | 'cancelled'
+  | 'busy'
+  | 'rejected'
+  | 'invalid'
+  | 'unreachable'
+  | 'network'
+  | 'dropped'
+  | 'agent_missed'
+
+export interface SmartfloCallDetail {
+  direction: 'outbound' | 'inbound'
+  result: SmartfloCallResult
+  connected: boolean
+  /** plain words: "Lead didn't answer", "Counsellor cut the call while the lead was ringing", … */
+  label: string
+  /** who put the phone down; null when the network / nobody ended it */
+  endedBy: 'lead' | 'counsellor' | null
+  talkSeconds: number
+  /** null on an incoming call (the lead rang us) */
+  leadRingSeconds: number | null
+  counsellorRingSeconds: number
+  totalSeconds: number
+  /** IST, as Smartflo sends it ("2026-11-13 12:32:05") */
+  startedAt: string | null
+  endedAt: string | null
+  smartfloStatus: string | null
+  smartfloReason: string | null
+  hangupCause: string | null
+  counsellorLine: string | null
+  operator: string | null
+  callId: string | null
+  /** Smartflo's hang-up report never reached this server: built from the call record, with fewer details */
+  fromCallRecord?: boolean
+}
+
+/** Attendance → Auto Dialer: one progressive run of a counsellor */
+export interface DialerRunRow {
+  _id: string
+  user: { _id: string; name: string | null }
+  /** running: a call on now or in the last 5 min · idle: still the current run, nothing for 5 min · finished */
+  status: 'running' | 'idle' | 'finished'
+  /** still the counsellor's current run in the dialer */
+  current: boolean
+  startedAt: string
+  firstCallAt: string | null
+  lastActivityAt: string | null
+  /** null while running */
+  endedAt: string | null
+  runSeconds: number
+  leads: number
+  called: number
+  connected: number
+  notConnected: number
+  onCallNow: number
+  notCalled: number
+  totalCalls: number
+  talkSeconds: number
+  rounds: number
+}
+
+export interface DialerRunCall {
+  _id: string
+  createdAt: string
+  endedAt: string | null
+  status: string
+  live: boolean
+  connected: boolean
+  talkSeconds: number
+  user: { _id: string; name: string } | null
+  stage: string | null
+  subStage: string | null
+  smartflo: SmartfloCallDetail | null
+  recording: CallProofFile | null
+}
+
+export interface DialerRunDetail extends DialerRunRow {
+  rows: {
+    lead: { _id: string; name: string; leadNo: string | null; stage: string | null }
+    calls: DialerRunCall[]
+    outcome: 'on_call' | 'connected' | 'not_connected' | 'not_called'
+    talkSeconds: number
+  }[]
 }
 
 export interface FieldChangeEntry {
@@ -1367,6 +1506,10 @@ export interface LeadMessage {
   body: string
   status: string
   error?: string
+  /** plain-words reason it did not go through (error is the raw detail) */
+  reason?: string
+  /** WhatsApp: when the lead read it (blue ticks) */
+  readAt?: string
   /** console-sms / console-email only log the message, so their sent/delivered status is a stand-in */
   provider?: string
   /** the gateway's id for the message (e.g. Webinfosys MessageId), for delivery reports */
@@ -1424,6 +1567,10 @@ export interface WhatsAppChatMessage {
   sentBy?: string
   sentAt: string
   deliveredAt?: string
+  /** out: when the lead read it (blue ticks) */
+  readAt?: string
+  /** out, failed: the plain-words reason (error is the raw detail) */
+  reason?: string
   createdAt: string
   providerMessageId?: string
 }
@@ -1487,7 +1634,7 @@ export interface AutomationRow {
   runCount: number
   sentCount: number
   /** schedule: the latest run (a bulk send filed under the automation) */
-  lastRun: { _id: string; status: string; scheduledAt: string; final: number; sent: number; failed: number } | null
+  lastRun: { _id: string; status: string; scheduledAt: string; final: number; sent: number; failed: number; metrics?: DeliveryMetrics } | null
   createdBy: string | null
   updatedBy: string | null
   createdAt: string
@@ -1661,9 +1808,26 @@ export interface CampaignRow {
   createdBy?: string
   createdAt: string
   report: Record<'queued' | 'sent' | 'delivered' | 'failed' | 'bounced' | 'cancelled', number> & { undelivered?: number }
+  /** every status with its count; null = the channel cannot report it (shown as N/A) */
+  metrics?: DeliveryMetrics
+  /** the statuses this channel cannot report (N/A) */
+  notReported?: MetricStatus[]
   /** 'sending' with nothing going out for 10 min: its run died with a server restart — Resume or Stop it. */
   stalled?: boolean
-  failures?: { lead: string; name: string; to: string; reason: string }[]
+  /** why messages did not reach the leads, grouped (detail view only) */
+  reasons?: ReasonCount[]
+  failures?: { lead: string; name: string; to: string; status?: string; reason: string; detail?: string }[]
+}
+
+export type MetricStatus = 'queued' | 'sent' | 'delivered' | 'read' | 'undelivered' | 'bounced' | 'failed' | 'cancelled'
+export type DeliveryMetrics = Record<MetricStatus, number | null>
+
+/** One line of a bulk send's "why it did not go through" breakdown. */
+export interface ReasonCount {
+  status: 'undelivered' | 'bounced' | 'failed' | 'cancelled'
+  code: string
+  label: string
+  count: number
 }
 
 export interface CampaignPreview {
@@ -1904,6 +2068,39 @@ export interface RoundRobinStatus {
   unassignedPoolCount: number
 }
 
+/** A member of a partner's card: the partner user's direct report, or someone in a team they manage. */
+export interface PartnerMember {
+  _id: string
+  name: string
+  email: string
+  team?: string | null
+  via: 'reports' | 'team'
+  /** the card's toggle; a member who joins starts on */
+  on: boolean
+  /** place in the card's sequence (1 = first) */
+  sequence: number
+  /** active, not a Super Admin, View on Leads — without it the member is skipped */
+  canOwnLeads: boolean
+  assignedToday: number
+  lastAssignedAt: string | null
+}
+
+/** Round Robin → Partners: one card per Partner Lead API channel. */
+export interface PartnerCard {
+  /** the Source's id (Masters → Sources, Partner channel) */
+  _id: string
+  /** the Source's name */
+  name: string
+  /** leads that land on the partner user go on to the next member who is on */
+  autoAssign: boolean
+  /** the user whose UTM source is the Source's name; null when nobody has it */
+  user: { _id: string; name: string; email: string; utmSource: string } | null
+  /** leads still with the partner user */
+  waiting: number
+  members: PartnerMember[]
+  nextUp: Ref | null
+}
+
 /* ------------------------------------------------------------------ Punch Break & Attendance */
 
 export type BreakType = 'tea' | 'lunch' | 'bio' | 'pause' | 'other'
@@ -1943,39 +2140,70 @@ export interface BreaksToday {
   pauseSeconds: number
 }
 
-/** The top bar for the signed-in employee: today's logged-in time plus the Punch Break state. */
+/** One punched-in span: Punch In → Punch Out. Several a day are allowed; the time is the spans added up. */
+export interface Punch {
+  _id: string
+  /** IST date of the Punch In (YYYY-MM-DD) */
+  day: string
+  punchedInAt: string
+  punchedOutAt?: string
+  durationSeconds?: number
+  /** active: punched in now · completed: punched out */
+  status: 'active' | 'completed'
+  /** system: the Punch Out was forgotten and made at the last activity in the CRM that day */
+  endedBy?: 'user' | 'system'
+  /** an open punch only: seconds since the Punch In, when the server answered */
+  elapsedSeconds?: number
+}
+
+/** The top bar for the signed-in employee: today's punched-in time plus the Punch In / Out and Punch Break state. */
 export interface AttendanceToday extends BreaksToday {
+  /** the day's first Punch In (its first sign-in on a day before punches went live) */
   firstLoginAt: string | null
-  /** signed-in time today as of the response, minus time on a pause; keeps running while `live` and not pausing */
+  /** punched-in time today as of the response, a pause included; keeps running while `live` */
   loggedInSeconds: number
+  /** punched in right now: the timer runs and the round-robin can hand out leads (while signed in) */
   live: boolean
+  /** the open punch; null while punched out */
+  punch?: Punch | null
+  /** today's punches, first first */
+  punches?: Punch[]
+  /** while punched out: when the last punch ended */
+  lastPunchOutAt?: string | null
 }
 
 /** One employee on one IST day of the Attendance report. */
 export interface AttendanceRow {
   date: string
   user: { _id: string; name: string; roleLabel: string }
-  /** online: signed in right now (today) · absent: a working day without a sign-in */
+  /** online: punched in right now (today) · absent: a working day without a punch or a sign-in */
   status: 'present' | 'absent' | 'online'
-  /** first sign-in of the day */
+  /** punch: the times below are Punch In / Out · login: a day before punches went live, from the sign-ins */
+  mode: 'punch' | 'login'
+  /** the day's first Punch In (login mode: first sign-in) */
   loginAt?: string
-  /** sign-out of the day's last session */
+  /** the day's last Punch Out (login mode: sign-out of the last session) */
   logoutAt?: string
-  /** signed-in time that day: the sessions added up (overlaps counted once) minus time on a pause, the same
-   * figure as the employee's logged-in timer; running while online; counted up to the last activity when the
-   * logout is missing. null when there was no sign-in */
+  /** punched-in time that day: the spans added up (the gaps between a Punch Out and the next Punch In left out)
+   * with time on a pause included, the same figure as the employee's timer; running while online. null when there was
+   * neither a punch nor a sign-in */
   loginSeconds: number | null
-  /** the day's last session never signed out: flagged, never guessed */
+  /** login mode: the day's last session never signed out — flagged, never guessed */
   logoutMissing: boolean
   /** when logoutMissing: the last time that session was used */
   lastSeenAt?: string
+  /** the last Punch Out was forgotten: made by the system at the last activity in the CRM that day */
+  autoPunchOut: boolean
+  /** signed in (or made calls) that day without ever punching in */
+  notPunchedIn: boolean
+  punches: number
   sessions: number
   calls: number
   talktimeSeconds: number
   breaks: Record<BreakType, number>
   /** every type but the pause */
   breakSeconds: number
-  /** the pause on its own: neither break time nor part of loginSeconds */
+  /** the pause on its own: not break time; part of loginSeconds, left out of the Active Time */
   pauseSeconds: number
   activeBreak: { type: BreakType; label: string; note?: string; startedAt: string } | null
   incompleteBreaks: number

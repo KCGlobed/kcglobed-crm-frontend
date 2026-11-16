@@ -8,6 +8,7 @@ import { Badge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
 import { DataTable, type Column } from '../../../components/ui/DataTable'
 import { CallProofPreview } from '../../leads/CallProofDialogs'
+import { DirectionCell, HungUpCell, RingCell, SmartfloCallDialog, SmartfloStatusCell, TotalCell } from './SmartfloCallStatus'
 import type { AttendanceCallRow } from '../../../types/models'
 
 /**
@@ -18,6 +19,9 @@ import type { AttendanceCallRow } from '../../../types/models'
 export function CallProofsTab({ filters, setParam }: { filters: Record<string, unknown>; setParam: (key: string, value?: string | number) => void }) {
   const { data, isLoading, isFetching, isError, error, refetch } = useAttendanceCallsQuery(filters)
   const [selected, setSelected] = useState<AttendanceCallRow | null>(null)
+  const [details, setDetails] = useState<AttendanceCallRow | null>(null)
+  const describe = (c: AttendanceCallRow) =>
+    `${c.lead ? `${c.lead.name} · ${c.lead.leadNo}` : `Unknown caller${c.customerNumber ? ` · ${c.customerNumber}` : ''}`} · ${dayjs(c.createdAt).format('ddd, D MMM YYYY · h:mm A')}`
 
   const columns: Column<AttendanceCallRow>[] = [
     {
@@ -51,12 +55,21 @@ export function CallProofsTab({ filters, setParam }: { filters: Record<string, u
           </span>
         ),
     },
+    { key: 'direction', header: 'Direction', render: (c) => <DirectionCell call={c} /> },
     {
       key: 'duration',
-      header: 'Call Duration',
+      header: 'Talk Time',
       align: 'right',
-      render: (c) => <span className="whitespace-nowrap text-xs font-semibold tabular-nums text-slate-800">{c.durationSeconds != null ? formatHms(c.durationSeconds) : '—'}</span>,
+      // a dialer call: the talk time with the lead, as Smartflo reports it (nothing when the lead was never on the line)
+      render: (c) => {
+        const seconds = c.smartflo ? (c.smartflo.connected ? c.smartflo.talkSeconds : null) : c.durationSeconds
+        return <span className="whitespace-nowrap text-xs font-semibold tabular-nums text-slate-800">{seconds != null ? formatHms(seconds) : '—'}</span>
+      },
     },
+    { key: 'callStatus', header: 'Call Status', render: (c) => <SmartfloStatusCell call={c} /> },
+    { key: 'hungUp', header: 'Who Hung Up', render: (c) => <HungUpCell call={c} /> },
+    { key: 'ring', header: 'Ring Time', render: (c) => <RingCell call={c} /> },
+    { key: 'total', header: 'Total Time', align: 'right', render: (c) => <TotalCell call={c} /> },
     { key: 'stage', header: 'Disposition', render: (c) => <span className="text-xs text-slate-600">{c.subStage ?? c.stage ?? '—'}</span> },
     {
       key: 'proofs',
@@ -78,19 +91,34 @@ export function CallProofsTab({ filters, setParam }: { filters: Record<string, u
       key: 'preview',
       header: '',
       align: 'right',
-      render: (c) =>
-        c.screenshot || c.recording ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation()
-              setSelected(c)
-            }}
-          >
-            Preview
-          </Button>
-        ) : null,
+      render: (c) => (
+        <div className="flex justify-end gap-1.5">
+          {c.smartflo && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                setDetails(c)
+              }}
+            >
+              Details
+            </Button>
+          )}
+          {(c.screenshot || c.recording) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                setSelected(c)
+              }}
+            >
+              Preview
+            </Button>
+          )}
+        </div>
+      ),
     },
   ]
 
@@ -109,14 +137,22 @@ export function CallProofsTab({ filters, setParam }: { filters: Record<string, u
         pagination={data?.pagination}
         onPageChange={(p) => setParam('page', p)}
         onPageSizeChange={(s) => setParam('page_size', s)}
-        onRowClick={(c) => (c.screenshot || c.recording ? setSelected(c) : undefined)}
+        onRowClick={(c) => (c.screenshot || c.recording ? setSelected(c) : c.smartflo ? setDetails(c) : undefined)}
       />
       {selected && (
         <CallProofPreview
           call={selected}
           title={`Call by ${selected.user?.name ?? 'the dialer'}`}
-          description={`${selected.lead ? `${selected.lead.name} · ${selected.lead.leadNo}` : `Unknown caller${selected.customerNumber ? ` · ${selected.customerNumber}` : ''}`} · ${dayjs(selected.createdAt).format('ddd, D MMM YYYY · h:mm A')}`}
+          description={describe(selected)}
           onClose={() => setSelected(null)}
+        />
+      )}
+      {details?.smartflo && (
+        <SmartfloCallDialog
+          call={details}
+          title={`Call by ${details.user?.name ?? 'the dialer'} — Smartflo detail`}
+          description={describe(details)}
+          onClose={() => setDetails(null)}
         />
       )}
     </>

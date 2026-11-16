@@ -1,6 +1,12 @@
 import { toast } from 'sonner'
 import dayjs from 'dayjs'
-import { useAttendanceTodayQuery, useEndBreakMutation, useStartBreakMutation } from '../../services/attendanceApi'
+import {
+  useAttendanceTodayQuery,
+  useEndBreakMutation,
+  usePunchInMutation,
+  usePunchOutMutation,
+  useStartBreakMutation,
+} from '../../services/attendanceApi'
 import { formatHms, useNow } from '../../lib/durations'
 import { parseApiError } from '../../lib/utils'
 import type { BreakType } from '../../types/models'
@@ -8,21 +14,19 @@ import type { BreakType } from '../../types/models'
 export const clockTime = (iso?: string | null) => (iso ? dayjs(iso).format('h:mm A') : '')
 
 /**
- * Today's attendance for the signed-in employee, with live timers: the logged-in time and the running break
+ * Today's attendance for the signed-in employee, with live timers: the punched-in time and the running break
  * both tick every second. They add the time since the response arrived to the server's figures, so a PC
- * clock that is off doesn't skew them; the poll (every minute and on focus) keeps two tabs in step. During a
- * pause (campus visit, training, call calibration) the logged-in time stands still: the server takes that time
- * off, so the timer must not add it either.
+ * clock that is off doesn't skew them; the poll (every minute and on focus) keeps two tabs in step. The
+ * punched-in time runs only while punched in (`live`), a pause (campus visit, training, call calibration) included.
  */
 export function useAttendanceToday() {
   const { data, fulfilledTimeStamp } = useAttendanceTodayQuery(undefined, { pollingInterval: 60_000, refetchOnFocus: true })
   const today = data?.data
   const now = useNow(1000, !!today)
   const since = fulfilledTimeStamp ? Math.max(0, (now - fulfilledTimeStamp) / 1000) : 0
-  const pausing = today?.active?.type === 'pause'
   return {
     today,
-    loggedInSeconds: today ? today.loggedInSeconds + (today.live && !pausing ? since : 0) : 0,
+    loggedInSeconds: today ? today.loggedInSeconds + (today.live ? since : 0) : 0,
     breakSeconds: today?.active ? (today.active.elapsedSeconds ?? 0) + since : 0,
   }
 }
@@ -57,4 +61,28 @@ export function useBreakActions() {
   }
 
   return { start, end, starting, ending }
+}
+
+/** Punch In / Out with the toasts; both refresh the timers, the dashboard, the report and the Round Robin screen. */
+export function usePunchActions() {
+  const [punchIn, { isLoading: punchingIn }] = usePunchInMutation()
+  const [punchOut, { isLoading: punchingOut }] = usePunchOutMutation()
+
+  const run = async (call: () => Promise<{ data: { punchedInAt: string; punchedOutAt?: string } }>, out: boolean) => {
+    try {
+      const { data } = await call()
+      toast.success(out ? `Punched out at ${clockTime(data.punchedOutAt)}` : `Punched in at ${clockTime(data.punchedInAt)}`)
+      return true
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+      return false
+    }
+  }
+
+  return {
+    punchIn: () => run(() => punchIn().unwrap(), false),
+    punchOut: () => run(() => punchOut().unwrap(), true),
+    punchingIn,
+    punchingOut,
+  }
 }

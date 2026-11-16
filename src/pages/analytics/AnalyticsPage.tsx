@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  AlertTriangle,
   FileSpreadsheet,
   GraduationCap,
   ListChecks,
@@ -40,9 +39,9 @@ const FILTER_KEYS = [
 const CARD_STYLE: Record<string, { color: string; goodWhenUp: boolean; sub: string; icon: LucideIcon }> = {
   total: { color: COLORS.brand, goodWhenUp: true, sub: 'matching the filters', icon: Users },
   open: { color: COLORS.brandSoft, goodWhenUp: true, sub: 'still to work', icon: ListChecks },
-  notActed: { color: COLORS.missed, goodWhenUp: false, sub: 'no work done yet', icon: AlertTriangle },
+  lost: { color: COLORS.lost, goodWhenUp: false, sub: 'not workable / closed', icon: XCircle },
+  notConnected: { color: COLORS.notConnected, goodWhenUp: false, sub: 'called, not reached', icon: PhoneOff },
   converted: { color: COLORS.converted, goodWhenUp: true, sub: 'converted', icon: GraduationCap },
-  lost: { color: COLORS.lost, goodWhenUp: false, sub: 'closed / not workable', icon: XCircle },
 }
 const FU_COLS = [
   { key: 'dueToday', label: 'Due today', tone: 'text-slate-800' },
