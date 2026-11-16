@@ -7,7 +7,7 @@ export type BadgeTone = 'slate' | 'green' | 'red' | 'amber' | 'blue' | 'violet' 
  */
 export const STATUS_TONES: Record<string, BadgeTone> = {
   active: 'green', completed: 'green', done: 'green', delivered: 'green', converted: 'green', processed: 'green',
-  approved: 'green', match: 'green', accepted: 'green',
+  approved: 'green', match: 'green', accepted: 'green', read: 'green',
   inactive: 'slate', draft: 'slate', cancelled: 'slate', closed: 'slate', unassigned: 'amber',
   pending: 'amber', scheduled: 'amber', queued: 'amber', retrying: 'amber', paused: 'amber', stalled: 'red', overdue: 'red',
   rejected: 'red', failed: 'red', lost: 'red', error: 'red', bounced: 'red', undelivered: 'red', mismatch: 'red',

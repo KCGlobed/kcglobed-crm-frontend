@@ -29,6 +29,14 @@ function activityLine(row: AutomationRow): string {
   if (row.sentCount) parts.push(`${row.sentCount} sent`)
   const last = row.lastRun?.scheduledAt ?? row.lastRunAt
   if (last) parts.push(`last ${formatDateTime(last)}`)
+  // the latest scheduled run, as the Bulk sends report counts it (N/A statuses left out)
+  const m = row.lastRun?.metrics
+  if (m) {
+    const run = (['delivered', 'read', 'undelivered', 'bounced', 'failed'] as const)
+      .filter((k) => m[k])
+      .map((k) => `${m[k]} ${k}`)
+    if (run.length) parts.push(`last run: ${run.join(', ')}`)
+  }
   if (row.isActive && row.nextRunAt) parts.push(`next ${formatDateTime(row.nextRunAt)}`)
   return parts.join(' · ')
 }

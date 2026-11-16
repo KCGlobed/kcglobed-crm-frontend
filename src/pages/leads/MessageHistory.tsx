@@ -48,10 +48,26 @@ const whenOf = (m: LeadMessage) => m.sentAt ?? m.createdAt
 
 function statusTitle(m: LeadMessage): string {
   const simulated = isSimulated(m) ? ' · console provider: logged, not actually delivered' : ''
+  if (m.readAt) return `Read ${formatDateTime(m.readAt)}${simulated}`
   if (m.status === 'delivered') return `Delivered${m.deliveredAt ? ` ${formatDateTime(m.deliveredAt)}` : ''}${simulated}`
-  if (m.status === 'sent') return `Sent${m.sentAt ? ` ${formatDateTime(m.sentAt)}` : ''}${simulated}`
+  if (m.status === 'sent') {
+    // email: the mail server accepting it is all the CRM hears — a bounce comes back to the sender mailbox
+    const untracked = m.channel === 'email' && !simulated ? ' · delivery not tracked for email (a bounce is not reported back yet)' : ''
+    return `Sent${m.sentAt ? ` ${formatDateTime(m.sentAt)}` : ''}${untracked}${simulated}`
+  }
   if (m.status === 'scheduled') return `Scheduled for ${m.scheduledAt ? formatDateTime(m.scheduledAt) : 'later'}`
-  return m.error ?? m.status
+  return [m.reason, m.error].filter((x, i, all) => x && all.indexOf(x) === i).join(' — ') || m.status
+}
+
+/** The plain-words reason, with the gateway's raw text under it when it says more. */
+function FailureNote({ m }: { m: LeadMessage }) {
+  if (!m.reason && !m.error) return null
+  return (
+    <div className="mt-1 text-[11px]">
+      {m.reason && <p className={m.status === 'cancelled' ? 'text-slate-600' : 'text-red-600'}>{m.reason}</p>}
+      {m.error && m.error !== m.reason && <p className="text-slate-400">{m.error}</p>}
+    </div>
+  )
 }
 
 /** The WhatsApp-style tick for an SMS bubble. */
@@ -59,8 +75,15 @@ function StatusTick({ m }: { m: LeadMessage }) {
   if (isFailed(m)) {
     // undelivered: the gateway took it, the operator could not deliver it (DND, expired …); failed: it never went out
     return (
-      <span title={m.error} className="inline-flex items-center gap-0.5 font-medium text-red-600">
-        <AlertTriangle className="h-3 w-3" /> {m.status === 'undelivered' ? 'Undelivered' : 'Failed'}
+      <span title={statusTitle(m)} className="inline-flex items-center gap-0.5 font-medium text-red-600">
+        <AlertTriangle className="h-3 w-3" /> {m.status === 'undelivered' ? 'Undelivered' : m.status === 'bounced' ? 'Bounced' : 'Failed'}
+      </span>
+    )
+  }
+  if (m.status === 'cancelled') {
+    return (
+      <span title={statusTitle(m)} className="inline-flex items-center gap-0.5 text-slate-500">
+        Cancelled
       </span>
     )
   }
@@ -103,7 +126,7 @@ function SmsBubble({ m }: { m: LeadMessage }) {
           {timeOf(whenOf(m))}
           <StatusTick m={m} />
         </p>
-        {isFailed(m) && m.error && <p className="mt-1 text-[11px] text-red-600">{m.error}</p>}
+        {(isFailed(m) || m.status === 'cancelled') && <FailureNote m={m} />}
       </div>
     </div>
   )
@@ -134,7 +157,7 @@ function EmailCard({ m }: { m: LeadMessage }) {
           <span className="ml-auto font-medium text-brand-700 group-open:hidden">Show email</span>
           <span className="ml-auto hidden font-medium text-brand-700 group-open:inline">Hide email</span>
         </p>
-        {isFailed(m) && m.error && <p className="mt-1 text-[11px] text-red-600">{m.error}</p>}
+        {(isFailed(m) || m.status === 'cancelled') && <FailureNote m={m} />}
       </summary>
       <div className="border-t border-slate-100 p-3">
         <EmailPreview html={m.body} height="20rem" />

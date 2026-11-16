@@ -171,7 +171,7 @@ export const messagingApi = api.injectEndpoints({
     /** Who a bulk send went to, one row per recipient with the live status (the Activity Log drill-down). */
     campaignRecipients: build.query<
       ApiListResponse<CampaignRecipient>,
-      { id: string; page?: number; page_size?: number; status?: string; search?: string }
+      { id: string; page?: number; page_size?: number; status?: string; search?: string; reason?: string }
     >({
       query: ({ id, ...params }) => ({
         url: `/messaging/campaigns/${id}/recipients`,
