@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Bookmark, Check, CheckCheck, Download, FileText, Filter, Info, Mail, MessageCircle, MessageSquareText, PhoneCall, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
+import { Bookmark, Download, Filter, Headset, Info, Mail, MessageCircle, MessageSquareText, PhoneCall, Plus, Trash2, Upload, UserPlus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useDeleteSavedFilterMutation,
@@ -12,7 +12,6 @@ import {
 } from '../../services/leadsApi'
 import { useCurrentUser } from '../../app/hooks'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
-import { useWhatsAppSummaryQuery } from '../../services/messagingApi'
 import { activeSubStages } from '../../lib/stages'
 import { can } from '../../constants/permissions'
 import { isAdminLike } from '../../lib/roles'
@@ -21,13 +20,16 @@ import { ColumnChooser } from '../../components/ui/ColumnChooser'
 import { FilterBar, PageHeader, SearchInput } from '../../components/ui/misc'
 import { Button } from '../../components/ui/Button'
 import { DateRangeFilter } from '../../components/ui/DateRangeFilter'
-import { Checkbox, Input, Select } from '../../components/ui/fields'
+import { Checkbox, Input } from '../../components/ui/fields'
 import { Modal } from '../../components/ui/Modal'
-import { cn, parseApiError } from '../../lib/utils'
+import { cn, formatDate, parseApiError } from '../../lib/utils'
 import { useColumnPrefs } from '../../hooks/useColumnPrefs'
 import type { FilterField, Lead } from '../../types/models'
 import { QuickAddDrawer } from './QuickAddDrawer'
 import { ExportLeadsModal } from './ExportLeadsModal'
+import { OwnerMultiSelect } from './OwnerMultiSelect'
+import { CheckboxMultiSelect } from '../../components/ui/CheckboxMultiSelect'
+import { TimelineFilter, type TimelineValue } from './TimelineFilter'
 import { LeadFilterPanel } from './LeadFilterPanel'
 import { BulkAssignModal } from './BulkAssignModal'
 import { parseConditions, type LeadSelection } from './leadSelection'
@@ -35,13 +37,14 @@ import { BulkSendModal } from './BulkSendModal'
 import { DEFAULT_VISIBLE_COLUMNS, LOCKED_COLUMNS } from './leadColumns'
 import { useLeadColumns } from './useLeadColumns'
 import { LeadRowActions } from './LeadRowActions'
-import { listTimeLabel } from './chatTime'
 import { startQueue } from '../../features/telephony/callQueue'
 import { useTelephonyEnabled } from '../../features/telephony/useLiveCalls'
+import { useQueueForDialerMutation } from '../../services/telephonyApi'
+
 
 /** URL params that are not lead filters: paging, sorting, the dashboard's `from` marker and the name a
  * Target Manager link carries for its chip */
-const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order', 'from', 'target_label']
+const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order', 'from', 'target_label', 'an_title']
 // HIDDEN for now: filter fields the backend offers but the panel leaves out.
 // - tag: no screen assigns tags to leads yet
 const HIDDEN_FILTER_FIELDS = ['tag']
@@ -62,44 +65,9 @@ const SMART_LABELS: Record<string, string> = {
   not_interested: 'Not Interested',
   no_activity_3d: 'No Activity 3+ Days',
   re_enquired: 'Re-enquired',
-  whatsapp: 'WhatsApp',
   unassigned: 'Unassigned',
   owner_inactive: 'Inactive Counsellors',
 }
-/**
- * The WhatsApp filter's column: an unread reply in bold with its count, else the last message either way (ours with
- * its tick), and when. Opening the lead (its WhatsApp tab) reads it and clears the mark.
- */
-const whatsappColumn: Column<Lead> = {
-  key: '__whatsapp',
-  header: 'WhatsApp',
-  render: (l) => {
-    const chat = l.whatsapp
-    const last = chat?.last
-    if (!last) return <span className="text-xs text-slate-400">—</span>
-    const mine = last.direction === 'out'
-    return (
-      <span className="flex w-72 max-w-full items-center gap-1.5 text-xs">
-        {chat.unread > 0 && (
-          <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-semibold text-white" title={`${chat.unread} unread`}>
-            {chat.unread}
-          </span>
-        )}
-        {mine && last.status === 'delivered' && <CheckCheck className="h-3.5 w-3.5 shrink-0 text-sky-600" aria-label="Delivered" />}
-        {mine && last.status === 'sent' && <Check className="h-3.5 w-3.5 shrink-0 text-slate-400" aria-label="Sent" />}
-        {mine && last.status === 'failed' && <span className="shrink-0 text-red-600">Failed ·</span>}
-        {last.template && <FileText className="h-3 w-3 shrink-0 text-slate-400" aria-label="Template" />}
-        <span className={cn('min-w-0 truncate', chat.unread ? 'font-semibold text-slate-900' : 'text-slate-600')} title={last.body}>
-          {last.body || (last.template ? `Template · ${last.template}` : '')}
-        </span>
-        <span className={cn('ml-auto shrink-0 pl-1 text-[11px]', chat.unread ? 'font-semibold text-red-600' : 'text-slate-400')}>
-          {listTimeLabel(last.at)}
-        </span>
-      </span>
-    )
-  },
-}
-
 const smartLabel = (key: string) => SMART_LABELS[key] ?? key.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 
 /**
@@ -110,15 +78,21 @@ const smartLabel = (key: string) => SMART_LABELS[key] ?? key.split('_').map((w) 
 function linkedFilterChips(params: URLSearchParams, fields: FilterField[] | undefined): { key: string; text: string }[] {
   const label = (key: string, value: string) => fields?.find((f) => f.key === key)?.options?.find((o) => o.value === value)?.label
   const chips: { key: string; text: string }[] = []
-  const source = params.get('source')
-  if (source) chips.push({ key: 'source', text: `Source: ${label('source', source) ?? 'selected source'}` })
+  const sources = (params.get('source') ?? '').split(',').filter(Boolean)
+  if (sources.length === 1) chips.push({ key: 'source', text: `Source: ${label('source', sources[0]) ?? 'selected source'}` })
+  else if (sources.length > 1) chips.push({ key: 'source', text: `Source: ${sources.length} sources` })
   const owner = params.get('owner')
   if (owner) chips.push({ key: 'owner', text: `Counsellor: ${label('owner', owner) ?? 'selected counsellor'}` })
   const status = params.get('status')
   if (status) chips.push({ key: 'status', text: `Status: ${label('status', status) ?? status}` })
   if (params.get('assigned') === 'true') chips.push({ key: 'assigned', text: 'Assigned to a Counsellor' })
   if (params.get('unassigned') === 'true') chips.push({ key: 'unassigned', text: 'Unassigned' })
+  if (params.get('rr_pool') === 'true') chips.push({ key: 'rr_pool', text: 'In round-robin pool' })
   if (params.get('target')) chips.push({ key: 'target', text: `Target: ${params.get('target_label') || 'selected target'}` })
+  const dialled = params.get('dialled_on')
+  if (dialled) chips.push({ key: 'dialled_on', text: `Dialled on ${formatDate(dialled)}` })
+  // Analytics click-through: an_metric / an_key (+ the analytics filters as an_*)
+  if (params.get('an_metric')) chips.push({ key: 'an_metric', text: `Analytics: ${params.get('an_title') || 'selected chart'}` })
   return chips
 }
 
@@ -130,9 +104,12 @@ export default function LeadsListPage() {
   // bulk select for everyone who has a bulk action: assign needs leads.reassign, bulk SMS / email / WhatsApp needs the
   // same send permission as a single send (a counsellor only ever sees and selects their own leads)
   const canSendBulk = can(user, 'communications', 'create')
-  const canBulk = can(user, 'leads', 'reassign') || canSendBulk
   // click-to-dial: a Call action per row and "Start calling" through the list (the dialer must be set up)
-  const { enabled: dialerEnabled } = useTelephonyEnabled()
+  const { enabled: dialerEnabled, status: telephonyStatus } = useTelephonyEnabled()
+  // auto-dialer: the selected leads become their owner's next progressive calls (each owner's own campaign)
+  const canAutoDial = !!telephonyStatus?.myDialer?.enabled || !!user?.isSuperAdmin
+  const canBulk = can(user, 'leads', 'reassign') || canSendBulk || canAutoDial
+  const [queueForDialer, { isLoading: queueing }] = useQueueForDialerMutation()
   const canCall = dialerEnabled && can(user, 'leads', 'edit')
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -176,7 +153,22 @@ export default function LeadsListPage() {
   })
   const { data: meta } = useFilterFieldsQuery()
   const { data: masters } = useMasterBootstrapQuery()
-  const currentStage = masters?.data.stages.find((s) => s._id === params.get('stage'))
+  // Stage / Sub-stage are multiselects: ?stage=id1,id2&sub_stage=id3,id4
+  const stageIds = (params.get('stage') ?? '').split(',').filter(Boolean)
+  const subStageIds = (params.get('sub_stage') ?? '').split(',').filter(Boolean)
+  const chosenStages = (masters?.data.stages ?? []).filter((s) => stageIds.includes(s._id))
+  const subStageOptions = chosenStages.flatMap((s) => activeSubStages(s).map((sub) => ({ value: sub._id, label: sub.name, group: s.name })))
+  const setStages = (ids: string[]) => {
+    const next = new URLSearchParams(params)
+    if (ids.length) next.set('stage', ids.join(','))
+    else next.delete('stage')
+    // a sub-stage only makes sense under a chosen stage: keep the ones whose stage is still chosen
+    const allowed = new Set((masters?.data.stages ?? []).filter((s) => ids.includes(s._id)).flatMap((s) => activeSubStages(s).map((sub) => sub._id)))
+    const keep = subStageIds.filter((id) => allowed.has(id))
+    if (keep.length) next.set('sub_stage', keep.join(','))
+    else next.delete('sub_stage')
+    replaceParams(next)
+  }
   const { data: saved } = useSavedFiltersQuery()
   const [saveFilter, { isLoading: savingFilter }] = useSaveFilterMutation()
   const [deleteSaved] = useDeleteSavedFilterMutation()
@@ -210,13 +202,48 @@ export default function LeadsListPage() {
 
   const createdFrom = params.get('created_from') ?? ''
   const createdTo = params.get('created_to') ?? ''
-  // both dates in one URL update, so a preset never loses half the range
-  const setDateRange = (from: string, to: string) => {
+  const createdFromTime = params.get('created_from_time') ?? ''
+  const createdToTime = params.get('created_to_time') ?? ''
+  // both dates (and their optional HH:MM times) in one URL update, so a preset never loses half the range
+  const setDateRange = (from: string, to: string, fromTime = '', toTime = '') => {
     const next = new URLSearchParams(params)
-    if (from) next.set('created_from', from)
-    else next.delete('created_from')
-    if (to) next.set('created_to', to)
-    else next.delete('created_to')
+    const put = (key: string, value: string) => (value ? next.set(key, value) : next.delete(key))
+    put('created_from', from)
+    put('created_to', to)
+    put('created_from_time', from ? fromTime : '')
+    put('created_to_time', to ? toTime : '')
+    replaceParams(next)
+  }
+  // the same, for another <prefix>_from / _to / _from_time / _to_time range (Last Activity)
+  const rangeOf = (prefix: string) => ({
+    from: params.get(`${prefix}_from`) ?? '',
+    to: params.get(`${prefix}_to`) ?? '',
+    fromTime: params.get(`${prefix}_from_time`) ?? '',
+    toTime: params.get(`${prefix}_to_time`) ?? '',
+  })
+  const setRangeParams = (prefix: string) => (from: string, to: string, fromTime = '', toTime = '') => {
+    const next = new URLSearchParams(params)
+    const put = (key: string, value: string) => (value ? next.set(key, value) : next.delete(key))
+    put(`${prefix}_from`, from)
+    put(`${prefix}_to`, to)
+    put(`${prefix}_from_time`, from ? fromTime : '')
+    put(`${prefix}_to_time`, to ? toTime : '')
+    replaceParams(next)
+  }
+  const lastActivity = rangeOf('last_activity')
+  // Timeline filter: ?activity_type=sms,stage&activity_from=…&activity_to=…&activity_from_time=…&activity_to_time=…
+  const timeline: TimelineValue = {
+    types: (params.get('activity_type') ?? '').split(',').filter(Boolean),
+    ...rangeOf('activity'),
+  }
+  const setTimeline = (v: TimelineValue) => {
+    const next = new URLSearchParams(params)
+    const put = (key: string, value: string) => (value ? next.set(key, value) : next.delete(key))
+    put('activity_type', v.types.join(','))
+    put('activity_from', v.from)
+    put('activity_to', v.to)
+    put('activity_from_time', v.from ? v.fromTime : '')
+    put('activity_to_time', v.to ? v.toTime : '')
     replaceParams(next)
   }
 
@@ -237,6 +264,31 @@ export default function LeadsListPage() {
 
   const hasFilters = Object.keys(filters).length > 0
   const clearAll = () => replaceParams(new URLSearchParams())
+
+  const onAutoDialFirst = async () => {
+    try {
+      // called one by one, top to bottom as the list shows them
+      const rank = new Map(pageIds.map((id, i) => [id, i]))
+      const leadIds = [...selected].sort((a, b) => (rank.get(a) ?? pageIds.length) - (rank.get(b) ?? pageIds.length))
+      const res = await queueForDialer({ leadIds }).unwrap()
+      const { queued, skipped, mine } = res.data
+      const reasons = [...new Set(skipped.map((s) => s.reason))].join(', ')
+      if (mine) {
+        // the counsellor's own leads: the Progressive calling panel calls them one at a time, in this order
+        toast.success(`${mine} lead${mine === 1 ? '' : 's'} queued — calling them one by one.`)
+      }
+      if (queued > (mine ?? 0)) {
+        const others = queued - (mine ?? 0)
+        toast.success(
+          `${others} lead${others === 1 ? '' : 's'} queued for their owners — it starts when they press Start.`
+        )
+      }
+      if (skipped.length) toast.warning(`${skipped.length} skipped: ${reasons}`)
+      if (queued) clearSelection()
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    }
+  }
 
   const selection: LeadSelection = {
     allMatching,
@@ -279,18 +331,8 @@ export default function LeadsListPage() {
     className: 'w-10',
     render: (l) => <LeadRowActions lead={l} />,
   }
-  const whatsappView = params.get('smart') === 'whatsapp'
-  // the WhatsApp quick filter's red badge: leads with unread replies (refreshed with the list)
-  const { data: waSummary } = useWhatsAppSummaryQuery(undefined, { pollingInterval: 30_000, skipPollingIfUnfocused: true })
-  const waUnread = waSummary?.data.unread ?? 0
   const visibleColumns = columnPrefs.visibleKeys.map((key) => leadColumns.find((c) => c.key === key)!).filter(Boolean)
-  const columns = [
-    ...(canBulk ? [selectColumn] : []),
-    // the WhatsApp filter shows each lead's last message right after the name
-    ...(whatsappView ? visibleColumns.flatMap((c) => (c.key === 'firstName' ? [c, whatsappColumn] : [c])) : visibleColumns),
-    ...(whatsappView && !visibleColumns.some((c) => c.key === 'firstName') ? [whatsappColumn] : []),
-    ...(canCall ? [actionsColumn] : []),
-  ]
+  const columns = [...(canBulk ? [selectColumn] : []), ...visibleColumns, ...(canCall ? [actionsColumn] : [])]
   // "Start calling": the selected leads, else this page, one after the other (each opens with ?dial=1)
   const callableIds = (selected.length ? (data?.data.filter((l) => selected.includes(l._id)) ?? []) : (data?.data ?? [])).map((l) => l._id)
   const startCalling = () => {
@@ -300,6 +342,11 @@ export default function LeadsListPage() {
   }
   const smart = params.get('smart')
   const chips = linkedFilterChips(params, meta?.data.fields)
+  // Owner dropdown: the backend sends the owner field only to team managers and above, with options already scoped to them
+  const ownerField = meta?.data.fields.find((f) => f.key === 'owner')
+  const sourceField = meta?.data.fields.find((f) => f.key === 'source')
+  // the dropdown already shows the chosen owner, so its "Counsellor: …" chip is left out
+  const shownChips = chips.filter((c) => !(ownerField?.options?.length && c.key === 'owner'))
   // "Not Connected" pill: the backend lists it as a smart filter from this release on. Against an
   // older backend (e.g. production before deploy) it falls back to the plain stage filter instead.
   const notConnectedStage = masters?.data.stages.find((s) => s.name.trim().toLowerCase() === 'not connected')
@@ -323,25 +370,19 @@ export default function LeadsListPage() {
     }
     replaceParams(next)
   }
-  const pill = (key: string, label: string, active: boolean, onClick: () => void, title: string, badge = 0) => (
+  const pill = (key: string, label: string, active: boolean, onClick: () => void, title: string) => (
     <button
       key={key}
       onClick={onClick}
       className={cn(
         'relative rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-        badge > 0 && 'pr-2',
         active
           ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
           : 'border-slate-300 bg-white text-slate-600 hover:border-brand-300 hover:bg-brand-50/60 hover:text-brand-700'
       )}
-      title={badge > 0 ? `${title} · ${badge} with unread replies` : title}
+      title={title}
     >
       {label}
-      {badge > 0 && (
-        <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 align-[1px] text-[10px] font-semibold text-white">
-          {badge > 99 ? '99+' : badge}
-        </span>
-      )}
     </button>
   )
 
@@ -381,13 +422,37 @@ export default function LeadsListPage() {
         <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Quick Filters</span>
         {pill('all', 'Show All', !smart && !notConnectedActive, clearQuick, 'All leads, no quick filter')}
         {meta?.data.smartFilters.flatMap((f) => [
-          pill(f.key, smartLabel(f.key), smart === f.key, () => setParam('smart', smart === f.key ? undefined : f.key), f.label,
-            f.key === 'whatsapp' ? waUnread : 0),
+          pill(f.key, smartLabel(f.key), smart === f.key, () => setParam('smart', smart === f.key ? undefined : f.key), f.label),
           // fallback pill sits where the backend's own not_connected filter would, right after Untouched
           ...(f.key === 'untouched' && !backendHasNotConnected && notConnectedStage
             ? [pill('not_connected', 'Not Connected', notConnectedActive, toggleNotConnected, 'Stage = Not Connected')]
             : []),
         ])}
+        {ownerField?.options?.length ? (
+          <OwnerMultiSelect
+            options={ownerField.options}
+            value={(params.get('owner') ?? '').split(',').filter(Boolean)}
+            onChange={(ids) => setParam('owner', ids.length ? ids.join(',') : undefined)}
+          />
+        ) : null}
+        {sourceField?.options?.length ? (
+          <OwnerMultiSelect
+            noun="Latest Source"
+            plural="Latest Sources"
+            options={sourceField.options}
+            value={(params.get('source') ?? '').split(',').filter(Boolean)}
+            onChange={(ids) => setParam('source', ids.length ? ids.join(',') : undefined)}
+          />
+        ) : null}
+        {meta?.data.utmSources?.length ? (
+          <OwnerMultiSelect
+            noun="UTM Source"
+            plural="UTM Sources"
+            options={meta.data.utmSources}
+            value={(params.get('utm_sources') ?? '').split(',').filter(Boolean)}
+            onChange={(ids) => setParam('utm_sources', ids.length ? ids.join(',') : undefined)}
+          />
+        ) : null}
       </div>
 
       <FilterBar
@@ -417,39 +482,25 @@ export default function LeadsListPage() {
           placeholder="Search name, mobile, email, ID…"
         />
         {/* Lead Stages sheet: stage, then its sub-stages */}
-        <Select
-          aria-label="Stage"
-          className="!w-auto max-w-48"
-          value={params.get('stage') ?? ''}
-          onChange={(e) => {
-            const next = new URLSearchParams(params)
-            next.delete('sub_stage') // a sub-stage only makes sense under its own stage
-            if (e.target.value) next.set('stage', e.target.value)
-            else next.delete('stage')
-            replaceParams(next)
-          }}
-        >
-          <option value="">All Stages</option>
-          {masters?.data.stages.map((s) => (
-            <option key={s._id} value={s._id}>
-              {s.name}
-            </option>
-          ))}
-        </Select>
-        {activeSubStages(currentStage).length > 0 && (
-          <Select
-            aria-label="Sub-stage"
-            className="!w-auto max-w-60"
-            value={params.get('sub_stage') ?? ''}
-            onChange={(e) => setParam('sub_stage', e.target.value)}
-          >
-            <option value="">All Sub-stages</option>
-            {activeSubStages(currentStage).map((s) => (
-              <option key={s._id} value={s._id}>
-                {s.name}
-              </option>
-            ))}
-          </Select>
+        <CheckboxMultiSelect
+          ariaLabel="Stage"
+          allLabel="All Stages"
+          plural="Stages"
+          searchPlaceholder="Search stage…"
+          options={(masters?.data.stages ?? []).map((s) => ({ value: s._id, label: s.name }))}
+          value={stageIds}
+          onChange={setStages}
+        />
+        {subStageOptions.length > 0 && (
+          <CheckboxMultiSelect
+            ariaLabel="Sub-stage"
+            allLabel="All Sub-stages"
+            plural="Sub-stages"
+            searchPlaceholder="Search sub-stage…"
+            options={subStageOptions}
+            value={subStageIds}
+            onChange={(ids) => setParam('sub_stage', ids.length ? ids.join(',') : undefined)}
+          />
         )}
         <Button variant={conditions.length ? 'secondary' : 'outline'} size="sm" onClick={() => setFilterOpen(true)}>
           <Filter className="h-3.5 w-3.5" /> Filters{conditions.length ? ` (${conditions.length})` : ''}
@@ -497,13 +548,26 @@ export default function LeadsListPage() {
           )}
         </div>
         {/* created-date range dropdown — filters on the lead's Created On date (backend created_from/created_to) */}
-        <DateRangeFilter from={createdFrom} to={createdTo} onChange={setDateRange} />
+        <DateRangeFilter withTime from={createdFrom} to={createdTo} fromTime={createdFromTime} toTime={createdToTime} onChange={setDateRange} />
+        {/* last activity on the lead (Lead.last_activity_at, backend last_activity_from/_to + times) */}
+        <DateRangeFilter
+          withTime
+          label="Last Activity"
+          heading="Last Activity Between"
+          from={lastActivity.from}
+          to={lastActivity.to}
+          fromTime={lastActivity.fromTime}
+          toTime={lastActivity.toTime}
+          onChange={setRangeParams('last_activity')}
+        />
+        {/* what happened on the lead's timeline, and when (backend activity_type / activity_from / activity_to) */}
+        <TimelineFilter value={timeline} onApply={setTimeline} />
       </FilterBar>
 
-      {chips.length > 0 && (
+      {shownChips.length > 0 && (
         <div className="-mt-2 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Filtered By</span>
-          {chips.map((c) => (
+          {shownChips.map((c) => (
             <span key={c.key} className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 py-0.5 pl-2.5 pr-1 font-medium text-brand-700">
               {c.text}
               <button
@@ -514,6 +578,8 @@ export default function LeadsListPage() {
                   const next = new URLSearchParams(params)
                   next.delete(c.key)
                   if (c.key === 'target') next.delete('target_label')
+                  if (c.key === 'dialled_on') next.delete('dialled_by')
+                  if (c.key === 'an_metric') [...params.keys()].filter((k) => k.startsWith('an_')).forEach((k) => next.delete(k))
                   replaceParams(next)
                 }}
                 className="rounded-full p-0.5 text-brand-500 hover:bg-brand-100 hover:text-brand-800"
@@ -540,6 +606,18 @@ export default function LeadsListPage() {
             </button>
           )}
           <div className="ml-auto flex flex-wrap gap-2">
+            {canAutoDial && (
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={queueing}
+                disabled={allMatching}
+                title={allMatching ? 'Select the leads on this page (up to 500) to call them one by one' : 'Your dialer calls these leads one after the other — the next starts when a call ends'}
+                onClick={onAutoDialFirst}
+              >
+                <Headset className="h-3.5 w-3.5" /> Progressive call
+              </Button>
+            )}
             {can(user, 'leads', 'reassign') && (
               <Button size="sm" onClick={() => setBulkAction('assign')}>
                 <UserPlus className="h-3.5 w-3.5" /> Assign
@@ -591,7 +669,7 @@ export default function LeadsListPage() {
         pageSizes={[25, 50, 100]}
         onPageChange={(page) => setParam('page', page)}
         onPageSizeChange={(size) => setParam('page_size', size)}
-        onRowClick={(l) => navigate(whatsappView ? `/app/leads/${l._id}?tab=whatsapp` : `/app/leads/${l._id}`)}
+        onRowClick={(l) => navigate(`/app/leads/${l._id}`)}
         rowClassName={(l) => (l.isOverdue ? 'bg-red-50/40 [&>td:first-child]:shadow-[inset_3px_0_0_var(--danger)]' : undefined)}
       />
 

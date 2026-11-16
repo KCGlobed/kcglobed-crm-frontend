@@ -42,3 +42,4 @@ export const BACKEND_URL = backendUrlFor(env.MODE, env.VITE_BACKEND_URL)
  * BACKEND_URL, so the refresh cookie stays same-site; a build calls BACKEND_URL directly.
  */
 export const API_BASE_URL = env.DEV ? '/api/v1' : `${BACKEND_URL}/api/v1`
+

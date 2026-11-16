@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { useAppDispatch } from '../../app/hooks'
-import { api } from '../../services/api'
 import { AlertTriangle, Check, CheckCheck, FileText, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSendWhatsAppTextMutation, useWhatsAppChatQuery } from '../../services/messagingApi'
@@ -31,15 +29,10 @@ function StatusTick({ m }: { m: WhatsAppChatMessage }) {
  * The lead's WhatsApp thread inside the CRM (GL-39): what we sent (templates and typed replies) and
  * what the lead answered, refreshed every 10 seconds. A typed reply is allowed only inside Meta's
  * 24-hour window after the lead's last message; outside it the composer points to an approved template.
- * Opening it marks the lead's replies read, so the leads list's WhatsApp badge and row update straight away.
+ * Opening it marks the lead's replies read.
  */
 export function WhatsAppChat({ lead, canSend }: { lead: Lead; canSend: boolean }) {
-  const dispatch = useAppDispatch()
   const { data, isLoading, isError } = useWhatsAppChatQuery(lead._id, { pollingInterval: POLL_MS })
-  const cleared = data?.data.unread ?? 0
-  useEffect(() => {
-    if (cleared > 0) dispatch(api.util.invalidateTags(['WhatsAppSummary', { type: 'Leads', id: 'LIST' }]))
-  }, [cleared, dispatch])
   const [sendText, { isLoading: sending }] = useSendWhatsAppTextMutation()
   const [text, setText] = useState('')
   const [templateModal, setTemplateModal] = useState(false)

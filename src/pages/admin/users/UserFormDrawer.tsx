@@ -15,7 +15,7 @@ import { useCurrentUser } from '../../../app/hooks'
 import { can } from '../../../constants/permissions'
 import { Drawer } from '../../../components/ui/Drawer'
 import { Button } from '../../../components/ui/Button'
-import { Checkbox, FieldGroup, FormField, Input, Select } from '../../../components/ui/fields'
+import { Checkbox, FieldGroup, FormField, Input, PasswordInput, Select } from '../../../components/ui/fields'
 import { mobileField } from '../../../lib/mobile'
 import { cn, parseApiError } from '../../../lib/utils'
 import type { RoleKey, User } from '../../../types/models'
@@ -47,6 +47,13 @@ const schema = z.object({
     .string()
     .trim()
     .regex(/^(\+?91)?(\d{10})?$/, 'Mobile must be 10 digits')
+    .optional(),
+  // a new lead that comes with this utm_source (website, partner API, bulk upload…) is assigned to this user
+  utmSource: z
+    .string()
+    .trim()
+    .max(60, 'At most 60 characters')
+    .regex(/^([A-Za-z0-9][A-Za-z0-9._-]*)?$/, 'Letters, numbers, dot, dash or underscore, no spaces')
     .optional(),
   password: z
     .string()
@@ -131,6 +138,7 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
       mobile: user?.mobile ?? '',
       telephonyAgentId: user?.telephonyAgentId ?? '',
       telephonyAgentNumber: user?.telephonyAgentNumber ?? '',
+      utmSource: user?.utmSource ?? '',
       password: '',
       team: refId(user?.team),
       reportingManager: refId(user?.reportingManager),
@@ -205,6 +213,7 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
       mobile: values.mobile || null,
       telephonyAgentId: values.telephonyAgentId || null,
       telephonyAgentNumber: values.telephonyAgentNumber || null,
+      utmSource: values.utmSource || null,
       team: values.team || null,
       reportingManager: values.reportingManager || null,
       isActive: values.isActive,
@@ -299,13 +308,16 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
             <FormField label="Dialer mobile (if different)" error={errors.telephonyAgentNumber?.message} hint="Only when the number registered in Smartflo is not the mobile above">
               <Input placeholder="10 digits" aria-invalid={!!errors.telephonyAgentNumber} {...register('telephonyAgentNumber')} data-testid="telephony-agent-number" />
             </FormField>
+            <FormField label="UTM source" error={errors.utmSource?.message} hint="New leads that come with this utm_source are assigned to this user · one user per value">
+              <Input maxLength={60} placeholder="e.g. bhavna01" aria-invalid={!!errors.utmSource} {...register('utmSource')} data-testid="utm-source" />
+            </FormField>
             <FormField
               label={isEdit ? 'Reset password (optional)' : 'Password (optional)'}
               error={errors.password?.message}
               hint={isEdit ? 'Leave empty to keep the current password' : 'Leave empty to email login credentials instead'}
               className="sm:col-span-2"
             >
-              <Input type="password" autoComplete="new-password" {...register('password')} aria-invalid={!!errors.password} />
+              <PasswordInput autoComplete="new-password" {...register('password')} aria-invalid={!!errors.password} />
             </FormField>
           </div>
         </FieldGroup>

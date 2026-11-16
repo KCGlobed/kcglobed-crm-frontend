@@ -94,6 +94,8 @@ const CONFIGS: MasterConfig[] = [
       { key: 'order', label: 'Order', type: 'number' },
       { key: 'color', label: 'Color', type: 'color' },
       { key: 'isActive', label: 'Active', type: 'boolean' },
+      // Analytics → Sales funnel steps (in stage order)
+      { key: 'inFunnel', label: 'Show in Sales funnel (Analytics)', type: 'boolean' },
       { key: 'subStages', label: 'Sub-stages', type: 'subStages' },
     ],
     columns: [
@@ -117,6 +119,7 @@ const CONFIGS: MasterConfig[] = [
           return <span className="text-xs tabular-nums">{subs.filter((s) => s.isActive).length}</span>
         },
       },
+      { key: 'inFunnel', header: 'Funnel', render: (r) => (r.inFunnel ? <Badge tone="blue">Funnel</Badge> : <span className="text-xs text-slate-300">—</span>) },
       activeBadge,
     ],
   },

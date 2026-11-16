@@ -21,6 +21,7 @@ export const MODULES: { key: ModuleKey; label: string; slice1: boolean }[] = [
   { key: 'audit', label: 'Audit Log', slice1: true },
   { key: 'attendance', label: 'Attendance', slice1: true },
   { key: 'targets', label: 'Target Manager', slice1: true },
+  { key: 'analytics', label: 'Analytics', slice1: false },
 ]
 
 export const ACTIONS: { key: ActionKey; label: string }[] = [
@@ -42,6 +43,7 @@ export const ACTIONS: { key: ActionKey; label: string }[] = [
 export const DATA_SCOPES: { key: string; label: string; hint: string }[] = [
   { key: 'own', label: 'Own records', hint: 'Only records this user owns' },
   { key: 'team', label: 'Team', hint: 'Their team, managed teams and direct reports' },
+  { key: 'team_unassigned', label: 'Team + Unassigned', hint: "Their team's leads and every lead with no owner" },
 ]
 
 export function can(

@@ -6,7 +6,7 @@ import { useChangePasswordMutation } from '../services/authApi'
 import { useCurrentUser } from '../app/hooks'
 import { PageHeader } from '../components/ui/misc'
 import { Button } from '../components/ui/Button'
-import { FormField, Input } from '../components/ui/fields'
+import { FormField, PasswordInput } from '../components/ui/fields'
 import { parseApiError } from '../lib/utils'
 
 const schema = z
@@ -61,13 +61,13 @@ export default function ProfilePage() {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-slate-700">Change password</h3>
           <FormField label="Current password" error={errors.currentPassword?.message} required>
-            <Input type="password" autoComplete="current-password" {...register('currentPassword')} />
+            <PasswordInput autoComplete="current-password" {...register('currentPassword')} />
           </FormField>
           <FormField label="New password" error={errors.newPassword?.message} required>
-            <Input type="password" autoComplete="new-password" {...register('newPassword')} />
+            <PasswordInput autoComplete="new-password" {...register('newPassword')} />
           </FormField>
           <FormField label="Confirm new password" error={errors.confirm?.message} required>
-            <Input type="password" autoComplete="new-password" {...register('confirm')} />
+            <PasswordInput autoComplete="new-password" {...register('confirm')} />
           </FormField>
           <Button type="submit" loading={isLoading}>Update password</Button>
         </form>

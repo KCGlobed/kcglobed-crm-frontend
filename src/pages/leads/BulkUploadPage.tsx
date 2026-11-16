@@ -1,10 +1,13 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, Download, FileCheck, FileSpreadsheet, Plus, Upload } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Download, FileCheck, FileSpreadsheet, Loader2, Plus, Upload } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAppDispatch } from '../../app/hooks'
+import { api } from '../../services/api'
 import {
   useBulkUploadLeadsMutation,
   useCreateImportCustomFieldMutation,
+  useLazyImportJobQuery,
   useImportPreviewMutation,
   useValidateImportMutation,
 } from '../../services/leadsApi'
@@ -21,6 +24,7 @@ import type {
   ImportColumn,
   ImportColumnStatus,
   ImportField,
+  ImportJob,
   ImportMapping,
   ImportPreview,
   ImportResult,
@@ -93,7 +97,7 @@ export default function BulkUploadPage() {
   const [source, setSource] = useState('')
   const [assignMode, setAssignMode] = useState<'unassigned' | 'one' | 'split'>('unassigned')
   const [owners, setOwners] = useState<string[]>([])
-  const [duplicates, setDuplicates] = useState<'skip' | 'update_empty' | 'reenquire'>('skip')
+  const [duplicates, setDuplicates] = useState<'skip' | 'update_empty' | 'update_all' | 'update_full' | 'reenquire' | 'reenquire_replace'>('skip')
   const [sendWelcome, setSendWelcome] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   /** full-file dry run shown before the Confirm button; cleared by any mapping/value change */
@@ -101,6 +105,29 @@ export default function BulkUploadPage() {
   const [runPreview, { isLoading: previewing }] = useImportPreviewMutation()
   const [runValidate, { isLoading: validating }] = useValidateImportMutation()
   const [upload, { isLoading: uploading }] = useBulkUploadLeadsMutation()
+  // the import runs as a background job (no request timeout can cut a big file off): polled until it ends
+  const dispatch = useAppDispatch()
+  const [fetchJob] = useLazyImportJobQuery()
+  const [jobRunning, setJobRunning] = useState(false)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
+  const waitForJob = async (id: string): Promise<ImportJob | null> => {
+    while (mounted.current) {
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+      try {
+        const job = (await fetchJob(id).unwrap()).data
+        if (job.status === 'done' || job.status === 'failed') return job
+      } catch {
+        // a dropped poll (network, server restarting) — keep asking; the server fails a job that never ends
+      }
+    }
+    return null
+  }
 
   const fields = useMemo<ImportField[]>(() => {
     const base = preview?.fields ?? []
@@ -293,9 +320,30 @@ export default function BulkUploadPage() {
     try {
       const res = await upload(
         form(mapping, skipped, values, {
-          options: { source, assignMode, owners: assignMode === 'one' ? owners.slice(0, 1) : owners, duplicates, sendWelcome },
+          options: {
+            source, assignMode, owners: assignMode === 'one' ? owners.slice(0, 1) : owners, duplicates, sendWelcome,
+            background: true,
+          },
         })
       ).unwrap()
+      if ('job' in res.data) {
+        toast.success(res.message)
+        setJobRunning(true)
+        const job = await waitForJob(res.data.job._id)
+        if (!job) return  // left the page: the finish notification still arrives
+        setJobRunning(false)
+        if (job.status !== 'done' || !job.result) {
+          toast.error(job.error || 'The upload failed')
+          return
+        }
+        const r = job.result
+        dispatch(api.util.invalidateTags([{ type: 'Leads', id: 'LIST' }, 'Dashboard', 'Notifications']))
+        setValidation(null)
+        setResult(r)
+        toast.success(`Upload finished: ${r.created} created, ${r.updated} updated, ${r.skipped} skipped, ${r.failed} failed`)
+        window.scrollTo({ top: 0 })
+        return
+      }
       setValidation(null)
       setResult(res.data)
       toast.success(res.message)
@@ -611,7 +659,10 @@ export default function BulkUploadPage() {
                       <Select value={duplicates} onChange={(e) => { setDuplicates(e.target.value as typeof duplicates); setValidation(null) }}>
                         <option value="skip">Skip (default)</option>
                         <option value="update_empty">Update Empty Fields</option>
+                        <option value="update_all">Update All Fields (except email &amp; phone)</option>
+                        <option value="update_full">Update All Fields + Owner &amp; Disposition (no re-enquiry, no alerts)</option>
                         <option value="reenquire">Mark as Re-enquiry (fills empty fields, floats to top, owner notified)</option>
+                        <option value="reenquire_replace">Mark as Re-enquiry (fills empty fields, replaces all data except email &amp; phone)</option>
                       </Select>
                     </FormField>
                   </div>
@@ -717,7 +768,7 @@ export default function BulkUploadPage() {
                       ['Rows', validation.total, 'text-slate-800'],
                       ['Will create', validation.willCreate, 'text-emerald-700'],
                       ['Will update', validation.willUpdate, 'text-sky-700'],
-                      ...((validation.willReEnquire ?? 0) > 0 || duplicates === 'reenquire'
+                      ...((validation.willReEnquire ?? 0) > 0 || duplicates.startsWith('reenquire')
                         ? ([['Will re-enquire', validation.willReEnquire ?? 0, 'text-violet-700']] as const)
                         : []),
                       ['Duplicate (will skip)', validation.duplicates, 'text-amber-700'],
@@ -766,7 +817,7 @@ export default function BulkUploadPage() {
                 Validate first — the import only runs after you confirm the result.
               </span>
             )}
-            <Button variant="outline" onClick={() => (validation ? setValidation(null) : navigate('/app/leads'))}>
+            <Button variant="outline" disabled={jobRunning} onClick={() => (validation ? setValidation(null) : navigate('/app/leads'))}>
               {validation ? 'Cancel import' : 'Cancel'}
             </Button>
             {!validation ? (
@@ -774,11 +825,20 @@ export default function BulkUploadPage() {
                 <FileCheck className="h-3.5 w-3.5" /> Validate {preview ? `${preview.totalRows.toLocaleString()} rows` : ''}
               </Button>
             ) : (
-              <Button onClick={onUpload} loading={uploading} disabled={!!blocker} title={blocker ?? undefined}>
+              <Button onClick={onUpload} loading={uploading || jobRunning} disabled={!!blocker || jobRunning} title={blocker ?? undefined}>
                 <Upload className="h-3.5 w-3.5" /> Confirm import ({(validation.willCreate + validation.willUpdate + (validation.willReEnquire ?? 0)).toLocaleString()} leads)
               </Button>
             )}
           </div>
+          {jobRunning && (
+            <div role="status" className="mt-3 flex items-start gap-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+              <Loader2 className="mt-0.5 h-4 w-4 shrink-0 animate-spin" />
+              <span>
+                Importing {validation ? (validation.willCreate + validation.willUpdate + (validation.willReEnquire ?? 0)).toLocaleString() : ''} leads
+                in the background — a big file can take a few minutes. You can leave this page; a notification arrives when it finishes.
+              </span>
+            </div>
+          )}
         </div>
       )}
     </>

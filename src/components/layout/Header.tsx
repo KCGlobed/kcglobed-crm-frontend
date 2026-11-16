@@ -6,6 +6,7 @@ import { can } from '../../constants/permissions'
 import { GlobalSearch } from '../GlobalSearch'
 import { NotificationsBell } from './NotificationsBell'
 import { HeaderTimers } from './HeaderTimers'
+import { DialerButton } from '../../features/telephony/DialerPanel'
 import { ProfileMenu } from './ProfileMenu'
 import logoMark from '../../assets/logo-gcc-mark.png'
 
@@ -23,10 +24,14 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
   const current = useCurrentSection()
   const { pathname, search } = useLocation()
   // the dashboard's drill-downs open the leads list with ?from=dashboard: offer the way back
-  const backToDashboard = pathname === '/app/leads' && new URLSearchParams(search).get('from') === 'dashboard'
+  const query = new URLSearchParams(search)
+  const backToDashboard =
+    (pathname === '/app/leads' && query.get('from') === 'dashboard') || (pathname === '/app/calls' && query.get('back') === 'dashboard')
 
+  // z-25: above the pages' own sticky bars (z-20, e.g. the leads list's "N selected" bar), so the bell and profile
+  // menus are not covered by them; still under the mobile sidebar (z-30/40) and every modal (z-50)
   return (
-    <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/85 px-3 backdrop-blur-md sm:px-4">
+    <header className="sticky top-0 z-25 flex h-14 shrink-0 items-center gap-3 border-b border-slate-200 bg-white/85 px-3 backdrop-blur-md sm:px-4">
       <button
         type="button"
         className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
@@ -59,6 +64,7 @@ export function Header({ onOpenMenu }: { onOpenMenu: () => void }) {
       <div className="flex min-w-0 flex-1 justify-center">{can(user, 'leads') && <GlobalSearch />}</div>
       <div className="flex items-center gap-1">
         <HeaderTimers />
+        <DialerButton />
         <NotificationsBell />
         <div className="mx-1 hidden h-6 w-px bg-slate-200 sm:block" />
         <ProfileMenu />

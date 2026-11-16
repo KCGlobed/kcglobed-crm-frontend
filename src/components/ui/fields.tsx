@@ -1,4 +1,5 @@
-import { forwardRef, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { forwardRef, useState, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 /** Shared field look: 36px high, 10px radius, brand focus ring, red when aria-invalid. */
@@ -17,6 +18,30 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
   )
 )
 Input.displayName = 'Input'
+
+/** A password field with an eye that shows or hides what is typed; each field toggles on its own. */
+export const PasswordInput = forwardRef<HTMLInputElement, Omit<InputHTMLAttributes<HTMLInputElement>, 'type'>>(
+  ({ className, disabled, ...props }, ref) => {
+    const [shown, setShown] = useState(false)
+    return (
+      <div className="relative">
+        <Input ref={ref} type={shown ? 'text' : 'password'} className={cn('pr-9', className)} disabled={disabled} {...props} />
+        <button
+          type="button"
+          aria-label={shown ? 'Hide password' : 'Show password'}
+          title={shown ? 'Hide password' : 'Show password'}
+          aria-pressed={shown}
+          disabled={disabled}
+          onClick={() => setShown((v) => !v)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 disabled:pointer-events-none disabled:opacity-50"
+        >
+          {shown ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      </div>
+    )
+  }
+)
+PasswordInput.displayName = 'PasswordInput'
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
   ({ className, ...props }, ref) => (

@@ -10,6 +10,8 @@ export type Recurrence = 'once' | 'daily' | 'weekly' | 'monthly'
 
 export const CHANNEL_LABEL: Record<Channel, string> = { sms: 'SMS', email: 'Email', whatsapp: 'WhatsApp' }
 export const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] // Monday = 0, as the server
+/** The rules every lead automation follows (the Info tooltip beside the list). */
+export const AUTOMATION_RULES = 'Automations never reach Junk leads, skip leads who opted out of the channel, and send the same automation to a lead at most once a day.'
 
 const OP_TEXT: Record<string, string> = {
   is: 'is', is_not: 'is not', any_of: 'is any of', none_of: 'is none of', contains: 'contains', empty: 'is empty',

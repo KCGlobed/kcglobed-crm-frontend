@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronDown, KeyRound, LogOut } from 'lucide-react'
 import { toast } from 'sonner'
@@ -51,8 +51,24 @@ export function ProfileMenu() {
 
   const role = user?.isSuperAdmin ? 'Super Admin' : user?.roleLabel && user.role !== 'other' ? user.roleLabel : user?.designation || 'User'
 
+  // Close on a click anywhere outside the button and its menu, or on Escape — as the bell does. (A full-screen
+  // backdrop element would not work here: the blurred top bar becomes the frame of anything `fixed` inside it, so
+  // such a backdrop covers only the bar and clicks on the page never reach it.)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onClick = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
   return (
-    <div className="relative">
+    <div ref={ref} className="relative">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -71,7 +87,6 @@ export function ProfileMenu() {
       </button>
       {open && (
         <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
           <div
             role="menu"
             className={cn(

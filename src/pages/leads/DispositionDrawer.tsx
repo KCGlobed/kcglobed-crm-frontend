@@ -10,7 +10,7 @@ import { FormField, Input, Select, Textarea } from '../../components/ui/fields'
 import { formatHms } from '../../lib/durations'
 import { formatDateTime, parseApiError } from '../../lib/utils'
 import { isFinalStatus, statusLabel, statusTone } from '../../features/telephony/callState'
-import { RecordingPlayer } from '../../features/telephony/RecordingPlayer'
+import { SettlingBadge } from '../../features/telephony/SettlingBadge'
 import type { CallLog, Lead } from '../../types/models'
 import { taskTypeLabel, toLocalInput } from '../tasks/taskMeta'
 import { offersFollowUp } from './stageForm'
@@ -20,9 +20,8 @@ import { CallProofField, type ProofValue } from './CallProofField'
  * "Log Call / Update" (GL-16..20, GL-40): stage + disposition, a mandatory
  * future follow-up for every open stage, a reason for closing stages, an
  * optional note and, for a call, its duration (mandatory: talk time is summed
- * from it; 00:00:00 for a call that didn't connect), a screenshot of the call
- * time (mandatory, so the duration can be checked) and the recording
- * (optional). Counsellor Discussion and
+ * from it; 00:00:00 for a call that didn't connect), the screenshot of the call
+ * time (one, so the duration can be checked) and the recording (optional). Counsellor Discussion and
  * Call Result are intentionally not part of this form — the discussion lives in its own tab.
  *
  * `dialer` mode: the outcome of a call the dialer (Smartflo) placed or received — status, talk time and
@@ -48,8 +47,9 @@ export function DispositionDrawer({
   // the dialer has not reported this call yet (webhook pending): the counsellor may type the duration
   const manualDuration = !!dialer && !isFinalStatus(dialer.status)
   const stages = data?.data.stages ?? []
+  // the lead's current stage and sub-stage to start with
   const [stageId, setStageId] = useState(lead.stage?._id ?? '')
-  const [subStage, setSubStage] = useState('')
+  const [subStage, setSubStage] = useState(lead.subStage ?? '')
   const [reason, setReason] = useState('')
   // optional: empty until a date is picked, and no follow-up is created then
   const [followUpAt, setFollowUpAt] = useState('')
@@ -63,15 +63,17 @@ export function DispositionDrawer({
   const [seconds, setSeconds] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   // proof of the call, uploaded as soon as it is picked (or pasted)
-  const [screenshot, setScreenshot] = useState<ProofValue | null>(null)
-  const [recording, setRecording] = useState<ProofValue | null>(null)
+  const [screenshots, setScreenshots] = useState<ProofValue[]>([])
+  const [recording, setRecording] = useState<ProofValue[]>([])
   const [shotBusy, setShotBusy] = useState(false)
   const [recBusy, setRecBusy] = useState(false)
   const [pasted, setPasted] = useState<File | null>(null)
-  const proofMissing = mode === 'call' && (!screenshot || shotBusy || recBusy)
+  const proofMissing = mode === 'call' && (!screenshots.length || shotBusy || recBusy)
 
   const stage = stages.find((s) => s._id === stageId)
   const subStagePick = stage?.subStages.find((s) => s._id === subStage)
+  // the sub-stage in effect: only one the chosen stage offers (the lead's may since have been switched off)
+  const subStageId = subStagePick?._id ?? ''
 
   // the call's duration: required, whole numbers, minutes and seconds 0–59, at most 6 hours
   const durationEntered = [hours, minutes, seconds].some((v) => v.trim() !== '')
@@ -98,7 +100,7 @@ export function DispositionDrawer({
     if (durationProblem) return
     const body: Record<string, unknown> = {
       stage: stageId,
-      subStage: subStage || null,
+      subStage: subStageId || null,
       reason: reason || undefined,
       note: note || undefined,
       interaction: mode === 'dialer' ? 'call' : mode,
@@ -106,7 +108,7 @@ export function DispositionDrawer({
         ? { followUpAt: new Date(followUpAt).toISOString(), followUpType, followUpNote: followUpNote || undefined }
         : {}),
       ...(mode === 'call'
-        ? { call: { status: callStatus, durationSeconds: duration, screenshotId: screenshot?.id, recordingId: recording?.id ?? null } }
+        ? { call: { status: callStatus, durationSeconds: duration, screenshotIds: screenshots.map((s) => s.id), recordingId: recording[0]?.id ?? null } }
         : dialer
           ? { call: { callId: dialer._id, ...(manualDuration && durationEntered ? { durationSeconds: duration } : {}) } }
           : {}),
@@ -175,9 +177,16 @@ export function DispositionDrawer({
                   <PhoneOutgoing className="h-4 w-4 text-brand-600" aria-label="Outbound call" />
                 )}
                 <span className="font-medium text-slate-700">{dialer.direction === 'inbound' ? 'Incoming call' : 'Outbound call'}</span>
-                <Badge tone={statusTone(dialer.status)}>{statusLabel(dialer.status)}</Badge>
-                {isFinalStatus(dialer.status) && (
-                  <span className="font-mono text-sm font-semibold tabular-nums text-slate-800">{formatHms(dialer.durationSeconds)}</span>
+                {dialer.settled === false ? (
+                  // just ended: the outcome and talk time come from the dialer's call record in a few seconds
+                  <SettlingBadge label="Fetching the call result from the dialer…" />
+                ) : (
+                  <>
+                    <Badge tone={statusTone(dialer.status)}>{statusLabel(dialer.status)}</Badge>
+                    {isFinalStatus(dialer.status) && (
+                      <span className="font-mono text-sm font-semibold tabular-nums text-slate-800">{formatHms(dialer.durationSeconds)}</span>
+                    )}
+                  </>
                 )}
               </div>
               <p className="mt-1 text-slate-500">
@@ -185,9 +194,6 @@ export function DispositionDrawer({
                 {dialer.customerNumber ? ` · ${dialer.customerNumber}` : ''}
                 {dialer.hangupCause ? ` · ${dialer.hangupCause.toLowerCase().replace(/_/g, ' ')}` : ''}
               </p>
-              {(dialer.recording || dialer.recordingUrl) && (
-                <RecordingPlayer callId={dialer._id} proofId={dialer.recording?._id} fileName={dialer.recording?.fileName} fallbackUrl={dialer.recordingUrl} className="mt-2" />
-              )}
               {manualDuration && (
                 <FormField
                   label="Talk time"
@@ -226,11 +232,11 @@ export function DispositionDrawer({
                 <CallProofField
                   kind="screenshot"
                   required
-                  value={screenshot}
-                  onChange={setScreenshot}
+                  value={screenshots}
+                  onChange={setScreenshots}
                   onBusy={setShotBusy}
                   pasted={pasted}
-                  error={errors['call.screenshotId']}
+                  error={errors['call.screenshotId'] ?? errors['call.screenshotIds']}
                 />
                 <CallProofField kind="recording" value={recording} onChange={setRecording} onBusy={setRecBusy} error={errors['call.recordingId']} />
               </div>
@@ -261,7 +267,7 @@ export function DispositionDrawer({
           )}
           {!!stage?.subStages.length && (
             <FormField label={stage.requiresReason ? 'Reason (sub-stage)' : 'Sub-stage (disposition)'} required error={errors.subStage}>
-              <Select value={subStage} onChange={(e) => setSubStage(e.target.value)} aria-invalid={!!errors.subStage}>
+              <Select value={subStageId} onChange={(e) => setSubStage(e.target.value)} aria-invalid={!!errors.subStage}>
                 <option value="">Choose…</option>
                 {stage.subStages.map((s) => (
                   <option key={s._id} value={s._id}>

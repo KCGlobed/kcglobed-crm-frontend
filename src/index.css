@@ -52,6 +52,13 @@
   --color-emerald-700: #146c43;
   --color-emerald-800: #0f5132;
 
+  /* leaf — a light yellow-green apart from the success green: the Connected cards */
+  --color-leaf-100: #dcedc8;
+  --color-leaf-300: #aed581;
+  --color-leaf-400: #9ccc65;
+  --color-leaf-500: #8bc34a;
+  --color-leaf-600: #7cb342;
+
   /* danger — #dc3545 */
   --color-red-50: #fcedee;
   --color-red-100: #f8d7da;

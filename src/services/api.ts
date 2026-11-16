@@ -104,7 +104,6 @@ const crmApi = createApi({
     'LeadDocuments',
     'LeadMessages',
     'WhatsAppChat',
-    'WhatsAppSummary',
     'MessageTemplates',
     'SavedTexts',
     'MessageAssets',
@@ -119,6 +118,9 @@ const crmApi = createApi({
     'LiveCalls',
     'Telephony',
     'Targets',
+    'Reports',
+    'ReportSchedules',
+    'ReportRuns',
   ],
   endpoints: () => ({}),
 })
