@@ -33,6 +33,7 @@ import { AutomationsTab } from './AutomationsTab'
 import { MetricCell, ReasonBreakdown } from './deliveryMetrics'
 import { REASON_STATUS_LABELS, STATUS_COLUMNS, metricsOf } from './deliveryStatus'
 import { CallingTab } from './CallingTab'
+import { CreditsStrip } from './CreditsStrip'
 import { NotificationsTab } from './NotificationsTab'
 import { TextsTab } from './TextsTab'
 
@@ -591,6 +592,7 @@ export default function MessagingPage() {
   return (
     <>
       <PageHeader title="SMS, Email & WhatsApp" description="Message templates, automatic messages and bulk sends to your leads." />
+      <CreditsStrip />
       <Tabs tabs={tabs.map(({ key, label }) => ({ key, label }))} active={tab} onChange={setTab} />
       <p className="mt-3 text-xs text-slate-500">{tabs.find((t) => t.key === tab)?.hint}</p>
       <div className="mt-3">
