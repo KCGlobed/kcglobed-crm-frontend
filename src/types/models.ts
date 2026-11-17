@@ -1222,6 +1222,8 @@ export interface CallProofFile {
   size: number
 }
 
+export type AttendanceCallKind = 'manual' | 'click_to_call' | 'auto_dialer' | 'incoming'
+
 /** Attendance → Call Proofs: one logged call with its proofs. */
 export interface AttendanceCallRow {
   _id: string
@@ -1235,6 +1237,8 @@ export interface AttendanceCallRow {
   direction?: 'outbound' | 'inbound'
   /** manual (Log Call drawer) or dialer */
   source?: string
+  /** how it happened: logged by hand, the Call button, an auto-dialer run, or the lead calling in */
+  kind?: AttendanceCallKind
   customerNumber?: string | null
   stage?: string | null
   subStage?: string | null
