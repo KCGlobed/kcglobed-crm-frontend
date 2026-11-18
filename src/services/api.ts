@@ -123,6 +123,18 @@ const crmApi = createApi({
     'Reports',
     'ReportSchedules',
     'ReportRuns',
+    // Channel Partners (consultantsApi)
+    'CpMeta',
+    'CpLeads',
+    'CpLead',
+    'CpTimeline',
+    'CpHistory',
+    'CpNotes',
+    'CpDocuments',
+    'CpFollowUps',
+    'CpStages',
+    'CpStageLog',
+    'CpSources',
   ],
   endpoints: () => ({}),
 })

@@ -30,6 +30,16 @@ export const MODULES: { key: ModuleKey; label: string; slice1: boolean; children
   { key: 'attendance', label: 'Attendance', slice1: true },
   { key: 'targets', label: 'Target Manager', slice1: true },
   { key: 'analytics', label: 'Analytics', slice1: false },
+  {
+    key: 'consultants',
+    label: 'Channel Partners',
+    slice1: true,
+    children: [
+      { key: 'consultants.leads', label: 'Leads' },
+      { key: 'consultants.follow_ups', label: 'Follow-ups' },
+      { key: 'consultants.stages', label: 'Lead Stages' },
+    ],
+  },
 ]
 
 export const ACTIONS: { key: ActionKey; label: string }[] = [

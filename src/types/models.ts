@@ -22,6 +22,10 @@ export type ModuleKey =
   | 'attendance'
   | 'targets'
   | 'analytics'
+  | 'consultants'
+  | 'consultants.leads'
+  | 'consultants.follow_ups'
+  | 'consultants.stages'
 
 export type ActionKey =
   | 'view'
@@ -449,6 +453,9 @@ export interface Notification {
     count?: number
     leadIds?: string[]
     by?: string
+    /** Channel Partners: the consultant lead, or (several assigned at once) its lead list */
+    consultantLeadId?: string
+    consultants?: boolean
   }
   readAt?: string | null
   createdAt: string

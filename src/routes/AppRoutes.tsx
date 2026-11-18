@@ -32,6 +32,11 @@ const AuditLogPage = lazy(() => import('../pages/admin/AuditLogPage'))
 const AttendancePage = lazy(() => import('../pages/admin/AttendancePage'))
 const ProfilePage = lazy(() => import('../pages/ProfilePage'))
 const NotificationsPage = lazy(() => import('../pages/NotificationsPage'))
+const CpLeadsPage = lazy(() => import('../pages/consultants/CpLeadsPage'))
+const CpImportPage = lazy(() => import('../pages/consultants/CpImportPage'))
+const CpLeadDetailPage = lazy(() => import('../pages/consultants/CpLeadDetailPage'))
+const CpFollowUpsPage = lazy(() => import('../pages/consultants/CpFollowUpsPage'))
+const CpStagesPage = lazy(() => import('../pages/consultants/CpStagesPage'))
 
 function PageLoader() {
   return (
@@ -107,6 +112,11 @@ export default function AppRoutes() {
         <Route path="admin/round-robin" element={<RequirePermission module="round_robin"><Lazy><RoundRobinPage /></Lazy></RequirePermission>} />
         <Route path="admin/audit" element={<RequirePermission module="audit"><Lazy><AuditLogPage /></Lazy></RequirePermission>} />
         <Route path="admin/attendance" element={<RequirePermission module="attendance"><Lazy><AttendancePage /></Lazy></RequirePermission>} />
+        <Route path="consultants/leads" element={<RequirePermission module="consultants.leads"><Lazy><CpLeadsPage /></Lazy></RequirePermission>} />
+        <Route path="consultants/leads/import" element={<RequirePermission module="consultants.leads" action="import"><Lazy><CpImportPage /></Lazy></RequirePermission>} />
+        <Route path="consultants/leads/:id" element={<RequirePermission module="consultants.leads"><Lazy><CpLeadDetailPage /></Lazy></RequirePermission>} />
+        <Route path="consultants/follow-ups" element={<RequirePermission module="consultants.follow_ups"><Lazy><CpFollowUpsPage /></Lazy></RequirePermission>} />
+        <Route path="consultants/stages" element={<RequirePermission module="consultants.stages"><Lazy><CpStagesPage /></Lazy></RequirePermission>} />
         <Route path="profile" element={<Lazy><ProfilePage /></Lazy>} />
         <Route path="notifications" element={<Lazy><NotificationsPage /></Lazy>} />
         <Route path="forbidden" element={<Forbidden />} />

@@ -1,9 +1,12 @@
 import {
   BarChart3,
   ChartPie,
+  CalendarCheck,
   CalendarClock,
   ClipboardList,
   Clock3,
+  Handshake,
+  Layers,
   MessageSquareText,
   LayoutDashboard,
   Settings2,
@@ -33,6 +36,15 @@ export const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
       { label: 'Follow-ups', path: '/app/tasks', module: 'tasks', icon: CalendarClock },
       { label: 'Target Manager', path: '/app/targets', module: 'targets', icon: Target },
       { label: 'Reports', path: '/app/reports', module: 'reports', icon: BarChart3 },
+    ],
+  },
+  {
+    // its own section: consultant leads, apart from the student modules above (only Channel Partners users see it)
+    title: 'Channel Partners',
+    items: [
+      { label: 'Partner Leads', path: '/app/consultants/leads', module: 'consultants.leads', icon: Handshake },
+      { label: 'Partner Follow-ups', path: '/app/consultants/follow-ups', module: 'consultants.follow_ups', icon: CalendarCheck },
+      { label: 'Lead Stages', path: '/app/consultants/stages', module: 'consultants.stages', icon: Layers },
     ],
   },
   {
