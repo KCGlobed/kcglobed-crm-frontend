@@ -288,6 +288,10 @@ function MasterModal({
     return v
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  // Unticking Active on a saved stage, or on one of its saved sub-stages, first opens the
+  // move-the-leads popup; the box unticks only once nothing is left on it (saved with the form).
+  const [reassign, setReassign] = useState<{ subStage?: { _id: string; name: string } } | null>(null)
+  const savedSubStages = (row?.subStages as SubStageDraft[] | undefined) ?? []
   const { data: masters } = useMasterBootstrapQuery()
   const [create, { isLoading: creating }] = useCreateMasterMutation()
   const [update, { isLoading: updating }] = useUpdateMasterMutation()
@@ -335,91 +339,129 @@ function MasterModal({
 
   const set = (k: string, v: unknown) => setValues((s) => ({ ...s, [k]: v }))
 
+  const isSavedStage = config.type === 'stages' && !!row
+  const deactivateSubStage = (subId: string) =>
+    setValues((s) => ({
+      ...s,
+      subStages: ((s.subStages as SubStageDraft[] | undefined) ?? []).map((x) => (x._id === subId ? { ...x, isActive: false } : x)),
+    }))
+
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={`${row ? 'Edit' : 'Add'} ${config.label.toLowerCase().replace(/s$/, '')}`}
-      size={config.fields.some((f) => f.type === 'subStages') ? 'lg' : 'md'}
-      footer={
-        <>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={onSubmit} loading={creating || updating}>
-            Save
-          </Button>
-        </>
-      }
-    >
-      <div className="grid grid-cols-2 gap-3">
-        {config.fields.map((f) => {
-          if (f.derived) return null
-          const disabled = !!row && f.createOnly
-          const value = values[f.key]
-          // a derived field (e.g. the custom field key) shows its result under the field it comes from
-          const derivedChild = config.fields.find((d) => d.derived?.from === f.key)
-          const hint = derivedChild
-            ? row
-              ? `${derivedChild.label}: ${row[derivedChild.key]} (cannot change)`
-              : value
-                ? `${derivedChild.label}: ${derivedChild.derived!.compute(String(value))}`
-                : `The ${derivedChild.label.toLowerCase()} is generated from the ${f.label.toLowerCase()}`
-            : undefined
-          if (f.type === 'subStages') {
+    <>
+      <Modal
+        open={open}
+        // while the popup is on top, Escape / backdrop close only the popup, not this form with its edits
+        onClose={reassign ? () => setReassign(null) : onClose}
+        title={`${row ? 'Edit' : 'Add'} ${config.label.toLowerCase().replace(/s$/, '')}`}
+        size={config.fields.some((f) => f.type === 'subStages') ? 'lg' : 'md'}
+        footer={
+          <>
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={onSubmit} loading={creating || updating}>
+              Save
+            </Button>
+          </>
+        }
+      >
+        <div className="grid grid-cols-2 gap-3">
+          {config.fields.map((f) => {
+            if (f.derived) return null
+            const disabled = !!row && f.createOnly
+            const value = values[f.key]
+            // a derived field (e.g. the custom field key) shows its result under the field it comes from
+            const derivedChild = config.fields.find((d) => d.derived?.from === f.key)
+            const hint = derivedChild
+              ? row
+                ? `${derivedChild.label}: ${row[derivedChild.key]} (cannot change)`
+                : value
+                  ? `${derivedChild.label}: ${derivedChild.derived!.compute(String(value))}`
+                  : `The ${derivedChild.label.toLowerCase()} is generated from the ${f.label.toLowerCase()}`
+              : undefined
+            if (f.type === 'subStages') {
+              return (
+                <FormField key={f.key} label={f.label} className="col-span-2" error={errors[f.key]}>
+                  <SubStagesEditor
+                    value={(value as SubStageDraft[] | undefined) ?? []}
+                    onChange={(next) => set(f.key, next)}
+                    errors={errors}
+                    onDeactivate={(i) => {
+                      const draft = ((value as SubStageDraft[] | undefined) ?? [])[i]
+                      const saved = savedSubStages.find((x) => x._id === draft?._id)
+                      // only a sub-stage that is active on the server can still have leads on it
+                      if (!isSavedStage || !saved?._id || !saved.isActive) return false
+                      setReassign({ subStage: { _id: saved._id, name: saved.name } })
+                      return true
+                    }}
+                  />
+                </FormField>
+              )
+            }
+            if (f.type === 'boolean') {
+              return (
+                <label key={f.key} className="flex items-end gap-2 pb-2 text-xs text-slate-600">
+                  <Checkbox
+                    checked={!!value}
+                    onChange={(e) => {
+                      // the stage's own Active box: same rule as the row's Deactivate action
+                      if (isSavedStage && f.key === 'isActive' && !e.target.checked && row?.isActive !== false) {
+                        setReassign({})
+                        return
+                      }
+                      set(f.key, e.target.checked)
+                    }}
+                  />{' '}
+                  {f.label}
+                </label>
+              )
+            }
             return (
-              <FormField key={f.key} label={f.label} className="col-span-2" error={errors[f.key]}>
-                <SubStagesEditor
-                  value={(value as SubStageDraft[] | undefined) ?? []}
-                  onChange={(next) => set(f.key, next)}
-                  errors={errors}
-                />
+              <FormField key={f.key} label={f.label} required={f.required} error={errors[f.key] ?? (derivedChild && errors[derivedChild.key])} hint={hint}>
+                {f.type === 'select' ? (
+                  <Select value={(value as string) ?? ''} onChange={(e) => set(f.key, e.target.value)}>
+                    <option value="">Select…</option>
+                    {f.options?.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                    {/* a saved value no longer in the list (e.g. a channel that was dropped) stays selectable so it is kept on save */}
+                    {!!value && !f.options?.some((o) => o.value === value) && <option value={String(value)}>{String(value)} (current)</option>}
+                  </Select>
+                ) : f.type === 'program' ? (
+                  <Select value={(value as string) ?? ''} onChange={(e) => set(f.key, e.target.value)}>
+                    <option value="">Select program…</option>
+                    {masters?.data.programs.map((p) => (
+                      <option key={p._id} value={p._id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </Select>
+                ) : (
+                  <Input
+                    type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'color' ? 'color' : 'text'}
+                    disabled={disabled}
+                    value={(value as string) ?? (f.type === 'color' ? '#3d1f73' : '')}
+                    onChange={(e) => set(f.key, e.target.value)}
+                    aria-invalid={!!errors[f.key]}
+                  />
+                )}
               </FormField>
             )
-          }
-          if (f.type === 'boolean') {
-            return (
-              <label key={f.key} className="flex items-end gap-2 pb-2 text-xs text-slate-600">
-                <Checkbox checked={!!value} onChange={(e) => set(f.key, e.target.checked)} /> {f.label}
-              </label>
-            )
-          }
-          return (
-            <FormField key={f.key} label={f.label} required={f.required} error={errors[f.key] ?? (derivedChild && errors[derivedChild.key])} hint={hint}>
-              {f.type === 'select' ? (
-                <Select value={(value as string) ?? ''} onChange={(e) => set(f.key, e.target.value)}>
-                  <option value="">Select…</option>
-                  {f.options?.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                  {/* a saved value no longer in the list (e.g. a channel that was dropped) stays selectable so it is kept on save */}
-                  {!!value && !f.options?.some((o) => o.value === value) && <option value={String(value)}>{String(value)} (current)</option>}
-                </Select>
-              ) : f.type === 'program' ? (
-                <Select value={(value as string) ?? ''} onChange={(e) => set(f.key, e.target.value)}>
-                  <option value="">Select program…</option>
-                  {masters?.data.programs.map((p) => (
-                    <option key={p._id} value={p._id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </Select>
-              ) : (
-                <Input
-                  type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'color' ? 'color' : 'text'}
-                  disabled={disabled}
-                  value={(value as string) ?? (f.type === 'color' ? '#3d1f73' : '')}
-                  onChange={(e) => set(f.key, e.target.value)}
-                  aria-invalid={!!errors[f.key]}
-                />
-              )}
-            </FormField>
-          )
-        })}
-      </div>
-    </Modal>
+          })}
+        </div>
+      </Modal>
+      {/* a sibling, not a child: the form dialog is transformed, which would trap a nested fixed overlay */}
+      {reassign && row && (
+        <StageReassignModal
+          stage={{ _id: row._id, name: String(row.name) }}
+          subStage={reassign.subStage}
+          onDeactivate={() => (reassign.subStage ? deactivateSubStage(reassign.subStage._id) : set('isActive', false))}
+          onClose={() => setReassign(null)}
+        />
+      )}
+    </>
   )
 }
 
