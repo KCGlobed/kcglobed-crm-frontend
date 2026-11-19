@@ -1,9 +1,12 @@
 import { api } from './api'
-import type { ApiListResponse, ApiResponse } from '../types/models'
+import type { ReportScheduleBody } from './reportsApi'
+import type {
+  ApiListResponse, ApiResponse, ReportDefinition, ReportResult, ReportRun, ReportSchedule,
+} from '../types/models'
 import type {
   CpDocument, CpDocuments, CpDuplicateCheck, CpFieldChange, CpActivity, CpFollowUp, CpFollowUpSummary, CpFollowUpView,
   CpImportResult, CpLeadDetail, CpLead, CpLeadListParams, CpLogBody, CpMeta, CpNote, CpSettings, CpSource, CpStage,
-  CpStageCounts, CpStageList, CpStageLogEntry,
+  CpStageCounts, CpStageList, CpStageLogEntry, CpTarget, CpTargetBody, CpTargetListParams, CpTargetOptions,
 } from '../types/consultants'
 
 /** Channel Partners: /api/v1/consultants. Its own tags, so nothing here refreshes the student screens or the reverse. */
@@ -13,6 +16,11 @@ const BASE = '/consultants'
 export const cpExportPath = (params: Record<string, string>) => `${BASE}/leads/export?${new URLSearchParams(params)}`
 export const cpTemplatePath = `${BASE}/leads/import`
 export const cpDocumentPath = (leadId: string, documentId: string) => `${BASE}/leads/${leadId}/documents/${documentId}/download`
+/** A Channel Partners report as Excel or CSV: params = dateFrom / dateTo / team (format=csv for CSV). */
+export const cpReportExportPath = (key: string, params: Record<string, string>) =>
+  `${BASE}/reports/${key}/export?${new URLSearchParams(params)}`
+/** The Excel file a report email carried (Send history). */
+export const cpReportRunPath = (runId: string) => `${BASE}/reports/runs/${runId}/download`
 
 function cleanParams(params: object) {
   return Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''))
@@ -62,10 +70,13 @@ export const consultantsApi = api.injectEndpoints({
       query: (id) => ({ url: `${BASE}/leads/${id}`, method: 'DELETE' }),
       invalidatesTags: (_r, error) => (error ? [] : [{ type: 'CpLeads', id: 'LIST' }, 'CpFollowUps']),
     }),
-    cpAssign: build.mutation<ApiResponse<{ updated: number; skipped: number }>, { ids: string[]; owner: string | null }>({
+    /** `reason` (Workload, Leave …) goes on each lead's timeline */
+    cpAssign: build.mutation<
+      ApiResponse<{ updated: number; skipped: number }>,
+      { ids: string[]; owner: string | null; reason?: string }
+    >({
       query: (body) => ({ url: `${BASE}/leads/assign`, method: 'POST', body }),
-      invalidatesTags: (_r, error, { ids }) =>
-        error ? [] : [{ type: 'CpLeads', id: 'LIST' }, 'CpFollowUps', ...ids.map((id) => ({ type: 'CpLead' as const, id }))],
+      invalidatesTags: (_r, error, { ids }) => (error ? [] : ids.flatMap(leadChanged)),
     }),
     cpImport: build.mutation<ApiResponse<CpImportResult>, FormData>({
       query: (body) => ({ url: `${BASE}/leads/import`, method: 'POST', body }),
@@ -168,6 +179,73 @@ export const consultantsApi = api.injectEndpoints({
       query: ({ id, body }) => ({ url: id ? `${BASE}/sources/${id}` : `${BASE}/sources`, method: id ? 'PUT' : 'POST', body }),
       invalidatesTags: (_r, error) => (error ? [] : ['CpSources', 'CpMeta', 'CpStageLog']),
     }),
+
+    // ---------------------------------------------------------------- Target Manager (counted on every fetch)
+    cpTargets: build.query<ApiListResponse<CpTarget>, CpTargetListParams>({
+      query: (params) => ({ url: `${BASE}/targets`, params: cleanParams(params) }),
+      providesTags: ['CpTargets'],
+    }),
+    // the banner on Partner Leads: polled, so marked as background (it must not keep an idle session alive)
+    cpMyTargets: build.query<ApiResponse<CpTarget[]>, void>({
+      query: () => ({ url: `${BASE}/targets/mine`, headers: { 'X-Background': '1' } }),
+      providesTags: ['CpTargets'],
+    }),
+    cpTargetOptions: build.query<ApiResponse<CpTargetOptions>, void>({
+      query: () => `${BASE}/targets/options`,
+      providesTags: ['CpTargets', 'CpStages'],
+    }),
+    cpCreateTarget: build.mutation<ApiResponse<CpTarget>, CpTargetBody>({
+      query: (body) => ({ url: `${BASE}/targets`, method: 'POST', body }),
+      invalidatesTags: (_r, error) => (error ? [] : ['CpTargets']),
+    }),
+    cpUpdateTarget: build.mutation<ApiResponse<CpTarget>, { id: string; body: Partial<CpTargetBody> }>({
+      query: ({ id, body }) => ({ url: `${BASE}/targets/${id}`, method: 'PUT', body }),
+      invalidatesTags: (_r, error) => (error ? [] : ['CpTargets']),
+    }),
+    cpCancelTarget: build.mutation<ApiResponse<CpTarget>, string>({
+      query: (id) => ({ url: `${BASE}/targets/${id}/cancel`, method: 'POST' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['CpTargets']),
+    }),
+
+    // ---------------------------------------------------------------- Reports (same shapes as the student Reports)
+    cpReportCatalog: build.query<ApiResponse<ReportDefinition[]>, void>({
+      query: () => `${BASE}/reports`,
+      providesTags: ['CpReports', 'CpStages'],
+    }),
+    cpReportData: build.query<ApiResponse<ReportResult>, { key: string; dateFrom: string; dateTo?: string; team?: string }>({
+      query: ({ key, ...params }) => ({ url: `${BASE}/reports/${key}/data`, params: cleanParams(params) }),
+      providesTags: ['CpReports', 'CpStages'],
+      keepUnusedDataFor: 30,
+    }),
+    cpReportSchedules: build.query<ApiResponse<ReportSchedule[]>, void>({
+      query: () => `${BASE}/reports/schedules`,
+      providesTags: ['CpReportSchedules'],
+    }),
+    cpCreateReportSchedule: build.mutation<ApiResponse<ReportSchedule>, ReportScheduleBody>({
+      query: (body) => ({ url: `${BASE}/reports/schedules`, method: 'POST', body }),
+      invalidatesTags: (_r, error) => (error ? [] : ['CpReportSchedules']),
+    }),
+    cpUpdateReportSchedule: build.mutation<ApiResponse<ReportSchedule>, { id: string; body: Partial<ReportScheduleBody> }>({
+      query: ({ id, body }) => ({ url: `${BASE}/reports/schedules/${id}`, method: 'PUT', body }),
+      invalidatesTags: (_r, error) => (error ? [] : ['CpReportSchedules']),
+    }),
+    cpDeleteReportSchedule: build.mutation<ApiResponse<{ _id: string }>, string>({
+      query: (id) => ({ url: `${BASE}/reports/schedules/${id}`, method: 'DELETE' }),
+      invalidatesTags: (_r, error) => (error ? [] : ['CpReportSchedules', 'CpReportRuns']),
+    }),
+    // sends at once (the request waits for the email), so the run comes back sent or failed
+    cpRunReportSchedule: build.mutation<ApiResponse<ReportRun>, string>({
+      query: (id) => ({ url: `${BASE}/reports/schedules/${id}/run`, method: 'POST' }),
+      invalidatesTags: ['CpReportSchedules', 'CpReportRuns'],
+    }),
+    cpReportRuns: build.query<ApiListResponse<ReportRun>, Record<string, unknown>>({
+      query: (params) => ({ url: `${BASE}/reports/runs`, params: cleanParams(params) }),
+      providesTags: ['CpReportRuns'],
+    }),
+    cpResendReportRun: build.mutation<ApiResponse<ReportRun>, string>({
+      query: (id) => ({ url: `${BASE}/reports/runs/${id}/resend`, method: 'POST' }),
+      invalidatesTags: ['CpReportSchedules', 'CpReportRuns'],
+    }),
   }),
 })
 
@@ -204,4 +282,19 @@ export const {
   useCpStageLogQuery,
   useCpSourcesQuery,
   useCpSaveSourceMutation,
+  useCpTargetsQuery,
+  useCpMyTargetsQuery,
+  useCpTargetOptionsQuery,
+  useCpCreateTargetMutation,
+  useCpUpdateTargetMutation,
+  useCpCancelTargetMutation,
+  useCpReportCatalogQuery,
+  useCpReportDataQuery,
+  useCpReportSchedulesQuery,
+  useCpCreateReportScheduleMutation,
+  useCpUpdateReportScheduleMutation,
+  useCpDeleteReportScheduleMutation,
+  useCpRunReportScheduleMutation,
+  useCpReportRunsQuery,
+  useCpResendReportRunMutation,
 } = consultantsApi

@@ -26,6 +26,8 @@ export type ModuleKey =
   | 'consultants.leads'
   | 'consultants.follow_ups'
   | 'consultants.stages'
+  | 'consultants.targets'
+  | 'consultants.reports'
 
 export type ActionKey =
   | 'view'
@@ -456,6 +458,8 @@ export interface Notification {
     /** Channel Partners: the consultant lead, or (several assigned at once) its lead list */
     consultantLeadId?: string
     consultants?: boolean
+    /** Channel Partners: a scheduled report that could not be sent (opens its Send history) */
+    cpReportRunId?: string
   }
   readAt?: string | null
   createdAt: string

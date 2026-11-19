@@ -59,6 +59,7 @@ import { CpStageBadge } from './CpStageBadge'
 import { CP_LEADS_PATH, isoToLocalInput, localInputToIso } from './cpShared'
 import CpLogDrawer from './CpLogDrawer'
 import CpLeadFormDrawer from './CpLeadFormDrawer'
+import CpAssignModal from './CpAssignModal'
 
 // ---------------------------------------------------------------- small pieces
 
@@ -882,7 +883,7 @@ function HistoryTab({ leadId }: { leadId: string }) {
 
 // ---------------------------------------------------------------- page
 
-type ModalKind = 'call' | 'update' | 'edit' | 'delete'
+type ModalKind = 'call' | 'update' | 'edit' | 'assign' | 'delete'
 
 /** A Channel Partners lead: header with the stage and actions, then Overview / Timeline / Follow-ups / Notes / Documents / History. */
 export default function CpLeadDetailPage() {
@@ -901,6 +902,7 @@ export default function CpLeadDetailPage() {
   const meta = metaRes?.data
   const canEdit = can(user, 'consultants.leads', 'edit')
   const canDelete = can(user, 'consultants.leads', 'delete')
+  const canReassign = can(user, 'consultants.leads', 'reassign')
   const openFollowUps = followUpsRes?.data.filter((f) => f.status === 'open').length
 
   const tabs = [
@@ -1012,6 +1014,11 @@ export default function CpLeadDetailPage() {
                     <Pencil className="h-3.5 w-3.5" /> Edit details
                   </Button>
                 )}
+                {canReassign && (
+                  <Button variant="outline" size="sm" onClick={() => setModal('assign')} data-testid="cp-assign-lead">
+                    <UserPlus className="h-3.5 w-3.5" /> {lead.owner ? 'Reassign' : 'Assign'}
+                  </Button>
+                )}
                 {canDelete && (
                   <Button
                     variant="ghost"
@@ -1107,6 +1114,7 @@ export default function CpLeadDetailPage() {
 
       {lead && (modal === 'call' || modal === 'update') && <CpLogDrawer open onClose={close} lead={lead} withCall={modal === 'call'} />}
       {lead && modal === 'edit' && <CpLeadFormDrawer open onClose={close} lead={lead} />}
+      {lead && modal === 'assign' && <CpAssignModal lead={lead} onClose={close} />}
 
       <ConfirmDialog
         open={modal === 'delete'}

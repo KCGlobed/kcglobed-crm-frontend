@@ -1,0 +1,366 @@
+import { useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { BarChart3, CalendarClock, FileSpreadsheet, FileText } from 'lucide-react'
+import { toast } from 'sonner'
+import dayjs from 'dayjs'
+import { useCurrentUser } from '../../app/hooks'
+import { can } from '../../constants/permissions'
+import { authorizedDownload } from '../../lib/download'
+import { cn, parseApiError } from '../../lib/utils'
+import { cpReportExportPath, useCpReportCatalogQuery, useCpReportDataQuery } from '../../services/consultantsApi'
+import { Button } from '../../components/ui/Button'
+import { DataTable, type Column } from '../../components/ui/DataTable'
+import { EmptyState, ErrorState, LoadingState } from '../../components/ui/feedback'
+import { Input } from '../../components/ui/fields'
+import type { Pagination, ReportDefinition, ReportRow } from '../../types/models'
+import { formatValue, periodRange } from '../reports/reportFormat'
+import { TeamSelect } from '../reports/TeamSelect'
+
+/** A report row on screen: its Sr. No., or the Grand Total line. */
+interface TableRow {
+  key: string
+  n: number | null
+  total: boolean
+  values: ReportRow
+}
+
+/** Up to this many rows show on one page; a longer report (the Stage Movement) is paged on screen. */
+const PAGE_SIZES = [100, 250, 500]
+/** Text longer than this wraps (two lines, the rest on hover) instead of stretching the table: remarks, firms. */
+const LONG_TEXT = 40
+
+/**
+ * Channel Partners reports: the catalog grouped by category, the selected report with its dates, team, totals and
+ * Excel / CSV downloads. The student ReportViewer on the /consultants/reports endpoints; the columns come from the
+ * report (Daily Lead Work has one per active stage).
+ */
+export function CpReportViewer({ onSchedule }: { onSchedule: (reportKey: string, team?: string) => void }) {
+  const user = useCurrentUser()
+  const canExport = can(user, 'consultants.reports', 'export')
+  const canSchedule = can(user, 'consultants.reports', 'create')
+  const [params, setParams] = useSearchParams()
+  const catalog = useCpReportCatalogQuery()
+  const reports = useMemo(() => catalog.data?.data ?? [], [catalog.data])
+  const report = reports.find((r) => r.key === params.get('report')) ?? reports[0]
+
+  const today = dayjs().format('YYYY-MM-DD')
+  const [defaultFrom, defaultTo] = report ? periodRange(report.defaultPeriod) : [today, today]
+  const dateFrom = params.get('date_from') || defaultFrom
+  const dateTo = report?.oneDay ? dateFrom : params.get('date_to') || defaultTo
+  // kept when another report is picked; only a report that takes it gets it
+  const byTeam = !!report?.filters.includes('team')
+  const team = byTeam ? params.get('team') ?? '' : ''
+  const data = useCpReportDataQuery(
+    { key: report?.key ?? '', dateFrom, dateTo: report?.oneDay ? undefined : dateTo, team: team || undefined },
+    { skip: !report }
+  )
+  // currentData: nothing from the previous report or dates while the new one loads
+  const result = data.currentData?.data
+  const [downloading, setDownloading] = useState<'xlsx' | 'csv' | null>(null)
+
+  const update = (values: Record<string, string | undefined>) => {
+    const next = new URLSearchParams(params)
+    for (const [k, v] of Object.entries(values)) {
+      if (v) next.set(k, v)
+      else next.delete(k)
+    }
+    setParams(next, { replace: true })
+  }
+  const pickReport = (key: string) => update({ report: key, date_from: undefined, date_to: undefined })
+  const setRange = (from: string, to: string) => update({ date_from: from, date_to: report?.oneDay ? undefined : to })
+
+  const download = async (fmt: 'xlsx' | 'csv') => {
+    if (!report) return
+    const qs = { dateFrom, ...(report.oneDay ? {} : { dateTo }), ...(team ? { team } : {}), format: fmt }
+    setDownloading(fmt)
+    try {
+      await authorizedDownload(cpReportExportPath(report.key, qs), `${report.key}-${dateFrom}.${fmt}`)
+    } catch (e) {
+      toast.error(parseApiError(e).message)
+    } finally {
+      setDownloading(null)
+    }
+  }
+
+  if (catalog.isLoading) return <LoadingState />
+  if (catalog.isError) return <ErrorState message={parseApiError(catalog.error).message} onRetry={catalog.refetch} error={catalog.error} />
+  if (!report) return <EmptyState icon={BarChart3} title="No reports available" description="Ask your administrator for access to Channel Partners reports." />
+
+  const categories = [...new Set(reports.map((r) => r.category))]
+  return (
+    <div className="grid gap-4 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <nav aria-label="Reports" className="space-y-4">
+        {categories.map((category) => (
+          <div key={category}>
+            <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{category}</p>
+            <div className="space-y-1">
+              {reports
+                .filter((r) => r.category === category)
+                .map((r) => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    data-testid={`cp-report-pick-${r.key}`}
+                    onClick={() => pickReport(r.key)}
+                    aria-current={r.key === report.key ? 'page' : undefined}
+                    className={cn(
+                      'w-full rounded-lg border px-3 py-2 text-left transition-colors',
+                      r.key === report.key
+                        ? 'border-brand-200 bg-brand-50 text-brand-800'
+                        : 'border-transparent text-slate-700 hover:border-slate-200 hover:bg-white'
+                    )}
+                  >
+                    <span className="block text-sm font-medium">{r.name}</span>
+                    <span className="block text-[11px] text-slate-500">{r.oneDay ? 'One day' : 'Date range'}</span>
+                  </button>
+                ))}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      <section className="min-w-0 space-y-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-base font-semibold text-slate-900">{report.name}</h2>
+              <p className="mt-0.5 max-w-2xl text-xs leading-5 text-slate-500">{report.description}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {canExport && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-testid="cp-report-download-xlsx"
+                    onClick={() => download('xlsx')}
+                    loading={downloading === 'xlsx'}
+                  >
+                    <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-testid="cp-report-download-csv"
+                    onClick={() => download('csv')}
+                    loading={downloading === 'csv'}
+                  >
+                    <FileText className="h-3.5 w-3.5" /> CSV
+                  </Button>
+                </>
+              )}
+              {canSchedule && (
+                <Button size="sm" data-testid="cp-report-schedule" onClick={() => onSchedule(report.key, team || undefined)}>
+                  <CalendarClock className="h-3.5 w-3.5" /> Schedule email
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-end gap-2">
+            {report.periods.map((p) => {
+              const [from, to] = periodRange(p.value)
+              const active = from === dateFrom && to === dateTo
+              return (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => setRange(from, to)}
+                  className={cn(
+                    'h-8 rounded-full border px-3 text-xs font-medium transition-colors',
+                    active ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-300 bg-white text-slate-600 hover:border-brand-300 hover:text-brand-700'
+                  )}
+                >
+                  {p.label}
+                </button>
+              )
+            })}
+            <div className="flex items-center gap-1.5">
+              <label className="sr-only" htmlFor="cp-report-from">
+                {report.oneDay ? 'Date' : 'From'}
+              </label>
+              <Input
+                id="cp-report-from"
+                type="date"
+                className="h-8 w-auto text-xs"
+                value={dateFrom}
+                max={today}
+                onChange={(e) => e.target.value && setRange(e.target.value, report.oneDay || e.target.value > dateTo ? e.target.value : dateTo)}
+              />
+              {!report.oneDay && (
+                <>
+                  <span className="text-xs text-slate-400">to</span>
+                  <label className="sr-only" htmlFor="cp-report-to">
+                    To
+                  </label>
+                  <Input
+                    id="cp-report-to"
+                    type="date"
+                    className="h-8 w-auto text-xs"
+                    value={dateTo}
+                    min={dateFrom}
+                    max={today}
+                    onChange={(e) => e.target.value && setRange(dateFrom, e.target.value)}
+                  />
+                </>
+              )}
+            </div>
+            {byTeam && (
+              <TeamSelect
+                className="!h-8 !w-auto text-xs"
+                aria-label="Team"
+                title="A team includes the teams below it"
+                value={team}
+                onChange={(value) => update({ team: value || undefined })}
+              />
+            )}
+          </div>
+        </div>
+
+        {result && result.summary.length > 0 && (
+          <div data-testid="cp-report-summary" className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+            {result.summary.map((s) => (
+              <div key={s.label} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{s.label}</p>
+                <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{formatValue(s.type, s.value)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <ReportTable
+          // a new report, period or team starts on page 1
+          key={`${report.key}|${dateFrom}|${dateTo}|${team}`}
+          // the columns the rows were built with (Daily Lead Work: one per active stage at that moment)
+          report={result?.report ?? report}
+          rows={result?.rows}
+          totals={result?.totals ?? null}
+          loading={data.isFetching}
+          error={data.isError}
+          errorDetail={data.error}
+          onRetry={data.refetch}
+          period={result && [result.periodLabel, ...result.filters.map((f) => f.value)].join(' · ')}
+        />
+
+        {report.notes.map((note) => (
+          <p key={note} className="text-[11px] leading-5 text-slate-500">
+            {note}
+          </p>
+        ))}
+      </section>
+    </div>
+  )
+}
+
+function ReportTable({
+  report,
+  rows,
+  totals,
+  loading,
+  error,
+  errorDetail,
+  onRetry,
+  period,
+}: {
+  report: ReportDefinition
+  rows: ReportRow[] | undefined
+  totals: ReportRow | null
+  loading: boolean
+  error: boolean
+  errorDetail: unknown
+  onRetry: () => void
+  period?: string
+}) {
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(PAGE_SIZES[0])
+  const box = useRef<HTMLDivElement>(null)
+  // a new page starts at its first row (the table scrolls inside its own box)
+  const goTo = (next: number) => {
+    setPage(next)
+    box.current?.querySelector('table')?.parentElement?.scrollTo({ top: 0 })
+  }
+
+  const columns: Column<TableRow>[] = [
+    ...(report.numbered
+      ? [{
+          key: '__n',
+          header: 'Sr. No.',
+          align: 'center' as const,
+          render: (r: TableRow) => (r.total ? <span className="font-semibold">Grand Total</span> : <span className="text-xs text-slate-500">{r.n}</span>),
+        }]
+      : []),
+    ...report.columns.map((c, i) => ({
+      key: c.key,
+      header: c.label,
+      align: c.align,
+      render: (r: TableRow) => {
+        if (r.total && i === 0 && !report.numbered) return <span className="font-semibold">Grand Total</span>
+        const value = r.values[c.key]
+        if (r.total && (value === null || value === undefined)) return null
+        const long = c.type === 'text' && typeof value === 'string' && value.length > LONG_TEXT
+        return (
+          <span
+            title={long ? (value as string) : undefined}
+            className={cn(
+              'text-xs tabular-nums',
+              c.type === 'text' ? 'text-slate-800' : 'text-slate-700',
+              i === 0 && 'font-medium',
+              long && 'line-clamp-2 min-w-56 max-w-xs whitespace-normal',
+              long && c.align === 'center' && 'mx-auto',
+              long && c.align === 'right' && 'ml-auto'
+            )}
+          >
+            {formatValue(c.type, value)}
+          </span>
+        )
+      },
+    })),
+  ]
+
+  const count = rows?.length ?? 0
+  const paged = count > PAGE_SIZES[0]
+  const pages = paged ? Math.ceil(count / pageSize) : 1
+  const current = Math.min(page, pages)
+  const start = paged ? (current - 1) * pageSize : 0
+  const shown = rows && (paged ? rows.slice(start, start + pageSize) : rows)
+  const tableRows: TableRow[] | undefined = shown && [
+    ...shown.map((values, i) => ({ key: String(start + i), n: start + i + 1, total: false, values })),
+    // the Grand Total closes the last page
+    ...(totals && count && current === pages ? [{ key: 'total', n: null, total: true, values: totals }] : []),
+  ]
+  const pagination: Pagination | undefined = paged
+    ? {
+        total_results: count,
+        total_pages: pages,
+        current_page: current,
+        page_size: pageSize,
+        next_page: current < pages ? current + 1 : null,
+        previous_page: current > 1 ? current - 1 : null,
+      }
+    : undefined
+
+  return (
+    <div ref={box} data-testid="cp-report-table" data-report={report.key}>
+      <DataTable
+        columns={columns}
+        rows={tableRows}
+        rowKey={(r) => r.key}
+        loading={loading && !rows}
+        error={error}
+        errorMessage={error ? parseApiError(errorDetail).message : undefined}
+        errorDetail={errorDetail}
+        onRetry={onRetry}
+        emptyTitle="Nothing to report"
+        emptyDescription={period ? `No data for ${period}.` : undefined}
+        rowClassName={(r) => (r.total ? 'bg-slate-50 font-semibold [&_span]:font-semibold' : undefined)}
+        pagination={pagination}
+        onPageChange={goTo}
+        onPageSizeChange={(size) => {
+          setPageSize(size)
+          goTo(1)
+        }}
+        pageSizes={PAGE_SIZES}
+      />
+    </div>
+  )
+}

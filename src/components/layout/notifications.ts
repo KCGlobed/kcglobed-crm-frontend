@@ -56,6 +56,7 @@ export function useOpenNotification() {
       else if (n.type === 'whatsapp_unknown') navigate('/app/admin/audit?tab=communications&action=whatsapp_unknown_reply')
       else if (n.data?.leadId) navigate(`/app/leads/${n.data.leadId}`)
       else if (n.data?.consultantLeadId) navigate(`/app/consultants/leads/${n.data.consultantLeadId}`)
+      else if (n.data?.cpReportRunId) navigate('/app/consultants/reports?tab=history')
       else if (n.data?.consultants) navigate('/app/consultants/leads')
       else if (n.data?.smart) navigate(`/app/leads?smart=${n.data.smart}`)
       else if (n.data?.templateId) navigate(`/app/admin/messaging/whatsapp/${n.data.templateId}`)

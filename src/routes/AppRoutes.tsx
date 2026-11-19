@@ -37,6 +37,8 @@ const CpImportPage = lazy(() => import('../pages/consultants/CpImportPage'))
 const CpLeadDetailPage = lazy(() => import('../pages/consultants/CpLeadDetailPage'))
 const CpFollowUpsPage = lazy(() => import('../pages/consultants/CpFollowUpsPage'))
 const CpStagesPage = lazy(() => import('../pages/consultants/CpStagesPage'))
+const CpTargetsPage = lazy(() => import('../pages/consultants/CpTargetsPage'))
+const CpReportsPage = lazy(() => import('../pages/consultants/CpReportsPage'))
 
 function PageLoader() {
   return (
@@ -117,6 +119,8 @@ export default function AppRoutes() {
         <Route path="consultants/leads/:id" element={<RequirePermission module="consultants.leads"><Lazy><CpLeadDetailPage /></Lazy></RequirePermission>} />
         <Route path="consultants/follow-ups" element={<RequirePermission module="consultants.follow_ups"><Lazy><CpFollowUpsPage /></Lazy></RequirePermission>} />
         <Route path="consultants/stages" element={<RequirePermission module="consultants.stages"><Lazy><CpStagesPage /></Lazy></RequirePermission>} />
+        <Route path="consultants/targets" element={<RequirePermission module="consultants.targets"><Lazy><CpTargetsPage /></Lazy></RequirePermission>} />
+        <Route path="consultants/reports" element={<RequirePermission module="consultants.reports"><Lazy><CpReportsPage /></Lazy></RequirePermission>} />
         <Route path="profile" element={<Lazy><ProfilePage /></Lazy>} />
         <Route path="notifications" element={<Lazy><NotificationsPage /></Lazy>} />
         <Route path="forbidden" element={<Forbidden />} />

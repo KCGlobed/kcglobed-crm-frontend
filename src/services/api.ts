@@ -135,6 +135,10 @@ const crmApi = createApi({
     'CpStages',
     'CpStageLog',
     'CpSources',
+    'CpTargets',
+    'CpReports',
+    'CpReportSchedules',
+    'CpReportRuns',
   ],
   endpoints: () => ({}),
 })

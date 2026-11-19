@@ -134,6 +134,8 @@ export interface CpLeadListParams {
   followUp?: 'overdue' | 'today' | 'none'
   createdFrom?: string
   createdTo?: string
+  /** the leads behind a Target Manager number (a stage / sub-stage target) */
+  target?: string
   sort_by?: 'createdAt' | 'nextFollowUpAt' | 'lastActivityAt' | 'name' | 'leadNo'
   sort_order?: 'asc' | 'desc'
 }
@@ -250,4 +252,70 @@ export interface CpStageLogEntry {
   summary: string | null
   before: unknown
   after: unknown
+}
+
+// ---------------------------------------------------------------- Target Manager (phase 2)
+
+/** stage: leads reaching a stage · sub_stage: leads reaching a sub-stage · calls: calls logged */
+export type CpTargetMeasure = 'stage' | 'sub_stage' | 'calls'
+export type CpTargetStatus = 'active' | 'completed' | 'cancelled' | 'expired'
+
+/**
+ * A partnership executive's goal between startAt and endAt. A stage / sub-stage target counts leads that reached that
+ * point in the range while the assignee owned them and have not gone back to an earlier stage since; a calls target
+ * counts the calls they logged.
+ */
+export interface CpTarget {
+  _id: string
+  assignee: CpPerson
+  measure: CpTargetMeasure
+  measureLabel: string
+  /** the stage counted (a sub-stage target: the sub-stage's stage); null for calls */
+  stage: CpPerson | null
+  subStage: CpPerson | null
+  /** "Meeting", "Countersigned by GCC School (MoU Process)", "Calls logged" */
+  goalLabel: string
+  targetCount: number
+  /** live while active, frozen once closed */
+  achieved: number
+  /** achieved ÷ targetCount × 100, can exceed 100 */
+  percent: number
+  description: string | null
+  startAt: string
+  endAt: string
+  status: CpTargetStatus
+  closedAt: string | null
+  assignedBy: CpPerson | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CpTargetOptions {
+  measures: { value: CpTargetMeasure; label: string }[]
+  stages: { _id: string; name: string; type: CpStageType; subStages: { _id: string; name: string }[] }[]
+  /** the partnership team the caller may assign to */
+  assignees: CpPerson[]
+  /** assignee id → goals already running ("calls", "stage:<id>", "sub_stage:<id>"): one active target per goal */
+  busy: Record<string, string[]>
+}
+
+export interface CpTargetBody {
+  assignee: string
+  measure: CpTargetMeasure
+  stage?: string | null
+  subStage?: string | null
+  targetCount: number
+  description?: string
+  startAt: string
+  endAt: string
+}
+
+export interface CpTargetListParams {
+  page?: number
+  page_size?: number
+  /** default active; 'all' for every status */
+  status?: CpTargetStatus | 'all'
+  assignee?: string
+  measure?: CpTargetMeasure
+  search?: string
 }

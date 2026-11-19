@@ -17,10 +17,12 @@ import type { CpLead, CpLeadListParams } from '../../types/consultants'
 import { CpStageBadge } from './CpStageBadge'
 import { CP_LEADS_PATH, cpLeadPath } from './cpShared'
 import CpLeadFormDrawer from './CpLeadFormDrawer'
+import { CpTargetBanner } from './CpTargetBanner'
 
 /** URL params that are paging / sorting, not filters */
 const LIST_KEYS = ['page', 'page_size', 'sort_by', 'sort_order']
-const FILTER_KEYS = ['search', 'stage', 'subStage', 'source', 'owner', 'followUp', 'createdFrom', 'createdTo'] as const
+/** `target`: the leads behind a Target Manager number (its name rides along as `target_label`, for the chip only) */
+const FILTER_KEYS = ['search', 'stage', 'subStage', 'source', 'owner', 'followUp', 'createdFrom', 'createdTo', 'target'] as const
 const SORT_KEYS: NonNullable<CpLeadListParams['sort_by']>[] = ['createdAt', 'nextFollowUpAt', 'lastActivityAt', 'name', 'leadNo']
 const FOLLOW_UPS = [
   { value: 'overdue', label: 'Overdue' },
@@ -83,6 +85,8 @@ export default function CpLeadsPage() {
   const showOwnerFilter = owners.length > 1 || canReassign
   const stageId = params.get('stage') ?? ''
   const chosenStage = stages.find((s) => s._id === stageId)
+  const targetId = params.get('target')
+  const targetLabel = params.get('target_label')
 
   const pageIds = data?.data.map((l) => l._id) ?? []
   const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selected.includes(id))
@@ -118,6 +122,12 @@ export default function CpLeadsPage() {
     else next.delete('createdFrom')
     if (to) next.set('createdTo', to)
     else next.delete('createdTo')
+    replaceParams(next)
+  }
+  const clearTarget = () => {
+    const next = new URLSearchParams(params)
+    next.delete('target')
+    next.delete('target_label')
     replaceParams(next)
   }
   const clearAll = () => {
@@ -226,6 +236,18 @@ export default function CpLeadsPage() {
     { key: 'mobile', header: 'Mobile', render: (l) => <span className="text-xs text-slate-700">{l.mobile}</span> },
     { key: 'city', header: 'City', render: (l) => <span className="text-xs text-slate-600">{l.city || '—'}</span> },
     {
+      key: 'source',
+      header: 'Source',
+      render: (l) =>
+        l.source ? (
+          <span className="block max-w-40 truncate text-xs text-slate-600" title={l.source.name}>
+            {l.source.name}
+          </span>
+        ) : (
+          <span className="text-xs text-slate-400">—</span>
+        ),
+    },
+    {
       key: 'stage',
       header: 'Stage',
       render: (l) => (
@@ -317,6 +339,7 @@ export default function CpLeadsPage() {
 
   return (
     <>
+      <CpTargetBanner />
       <PageHeader
         title="Partner Leads"
         description="Channel Partners · consultant leads"
@@ -423,6 +446,27 @@ export default function CpLeadsPage() {
         </Select>
         <DateRangeFilter from={params.get('createdFrom') ?? ''} to={params.get('createdTo') ?? ''} onChange={setCreated} />
       </FilterBar>
+
+      {targetId && (
+        <div className="-mt-2 mb-3 flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">Filtered By</span>
+          <span
+            data-testid="cp-target-filter-chip"
+            className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 py-0.5 pl-2.5 pr-1 font-medium text-brand-700"
+          >
+            Leads behind a target{targetLabel ? `: ${targetLabel}` : ''}
+            <button
+              type="button"
+              aria-label="Remove target filter"
+              title="Remove"
+              onClick={clearTarget}
+              className="rounded-full p-0.5 text-brand-500 hover:bg-brand-100 hover:text-brand-800"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        </div>
+      )}
 
       {canReassign && selected.length > 0 && (
         <div className="sticky top-0 z-20 mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm shadow-sm">

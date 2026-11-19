@@ -44,6 +44,8 @@ export const NAV_SECTIONS: { title?: string; items: NavItem[] }[] = [
     items: [
       { label: 'Partner Leads', path: '/app/consultants/leads', module: 'consultants.leads', icon: Handshake },
       { label: 'Partner Follow-ups', path: '/app/consultants/follow-ups', module: 'consultants.follow_ups', icon: CalendarCheck },
+      { label: 'Partner Targets', path: '/app/consultants/targets', module: 'consultants.targets', icon: Target },
+      { label: 'Partner Reports', path: '/app/consultants/reports', module: 'consultants.reports', icon: BarChart3 },
       { label: 'Lead Stages', path: '/app/consultants/stages', module: 'consultants.stages', icon: Layers },
     ],
   },

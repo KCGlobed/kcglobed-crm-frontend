@@ -38,6 +38,8 @@ export const MODULES: { key: ModuleKey; label: string; slice1: boolean; children
       { key: 'consultants.leads', label: 'Leads' },
       { key: 'consultants.follow_ups', label: 'Follow-ups' },
       { key: 'consultants.stages', label: 'Lead Stages' },
+      { key: 'consultants.targets', label: 'Target Manager' },
+      { key: 'consultants.reports', label: 'Reports' },
     ],
   },
 ]
