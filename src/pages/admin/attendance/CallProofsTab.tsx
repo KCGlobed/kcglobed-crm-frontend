@@ -10,6 +10,7 @@ import { DataTable, type Column } from '../../../components/ui/DataTable'
 import { CallProofPreview } from '../../leads/CallProofDialogs'
 import { DirectionCell, HungUpCell, RingCell, SmartfloCallDialog, SmartfloStatusCell, TotalCell } from './SmartfloCallStatus'
 import type { AttendanceCallRow } from '../../../types/models'
+import { CALL_KINDS } from './callKinds'
 
 /**
  * Attendance → Call Proofs: every logged call with the duration the counsellor entered and its proofs. Preview
@@ -35,7 +36,7 @@ export function CallProofsTab({ filters, setParam }: { filters: Record<string, u
       render: (c) => (
         <span className="flex items-center gap-1.5 text-xs font-medium text-slate-800">
           {c.user?.name ?? <span className="text-slate-400">Not answered</span>}
-          {c.source === 'dialer' && <Badge tone="cyan">Dialer</Badge>}
+          {c.source === 'dialer' ? <Badge tone="cyan">Dialer</Badge> : <Badge tone="amber">Manual</Badge>}
         </span>
       ),
     },
@@ -56,6 +57,20 @@ export function CallProofsTab({ filters, setParam }: { filters: Record<string, u
         ),
     },
     { key: 'direction', header: 'Direction', render: (c) => <DirectionCell call={c} /> },
+    {
+      key: 'kind',
+      header: 'Call Type',
+      render: (c) => {
+        const kind = c.kind ? CALL_KINDS[c.kind] : null
+        return kind ? (
+          <span title={kind.hint} className="whitespace-nowrap">
+            <Badge tone={kind.tone}>{kind.label}</Badge>
+          </span>
+        ) : (
+          <span className="text-xs text-slate-400">—</span>
+        )
+      },
+    },
     {
       key: 'duration',
       header: 'Talk Time',

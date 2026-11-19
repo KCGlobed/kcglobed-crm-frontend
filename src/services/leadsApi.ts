@@ -38,6 +38,9 @@ export interface LeadListParams {
   sort_order?: 'asc' | 'desc'
   stage?: string
   sub_stage?: string
+  /** First Touch: first stage / disposition the lead was moved to (comma-separated ids, `__none__` = not touched) */
+  first_stage?: string
+  first_sub_stage?: string
   source?: string
   owner?: string
   program?: string

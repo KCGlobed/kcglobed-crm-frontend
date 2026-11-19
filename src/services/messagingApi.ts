@@ -43,6 +43,46 @@ export interface MessagingOptions {
   leadFields: { value: string; label: string }[]
 }
 
+/** The credits strip: what each channel can still send. `status` low → warn; unavailable → `note` says why. */
+interface ChannelCreditsBase {
+  sentToday: number
+  sentMonth: number
+  status: 'ok' | 'low' | 'unavailable'
+  checkedAt: string | null
+  note: string | null
+}
+export interface SmsCredits extends ChannelCreditsBase {
+  channel: 'sms'
+  credits: number | null
+  pools: { label: string; credits: number }[]
+}
+export interface WhatsAppCredits extends ChannelCreditsBase {
+  channel: 'whatsapp'
+  /** unique people business-initiated templates reached in the last 24 h, against the number's tier */
+  used24h: number
+  limit: number | null
+  left: number | null
+  tier: string | null
+  quality: string | null
+  spend: number | null
+  currency: string | null
+  number: string | null
+}
+export interface EmailCredits extends ChannelCreditsBase {
+  channel: 'email'
+  used24h: number
+  limit: number
+  left: number
+  perMinute: number
+  sender: string
+  host: string | null
+}
+export interface CreditsOverview {
+  sms: SmsCredits
+  whatsapp: WhatsAppCredits
+  email: EmailCredits
+}
+
 export interface CampaignBody {
   channel: 'sms' | 'email' | 'whatsapp'
   template: string
@@ -59,6 +99,9 @@ export const messagingApi = api.injectEndpoints({
   endpoints: (build) => ({
     messagingOptions: build.query<ApiResponse<MessagingOptions>, void>({
       query: () => '/messaging/options',
+    }),
+    messagingCredits: build.query<ApiResponse<CreditsOverview>, { refresh?: boolean } | void>({
+      query: (args) => ({ url: '/messaging/credits', params: args?.refresh ? { refresh: 1 } : undefined }),
     }),
     listMessageTemplates: build.query<ApiResponse<MessageTemplate[]>, { channel?: string; active?: boolean }>({
       query: ({ channel, active }) => ({
@@ -279,6 +322,8 @@ export const messagingApi = api.injectEndpoints({
 
 export const {
   useMessagingOptionsQuery,
+  useMessagingCreditsQuery,
+  useLazyMessagingCreditsQuery,
   useListMessageTemplatesQuery,
   useSaveMessageTemplateMutation,
   useDeleteMessageTemplateMutation,
