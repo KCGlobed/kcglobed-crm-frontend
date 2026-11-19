@@ -10,6 +10,17 @@ export type MasterType =
   | 'tags'
   | 'custom-fields'
 
+/** Masters → Download Masking: per download, the roles / users who get FULL mobile & email (Super Admin always does). */
+export interface ExportMaskingRule {
+  roles: string[]
+  users: string[]
+}
+export interface ExportMasking {
+  modules: { key: string; label: string }[]
+  fullAccess: Record<string, ExportMaskingRule>
+  updatedAt?: string
+}
+
 interface MasterListParams {
   type: MasterType
   page?: number
@@ -49,6 +60,14 @@ export const mastersApi = api.injectEndpoints({
       query: ({ type, id, body }) => ({ url: `/masters/${type}/${id}`, method: 'PUT', body }),
       invalidatesTags: (_r, _e, { type }) => [{ type: 'MasterList', id: type }, 'Masters'],
     }),
+    exportMasking: build.query<ApiResponse<ExportMasking>, void>({
+      query: () => '/masters/export-masking',
+      providesTags: ['ExportMasking'],
+    }),
+    updateExportMasking: build.mutation<ApiResponse<ExportMasking>, { fullAccess: Record<string, ExportMaskingRule> }>({
+      query: (body) => ({ url: '/masters/export-masking', method: 'PUT', body }),
+      invalidatesTags: ['ExportMasking'],
+    }),
     deleteMaster: build.mutation<ApiResponse<unknown>, { type: MasterType; id: string }>({
       query: ({ type, id }) => ({ url: `/masters/${type}/${id}`, method: 'DELETE' }),
       invalidatesTags: (_r, _e, { type }) => [{ type: 'MasterList', id: type }, 'Masters'],
@@ -62,4 +81,6 @@ export const {
   useCreateMasterMutation,
   useUpdateMasterMutation,
   useDeleteMasterMutation,
+  useExportMaskingQuery,
+  useUpdateExportMaskingMutation,
 } = mastersApi
