@@ -23,6 +23,7 @@ import { Checkbox, FormField, Input, Select } from '../../components/ui/fields'
 import { camelKey, cn, formatDate, parseApiError } from '../../lib/utils'
 import { SubStagesEditor, type SubStageDraft } from './SubStagesEditor'
 import { StageReassignModal } from './StageReassignModal'
+import { ExportMaskingTab } from './ExportMaskingTab'
 
 type Row = Record<string, unknown> & { _id: string }
 
@@ -720,21 +721,32 @@ function ChannelTable({ config }: { config: MasterConfig }) {
   )
 }
 
+/** Masters → Download Masking: who gets full mobile / email in PDF & Excel downloads (Super Admin only). */
+const MASKING_TAB = 'download-masking'
+
 export default function MastersPage() {
+  const me = useCurrentUser()
   const [params, setParams] = useSearchParams()
   const active = (params.get('tab') as MasterType) ?? 'stages'
+  const masking = Boolean(me?.isSuperAdmin) && params.get('tab') === MASKING_TAB
   const config = VISIBLE_CONFIGS.find((c) => c.type === active) ?? VISIBLE_CONFIGS[0]
+  const tabs = [
+    ...VISIBLE_CONFIGS.map((c) => ({ key: c.type as string, label: c.label })),
+    ...(me?.isSuperAdmin ? [{ key: MASKING_TAB, label: 'Download Masking' }] : []),
+  ]
 
   return (
     <>
       <PageHeader title="Masters" description="Configurable lists reused by every module — no hard-coded values" />
-      <Tabs
-        tabs={VISIBLE_CONFIGS.map((c) => ({ key: c.type, label: c.label }))}
-        active={config.type}
-        onChange={(key) => setParams({ tab: key }, { replace: true })}
-      />
+      <Tabs tabs={tabs} active={masking ? MASKING_TAB : config.type} onChange={(key) => setParams({ tab: key }, { replace: true })} />
       <div className="mt-4">
-        {config.view === 'channels' ? <ChannelTable key={config.type} config={config} /> : <MasterTable key={config.type} config={config} />}
+        {masking ? (
+          <ExportMaskingTab />
+        ) : config.view === 'channels' ? (
+          <ChannelTable key={config.type} config={config} />
+        ) : (
+          <MasterTable key={config.type} config={config} />
+        )}
       </div>
     </>
   )

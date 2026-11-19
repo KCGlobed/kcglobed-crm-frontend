@@ -2,6 +2,7 @@ import { Fragment, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Download } from 'lucide-react'
 import { toast } from 'sonner'
+import { useCurrentUser } from '../../../app/hooks'
 import { authorizedDownload } from '../../../lib/download'
 import { Badge, StatusBadge } from '../../../components/ui/Badge'
 import { Button } from '../../../components/ui/Button'
@@ -234,6 +235,8 @@ export function MessageAuditDetail({ entry }: { entry: AuditLogEntry }) {
 /** A bulk send: who sent what to how many, how it went, and every recipient with the live status. */
 export function CampaignAuditDetail({ entry }: { entry: AuditLogEntry }) {
   const snap = (entry.after ?? {}) as CampaignAuditSnapshot
+  // the recipients CSV lists full numbers / emails: the Super Admin's alone (the server refuses everyone else)
+  const isSuperAdmin = Boolean(useCurrentUser()?.isSuperAdmin)
   const { data } = useGetAuditLogQuery(entry._id)
   const details = data?.data.details
   const campaign = details?.kind === 'campaign' ? details.campaign : undefined
@@ -289,7 +292,7 @@ export function CampaignAuditDetail({ entry }: { entry: AuditLogEntry }) {
           Bounces go back to the sender mailbox and are not read by the CRM yet, so a bounced email still shows Sent here.
         </p>
       )}
-      {campaignId && (
+      {campaignId && isSuperAdmin && (
         <div className="flex justify-end">
           <Button
             variant="outline"

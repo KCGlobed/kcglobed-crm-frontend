@@ -96,6 +96,7 @@ const crmApi = createApi({
     'Templates',
     'Masters',
     'MasterList',
+    'ExportMasking',
     'Notifications',
     'Dashboard',
     'AuditLogs',
