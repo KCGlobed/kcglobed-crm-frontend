@@ -19,13 +19,30 @@ import type { Lead } from '../../types/models'
 import { taskTypeLabel, toLocalInput } from '../tasks/taskMeta'
 import { offersFollowUp } from '../leads/stageForm'
 
+type Ref = { _id: string; name: string }
+
 /**
- * Deactivating a lead stage that still has leads on it: instead of a bare
- * validation error, this popup lists the leads, lets the admin bulk-select
- * them and move them to another active stage, and only once the stage is
- * empty can it be deactivated. With no leads it acts as a plain confirm.
+ * Deactivating a lead stage — or one of its sub-stages — that still has leads on
+ * it: instead of a bare validation error, this popup lists the leads, lets the
+ * admin bulk-select them and move them elsewhere, and only once it is empty can
+ * it be deactivated. With no leads it acts as a plain confirm.
+ *
+ * - `subStage` set: the leads on that sub-stage, movable to another sub-stage of
+ *   the same stage or to another stage.
+ * - `onDeactivate` set (the edit form's Active checkboxes): the final button hands
+ *   back to the caller instead of deactivating right away — the form saves it.
  */
-export function StageReassignModal({ stage, onClose }: { stage: { _id: string; name: string }; onClose: () => void }) {
+export function StageReassignModal({
+  stage,
+  subStage,
+  onDeactivate,
+  onClose,
+}: {
+  stage: Ref
+  subStage?: Ref
+  onDeactivate?: () => void
+  onClose: () => void
+}) {
   const me = useCurrentUser()
   const canMove = can(me, 'leads', 'edit')
   const [page, setPage] = useState(1)
@@ -40,14 +57,22 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
   const [followUpType, setFollowUpType] = useState('follow_up_call')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const { data, isLoading, isFetching } = useListLeadsQuery({ stage: stage._id, page, page_size: pageSize })
+  // the leads being emptied out: on the sub-stage, or on the whole stage
+  const scope = subStage ? { sub_stage: subStage._id } : { stage: stage._id }
+  const { data, isLoading, isFetching } = useListLeadsQuery({ ...scope, page, page_size: pageSize })
   const { data: options } = useDispositionOptionsQuery()
   const [moveLeads, { isLoading: moving }] = useBulkChangeStageMutation()
   const [remove, { isLoading: removing }] = useDeleteMasterMutation()
 
   const leads = (data?.data ?? []) as Lead[]
   const total = data?.pagination?.total_results ?? 0
-  const targets = (options?.data.stages ?? []).filter((s) => !s.locked && s._id !== stage._id)
+  // A stage's leads go to another stage. A sub-stage's leads may also stay in the same
+  // stage on one of its other sub-stages (allowed even on a system stage, as the lead is already there).
+  const targets = (options?.data.stages ?? [])
+    .map((s) => (subStage && s._id === stage._id ? { ...s, subStages: s.subStages.filter((x) => x._id !== subStage._id) } : s))
+    .filter((s) =>
+      subStage && s._id === stage._id ? s.subStages.length > 0 : !s.locked && s._id !== stage._id
+    )
   const target = targets.find((s) => s._id === targetId)
   const subStages = target?.subStages ?? []
   const count = allMatching ? total : selected.length
@@ -64,7 +89,7 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
     if (!count) return toast.error('Select at least one lead')
     try {
       const res = await moveLeads({
-        ...(allMatching ? { selectAll: true, filters: { stage: stage._id } } : { leadIds: selected }),
+        ...(allMatching ? { selectAll: true, filters: scope } : { leadIds: selected }),
         stage: targetId,
         subStage: subStageId || null,
         ...(offersFollowUp(target) && followUpAt ? { followUpAt: new Date(followUpAt).toISOString(), followUpType } : {}),
@@ -82,7 +107,12 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
     }
   }
 
-  const onDeactivate = async () => {
+  const onConfirm = async () => {
+    if (onDeactivate) {
+      onDeactivate()
+      onClose()
+      return
+    }
     try {
       await remove({ type: 'stages', id: stage._id }).unwrap()
       toast.success(`Stage "${stage.name}" deactivated`)
@@ -127,14 +157,19 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
   ]
 
   const empty = !isLoading && total === 0
+  const what = subStage ? 'sub-stage' : 'stage'
+  const name = subStage ? `${stage.name} › ${subStage.name}` : stage.name
 
   return (
     <Modal
       open
       onClose={onClose}
       size="xl"
-      title={`Deactivate stage "${stage.name}"`}
-      description="Inactive stages stay on past records but disappear from dropdowns."
+      title={`Deactivate ${what} "${subStage ? subStage.name : stage.name}"`}
+      description={
+        `Inactive ${what}s stay on past records but disappear from dropdowns.` +
+        (onDeactivate ? ' It is deactivated when you save the stage.' : '')
+      }
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
@@ -145,23 +180,24 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
               Move {count || ''} lead{count === 1 ? '' : 's'}
             </Button>
           )}
-          <Button variant="danger" onClick={onDeactivate} loading={removing} disabled={!empty}>
-            <Ban className="h-3.5 w-3.5" /> Deactivate stage
+          <Button variant="danger" onClick={onConfirm} loading={removing} disabled={!empty}>
+            <Ban className="h-3.5 w-3.5" /> Deactivate {what}
           </Button>
         </>
       }
     >
       {empty ? (
         <p className="text-sm text-slate-600">
-          No leads are in this stage. Deactivating it removes it from every dropdown — existing records keep it.
+          No leads are in this {what}. Deactivating it removes it from every dropdown — existing records keep it.
         </p>
       ) : (
         <div className="space-y-4">
           <div className="flex gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
             <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <p>
-              <b>{total}</b> lead{total === 1 ? ' is' : 's are'} still in <Badge>{stage.name}</Badge>. Move them to another
-              active stage first — the stage can be deactivated only once it is empty.
+              <b>{total}</b> lead{total === 1 ? ' is' : 's are'} still in <Badge>{name}</Badge>. Move them to{' '}
+              {subStage ? 'another sub-stage or stage' : 'another active stage'} first — the {what} can be deactivated only
+              once it is empty.
               {!canMove && ' You need the "edit leads" permission to move them.'}
             </p>
           </div>
@@ -181,6 +217,7 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
                   {targets.map((s) => (
                     <option key={s._id} value={s._id}>
                       {s.name}
+                      {subStage && s._id === stage._id ? ' (same stage)' : ''}
                     </option>
                   ))}
                 </Select>
@@ -237,13 +274,13 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
             <p className="text-xs text-slate-600">
               All {pageIds.length} leads on this page are selected.{' '}
               <button type="button" className="font-semibold text-brand-700 hover:underline" onClick={() => setAllMatching(true)}>
-                Select all {total} leads in this stage
+                Select all {total} leads in this {what}
               </button>
             </p>
           )}
           {allMatching && (
             <p className="text-xs text-slate-600">
-              All <b>{total}</b> leads in this stage are selected.{' '}
+              All <b>{total}</b> leads in this {what} are selected.{' '}
               <button
                 type="button"
                 className="font-semibold text-brand-700 hover:underline"
@@ -261,7 +298,7 @@ export function StageReassignModal({ stage, onClose }: { stage: { _id: string; n
             rows={isLoading ? undefined : leads}
             rowKey={(l) => l._id}
             loading={isLoading || isFetching}
-            emptyTitle="No leads in this stage"
+            emptyTitle={`No leads in this ${what}`}
             pagination={data?.pagination}
             onPageChange={setPage}
             onPageSizeChange={(s) => {
