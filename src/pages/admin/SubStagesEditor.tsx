@@ -13,10 +13,16 @@ export function SubStagesEditor({
   value,
   onChange,
   errors,
+  onDeactivate,
 }: {
   value: SubStageDraft[]
   onChange: (next: SubStageDraft[]) => void
   errors: Record<string, string>
+  /**
+   * Unticking Active on a saved sub-stage goes through this instead (the parent first
+   * moves the sub-stage's leads elsewhere, then unticks it). Return false to untick right away.
+   */
+  onDeactivate?: (index: number) => boolean
 }) {
   const update = (i: number, patch: Partial<SubStageDraft>) =>
     onChange(value.map((s, idx) => (idx === i ? { ...s, ...patch } : s)))
@@ -41,7 +47,14 @@ export function SubStagesEditor({
               onChange={(e) => update(i, { name: e.target.value })}
             />
             <label className="flex shrink-0 items-center gap-1 text-[11px] text-slate-600">
-              <Checkbox checked={s.isActive} onChange={(e) => update(i, { isActive: e.target.checked })} /> Active
+              <Checkbox
+                checked={s.isActive}
+                onChange={(e) => {
+                  if (!e.target.checked && s._id && onDeactivate?.(i)) return
+                  update(i, { isActive: e.target.checked })
+                }}
+              />{' '}
+              Active
             </label>
             <Button type="button" variant="ghost" size="sm" aria-label="Move up" disabled={i === 0} onClick={() => move(i, -1)}>
               <ArrowUp className="h-3.5 w-3.5" />
