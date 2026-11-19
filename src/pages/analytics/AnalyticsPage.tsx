@@ -26,7 +26,10 @@ import { Card, PageHeader } from '../../components/ui/misc'
 import { can } from '../../constants/permissions'
 import { authorizedDownload } from '../../lib/download'
 import { formatHms } from '../../lib/durations'
+import { firstTouchOptions, firstTouchSubOptions, keepFirstTouchSubs } from '../../lib/stages'
 import { cn, formatDateTime } from '../../lib/utils'
+import { useMasterBootstrapQuery } from '../../services/mastersApi'
+import { TimelineFilter, type TimelineValue } from '../leads/TimelineFilter'
 import { useAnalyticsSummaryQuery, useUpdateAnalyticsSettingsMutation, type AnalyticsParams, type Matrix } from '../../services/analyticsApi'
 import { Bars, Donut, Funnel, Heatmap, LineChart, Ring, StackedBars, TrendCard } from './charts'
 import { COLORS } from './colors'
@@ -35,6 +38,8 @@ const FILTER_KEYS = [
   'created_from', 'created_to', 'created_from_time', 'created_to_time',
   'modified_from', 'modified_to', 'modified_from_time', 'modified_to_time',
   'acted_from', 'acted_to', 'acted_from_time', 'acted_to_time', 'source', 'owner',
+  'first_stage', 'first_sub_stage',
+  'activity_type', 'activity_from', 'activity_to', 'activity_from_time', 'activity_to_time',
 ]
 const CARD_STYLE: Record<string, { color: string; goodWhenUp: boolean; sub: string; icon: LucideIcon }> = {
   total: { color: COLORS.brand, goodWhenUp: true, sub: 'matching the filters', icon: Users },
@@ -133,6 +138,23 @@ export default function AnalyticsPage() {
     navigate(`/app/leads?${q}`)
   }
   const ids = (k: string) => (params.get(k) ?? '').split(',').filter(Boolean)
+  // First Touch: the first stage (then disposition) the lead was moved to — same filter as Leads → Quick Filters
+  const { data: masters } = useMasterBootstrapQuery()
+  const stages = masters?.data.stages
+  const firstSubOptions = firstTouchSubOptions(stages, ids('first_stage'))
+  // Timeline: leads where a chosen kind of timeline entry happened in the window — same filter as Leads → Timeline
+  const timeline: TimelineValue = {
+    types: ids('activity_type'),
+    from: params.get('activity_from') ?? '',
+    to: params.get('activity_to') ?? '',
+    fromTime: params.get('activity_from_time') ?? '',
+    toTime: params.get('activity_to_time') ?? '',
+  }
+  const setTimeline = (v: TimelineValue) =>
+    set({ activity_type: v.types.join(','), activity_from: v.from, activity_to: v.to,
+          activity_from_time: v.from ? v.fromTime : '', activity_to_time: v.to ? v.toTime : '' })
+  const setFirstStages = (v: string[]) =>
+    set({ first_stage: v.join(','), first_sub_stage: keepFirstTouchSubs(stages, v, ids('first_sub_stage')).join(',') })
 
   const download = async () => {
     setDownloading(true)
@@ -173,6 +195,13 @@ export default function AnalyticsPage() {
           allLabel="All sources" plural="Sources" ariaLabel="Lead source" searchPlaceholder="Search sources…" />
         <CheckboxMultiSelect options={d?.options.counsellors ?? []} value={ids('owner')} onChange={(v) => set({ owner: v.join(',') })}
           allLabel="All counsellors" plural="Counsellors" ariaLabel="Counsellor" searchPlaceholder="Search counsellors…" />
+        <CheckboxMultiSelect options={firstTouchOptions(stages)} value={ids('first_stage')} onChange={setFirstStages}
+          allLabel="All first touch" plural="First Touch" ariaLabel="First Touch" searchPlaceholder="Search first touch…" />
+        {firstSubOptions.length > 0 && (
+          <CheckboxMultiSelect options={firstSubOptions} value={ids('first_sub_stage')} onChange={(v) => set({ first_sub_stage: v.join(',') })}
+            allLabel="All first dispositions" plural="First Dispositions" ariaLabel="First Touch Disposition" searchPlaceholder="Search disposition…" />
+        )}
+        <TimelineFilter value={timeline} onApply={setTimeline} />
         {Object.keys(filters).length > 0 && (
           <Button variant="ghost" size="sm" onClick={() => setParams(new URLSearchParams(), { replace: true })}>
             <RotateCcw className="h-3.5 w-3.5" /> Reset

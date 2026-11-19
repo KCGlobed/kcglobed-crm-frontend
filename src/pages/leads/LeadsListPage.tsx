@@ -12,7 +12,7 @@ import {
 } from '../../services/leadsApi'
 import { useCurrentUser } from '../../app/hooks'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
-import { activeSubStages } from '../../lib/stages'
+import { activeSubStages, firstTouchOptions, firstTouchSubOptions, keepFirstTouchSubs } from '../../lib/stages'
 import { can } from '../../constants/permissions'
 import { isAdminLike } from '../../lib/roles'
 import { DataTable, type Column } from '../../components/ui/DataTable'
@@ -169,6 +169,22 @@ export default function LeadsListPage() {
     else next.delete('sub_stage')
     replaceParams(next)
   }
+  // First Touch: the first stage (and disposition) the lead was moved to, wherever it is now —
+  // ?first_stage=id1,id2 (__none__ = not touched yet) & ?first_sub_stage=id3. Untouched / Re-enquired are never a
+  // first touch (the backend skips them), so they are not offered.
+  const firstStageIds = (params.get('first_stage') ?? '').split(',').filter(Boolean)
+  const firstSubStageIds = (params.get('first_sub_stage') ?? '').split(',').filter(Boolean)
+  const firstStageOptions = firstTouchOptions(masters?.data.stages)
+  const firstSubStageOptions = firstTouchSubOptions(masters?.data.stages, firstStageIds)
+  const setFirstStages = (ids: string[]) => {
+    const next = new URLSearchParams(params)
+    if (ids.length) next.set('first_stage', ids.join(','))
+    else next.delete('first_stage')
+    const keep = keepFirstTouchSubs(masters?.data.stages, ids, firstSubStageIds)
+    if (keep.length) next.set('first_sub_stage', keep.join(','))
+    else next.delete('first_sub_stage')
+    replaceParams(next)
+  }
   const { data: saved } = useSavedFiltersQuery()
   const [saveFilter, { isLoading: savingFilter }] = useSaveFilterMutation()
   const [deleteSaved] = useDeleteSavedFilterMutation()
@@ -231,6 +247,8 @@ export default function LeadsListPage() {
     replaceParams(next)
   }
   const lastActivity = rangeOf('last_activity')
+  // Quick Filters → No Activity: open leads with no timeline entry in the window (replaces "No Activity 3+ Days")
+  const noActivity = rangeOf('no_activity')
   // Timeline filter: ?activity_type=sms,stage&activity_from=…&activity_to=…&activity_from_time=…&activity_to_time=…
   const timeline: TimelineValue = {
     types: (params.get('activity_type') ?? '').split(',').filter(Boolean),
@@ -421,7 +439,8 @@ export default function LeadsListPage() {
       <div className="-mx-4 mb-3 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0 [&>*]:shrink-0">
         <span className="mr-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Quick Filters</span>
         {pill('all', 'Show All', !smart && !notConnectedActive, clearQuick, 'All leads, no quick filter')}
-        {meta?.data.smartFilters.flatMap((f) => [
+        {/* the fixed "No Activity 3+ Days" pill is hidden: the No Activity date filter below replaces it */}
+        {meta?.data.smartFilters.filter((f) => f.key !== 'no_activity_3d' || smart === f.key).flatMap((f) => [
           pill(f.key, smartLabel(f.key), smart === f.key, () => setParam('smart', smart === f.key ? undefined : f.key), f.label),
           // fallback pill sits where the backend's own not_connected filter would, right after Untouched
           ...(f.key === 'untouched' && !backendHasNotConnected && notConnectedStage
@@ -453,6 +472,30 @@ export default function LeadsListPage() {
             onChange={(ids) => setParam('utm_sources', ids.length ? ids.join(',') : undefined)}
           />
         ) : null}
+        {/* First Touch: the first stage (then disposition) the lead was moved to, wherever it is now */}
+        {masters ? (
+          <OwnerMultiSelect noun="First Touch" plural="First Touch" options={firstStageOptions} value={firstStageIds} onChange={setFirstStages} />
+        ) : null}
+        {firstSubStageOptions.length > 0 && (
+          <OwnerMultiSelect
+            noun="First Disposition"
+            plural="First Dispositions"
+            options={firstSubStageOptions}
+            value={firstSubStageIds}
+            onChange={(ids) => setParam('first_sub_stage', ids.length ? ids.join(',') : undefined)}
+          />
+        )}
+        <DateRangeFilter
+          withTime
+          label="No Activity"
+          heading="No Activity Between"
+          className="[&>button]:h-7 [&>button]:rounded-lg [&>button]:text-xs"
+          from={noActivity.from}
+          to={noActivity.to}
+          fromTime={noActivity.fromTime}
+          toTime={noActivity.toTime}
+          onChange={setRangeParams('no_activity')}
+        />
       </div>
 
       <FilterBar
