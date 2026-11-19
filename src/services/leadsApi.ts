@@ -25,6 +25,8 @@ import type {
   ProfileStepKey,
   Note,
   PartnerCard,
+  RoundRobinExtra,
+  RoundRobinExtraBody,
   RoundRobinSettings,
   RoundRobinStatus,
   SavedFilter,
@@ -349,6 +351,16 @@ export const leadsApi = api.injectEndpoints({
         }
       },
     }),
+    // Round Robin → Inside Sales → Extra leads; saving answers with the fresh card
+    roundRobinExtra: build.query<ApiResponse<RoundRobinExtra>, void>({
+      query: () => '/leads/round-robin/extra',
+      providesTags: ['RoundRobin'],
+    }),
+    updateRoundRobinExtra: build.mutation<ApiResponse<RoundRobinExtra>, RoundRobinExtraBody>({
+      query: (body) => ({ url: '/leads/round-robin/extra', method: 'PUT', body }),
+      // turned on in working hours it hands leads out at once: the rotation's counts and the leads lists change
+      invalidatesTags: (_r, error) => (error ? [] : ['RoundRobin', { type: 'Leads', id: 'LIST' }, 'Dashboard']),
+    }),
     // Round Robin → Partners. Every mutation answers with the fresh cards, written straight into the cache.
     partnerCards: build.query<ApiResponse<{ cards: PartnerCard[] }>, void>({
       query: () => '/leads/round-robin/partners',
@@ -450,6 +462,8 @@ export const {
   useUpdateRoundRobinSettingsMutation,
   useSetRoundRobinUserMutation,
   useSetRoundRobinSequenceMutation,
+  useRoundRobinExtraQuery,
+  useUpdateRoundRobinExtraMutation,
   usePartnerCardsQuery,
   useSetPartnerAutoAssignMutation,
   useSetPartnerMemberMutation,

@@ -20,12 +20,14 @@ import dayjs from 'dayjs'
 import { authorizedDownload } from '../../lib/download'
 import {
   usePartnerCardsQuery,
+  useRoundRobinExtraQuery,
   useRoundRobinStatusQuery,
   useSetPartnerAutoAssignMutation,
   useSetPartnerMemberMutation,
   useSetPartnerSequenceMutation,
   useSetRoundRobinSequenceMutation,
   useSetRoundRobinUserMutation,
+  useUpdateRoundRobinExtraMutation,
   useUpdateRoundRobinSettingsMutation,
 } from '../../services/leadsApi'
 import { useCurrentUser } from '../../app/hooks'
@@ -34,6 +36,7 @@ import { DataTable, type Column } from '../../components/ui/DataTable'
 import { Card, PageHeader, Tabs } from '../../components/ui/misc'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
+import { CheckboxMultiSelect } from '../../components/ui/CheckboxMultiSelect'
 import { Checkbox, FormField, Input, Switch } from '../../components/ui/fields'
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/feedback'
 import { cn, parseApiError } from '../../lib/utils'
@@ -42,6 +45,8 @@ import type {
   PartnerCard,
   PartnerMember,
   RoundRobinChannel,
+  RoundRobinExtra,
+  RoundRobinExtraBody,
   RoundRobinMember,
   RoundRobinMorning,
   RoundRobinSettings,
@@ -206,10 +211,31 @@ function diff(draft: Draft, server: RoundRobinSettings): Partial<RoundRobinSetti
   return body
 }
 
+/** Extra leads (Inside Sales top-up): its own endpoint, saved by the same Save. */
+interface ExtraDraft {
+  enabled: boolean
+  firstSources: string[]
+  perMember: string
+}
+
+const toExtraDraft = (x: RoundRobinExtra): ExtraDraft => ({ enabled: x.enabled, firstSources: x.firstSources, perMember: String(x.perMember) })
+
+function extraDiff(draft: ExtraDraft, server: RoundRobinExtra): RoundRobinExtraBody {
+  const body: RoundRobinExtraBody = {}
+  if (draft.enabled !== server.enabled) body.enabled = draft.enabled
+  if (!sameList(draft.firstSources, server.firstSources)) body.firstSources = draft.firstSources
+  if (Number(draft.perMember) !== server.perMember) body.perMember = Number(draft.perMember)
+  return body
+}
+
 function SettingsCard({ settings, editable }: { settings: RoundRobinSettings; editable: boolean }) {
   const [save, { isLoading }] = useUpdateRoundRobinSettingsMutation()
+  const [saveExtra, { isLoading: savingExtra }] = useUpdateRoundRobinExtraMutation()
+  const extra = useRoundRobinExtraQuery(undefined, { pollingInterval: POLL_MS }).data?.data
   const [draft, setDraft] = useState<Draft>(() => toDraft(settings))
   const [synced, setSynced] = useState(settings)
+  const [extraDraft, setExtraDraft] = useState<ExtraDraft | null>(null)
+  const [extraSynced, setExtraSynced] = useState<RoundRobinExtra | undefined>()
   const [dirty, setDirty] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -218,9 +244,19 @@ function SettingsCard({ settings, editable }: { settings: RoundRobinSettings; ed
     setSynced(settings)
     if (!dirty) setDraft(toDraft(settings))
   }
+  if (extra !== extraSynced) {
+    setExtraSynced(extra)
+    if (extra && (!dirty || !extraDraft)) setExtraDraft(toExtraDraft(extra))
+  }
 
   const set = (patch: Partial<Draft>) => {
     setDraft((d) => ({ ...d, ...patch }))
+    setDirty(true)
+    setErrors({})
+  }
+
+  const setExtra = (patch: Partial<ExtraDraft>) => {
+    setExtraDraft((d) => (d ? { ...d, ...patch } : d))
     setDirty(true)
     setErrors({})
   }
@@ -230,16 +266,37 @@ function SettingsCard({ settings, editable }: { settings: RoundRobinSettings; ed
       setErrors({ window: 'Set both start and end times, or choose 24×7' })
       return
     }
+    if (extraDraft) {
+      const n = Number(extraDraft.perMember)
+      if (!extraDraft.perMember.trim() || !Number.isInteger(n) || n < 1 || n > 50) {
+        setErrors({ perMember: 'Enter a whole number from 1 to 50' })
+        return
+      }
+      if (extraDraft.enabled && !extraDraft.firstSources.length) {
+        setErrors({ firstSources: 'Pick at least one first source' })
+        return
+      }
+    }
     const body = diff(draft, settings)
-    if (!Object.keys(body).length) {
+    const extraBody = extra && extraDraft ? extraDiff(extraDraft, extra) : {}
+    if (!Object.keys(body).length && !Object.keys(extraBody).length) {
       setDirty(false)
       return
     }
     try {
-      const res = await save(body).unwrap()
-      setDraft(toDraft(res.data.settings))
+      let message = ''
+      if (Object.keys(body).length) {
+        const res = await save(body).unwrap()
+        setDraft(toDraft(res.data.settings))
+        message = res.message
+      }
+      if (Object.keys(extraBody).length) {
+        const res = await saveExtra(extraBody).unwrap()
+        setExtraDraft(toExtraDraft(res.data))
+        message = message || 'Round-robin settings updated'
+      }
       setDirty(false)
-      toast.success(res.message)
+      toast.success(message)
     } catch (err) {
       const parsed = parseApiError(err)
       setErrors(parsed.errors)
@@ -256,7 +313,7 @@ function SettingsCard({ settings, editable }: { settings: RoundRobinSettings; ed
       title="Settings"
       actions={
         editable ? (
-          <Button size="sm" onClick={onSave} loading={isLoading} disabled={!dirty}>
+          <Button size="sm" onClick={onSave} loading={isLoading || savingExtra} disabled={!dirty} data-testid="rr-settings-save">
             Save
           </Button>
         ) : (
@@ -279,6 +336,58 @@ function SettingsCard({ settings, editable }: { settings: RoundRobinSettings; ed
           A member gets leads only while logged in, with the toggle on and not on a break — in the sequence set by their team's
           manager. Logging in alone hands out nothing unless leads are waiting.
         </p>
+
+        {extra && extraDraft && (
+          <div className="space-y-3" data-testid="rr-extra">
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2.5">
+              <p className="text-sm font-medium text-slate-800">Extra unassigned leads</p>
+              <Switch label="Extra unassigned leads" checked={extraDraft.enabled} onChange={(v) => setExtra({ enabled: v })} disabled={!editable} />
+            </div>
+            {extraDraft.enabled && (
+              <div className="flex flex-wrap items-start gap-3">
+                <FormField label="First source" error={errors.firstSources} className="min-w-0">
+                  {editable ? (
+                    <div data-testid="rr-extra-sources">
+                      <CheckboxMultiSelect
+                        options={extra.sources.map((s) => ({ value: s._id, label: s.isActive ? s.name : `${s.name} (inactive)` }))}
+                        value={extraDraft.firstSources}
+                        onChange={(ids) => setExtra({ firstSources: ids })}
+                        allLabel="Pick sources"
+                        plural="sources"
+                        ariaLabel="First sources"
+                        searchPlaceholder="Search sources…"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {extra.sources
+                        .filter((s) => extraDraft.firstSources.includes(s._id))
+                        .map((s) => (
+                          <Badge key={s._id}>{s.name}</Badge>
+                        ))}
+                    </div>
+                  )}
+                </FormField>
+                <FormField label="Leads per member" error={errors.perMember}>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={50}
+                    step={1}
+                    inputMode="numeric"
+                    className="!w-24"
+                    value={extraDraft.perMember}
+                    disabled={!editable}
+                    aria-label="Leads per member"
+                    aria-invalid={!!errors.perMember}
+                    data-testid="rr-extra-per-member"
+                    onChange={(e) => setExtra({ perMember: e.target.value })}
+                  />
+                </FormField>
+              </div>
+            )}
+          </div>
+        )}
 
         <FormField label="Channels" error={errors.channels} hint="Leads from these sources are handed out in rotation. Quick Add still picks an owner by hand.">
           <div className="flex flex-wrap gap-x-5 gap-y-2">

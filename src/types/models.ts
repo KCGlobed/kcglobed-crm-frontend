@@ -2083,6 +2083,30 @@ export interface RoundRobinStatus {
   unassignedPoolCount: number
 }
 
+/**
+ * Round Robin → Inside Sales → Extra leads: on top of the rotation, each eligible member (punched in + logged in, toggle
+ * on, not on a break) gets `perMember` unassigned leads a day whose first source is picked — at the window start if
+ * online then, else when they come online. Oldest first; the rotation's own pool is left to it.
+ */
+export interface RoundRobinExtra {
+  enabled: boolean
+  /** masters Source ids */
+  firstSources: string[]
+  perMember: number
+  /** every Source, to pick from */
+  sources: { _id: string; name: string; channel: string; isActive: boolean }[]
+  /** unassigned leads of the picked first sources waiting now */
+  waiting: number
+  /** the rotation is on and its window open: extra leads can go out now */
+  rotationOpen: boolean
+  windowStart: string | null
+  /** who got how many today (the caller's hierarchy) */
+  today: { _id: string; name: string; count: number }[]
+  givenToday: number
+}
+
+export type RoundRobinExtraBody = Partial<Pick<RoundRobinExtra, 'enabled' | 'firstSources' | 'perMember'>>
+
 /** A member of a partner's card: the partner user's direct report, or someone in a team they manage. */
 export interface PartnerMember {
   _id: string
