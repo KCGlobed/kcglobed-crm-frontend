@@ -17,8 +17,9 @@ export const NOT_TOUCHED = '__none__'
 const firstTouchStages = (stages: Stage[] | undefined) =>
   (stages ?? []).filter((s) => !['untouched', 're-enquired'].includes(s.name.trim().toLowerCase()))
 
-export function firstTouchOptions(stages: Stage[] | undefined): { value: string; label: string }[] {
-  return [{ value: NOT_TOUCHED, label: 'Not touched yet' }, ...firstTouchStages(stages).map((s) => ({ value: s._id, label: s.name }))]
+export function firstTouchOptions(stages: Stage[] | undefined): { value: string; label: string; notInSelectAll?: boolean }[] {
+  // "Select all" picks every real first touch; Not touched yet stays a separate, deliberate tick
+  return [{ value: NOT_TOUCHED, label: 'Not touched yet', notInSelectAll: true }, ...firstTouchStages(stages).map((s) => ({ value: s._id, label: s.name }))]
 }
 
 /** Dispositions of the chosen first-touch stages — inactive ones too: a lead's first disposition may have been retired. */

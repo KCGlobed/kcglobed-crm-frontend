@@ -26,7 +26,7 @@ import { Card, PageHeader } from '../../components/ui/misc'
 import { can } from '../../constants/permissions'
 import { authorizedDownload } from '../../lib/download'
 import { formatHms } from '../../lib/durations'
-import { firstTouchOptions, firstTouchSubOptions, keepFirstTouchSubs } from '../../lib/stages'
+import { NOT_TOUCHED, firstTouchOptions, firstTouchSubOptions, keepFirstTouchSubs } from '../../lib/stages'
 import { cn, formatDateTime } from '../../lib/utils'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
 import { TimelineFilter, type TimelineValue } from '../leads/TimelineFilter'
@@ -55,8 +55,9 @@ const FU_COLS = [
   { key: 'overdue', label: 'Overdue (open)', tone: 'text-red-700' },
   { key: 'upcoming', label: 'Upcoming', tone: 'text-amber-700' },
 ] as const
-const CLASS_LABEL: Record<string, string> = { open: 'Actionable', lost: 'Non-actionable', converted: 'Enrolled' }
-const CLASS_SLICE = ['open', 'lost', 'converted'] as const
+const CLASS_LABEL: Record<string, string> = { open: 'Actionable', lost: 'Non-actionable', notConnected: 'Not Connected', converted: 'Enrolled' }
+// Not Connected is its own class (not actionable), so the four slices add up to Total leads
+const CLASS_SLICE = ['open', 'lost', 'notConnected', 'converted'] as const
 
 function Panel({ title, hint, children, className, actions }: { title: string; hint?: string; children: ReactNode; className?: string; actions?: ReactNode }) {
   return (
@@ -195,7 +196,7 @@ export default function AnalyticsPage() {
           allLabel="All sources" plural="Sources" ariaLabel="Lead source" searchPlaceholder="Search sources…" />
         <CheckboxMultiSelect options={d?.options.counsellors ?? []} value={ids('owner')} onChange={(v) => set({ owner: v.join(',') })}
           allLabel="All counsellors" plural="Counsellors" ariaLabel="Counsellor" searchPlaceholder="Search counsellors…" />
-        <CheckboxMultiSelect options={firstTouchOptions(stages)} value={ids('first_stage')} onChange={setFirstStages}
+        <CheckboxMultiSelect options={firstTouchOptions(stages).filter((o) => o.value !== NOT_TOUCHED)} value={ids('first_stage')} onChange={setFirstStages}
           allLabel="All first touch" plural="First Touch" ariaLabel="First Touch" searchPlaceholder="Search first touch…" />
         {firstSubOptions.length > 0 && (
           <CheckboxMultiSelect options={firstSubOptions} value={ids('first_sub_stage')} onChange={(v) => set({ first_sub_stage: v.join(',') })}
@@ -521,8 +522,8 @@ export default function AnalyticsPage() {
                 <StackedBars
                   horizontal
                   rows={d.bySource}
-                  series={[{ key: 'converted', label: 'Enrolled', color: COLORS.converted }, { key: 'open', label: 'Actionable', color: COLORS.open }, { key: 'lost', label: 'Non-actionable', color: COLORS.lost }]}
-                  value={(r, k) => r[k as 'open' | 'lost' | 'converted']}
+                  series={[{ key: 'converted', label: 'Enrolled', color: COLORS.converted }, { key: 'open', label: 'Actionable', color: COLORS.open }, { key: 'lost', label: 'Non-actionable', color: COLORS.lost }, { key: 'notConnected', label: 'Not Connected', color: COLORS.notConnected }]}
+                  value={(r, k) => r[k as 'open' | 'lost' | 'notConnected' | 'converted'] ?? 0}
                   right={(r) => `${r.total.toLocaleString('en-IN')} · ${r.conversion}% enrolled`}
                   onSelect={(row, s) => open('source', s ? `${row}|${s}` : row, 'Source')}
                 />
