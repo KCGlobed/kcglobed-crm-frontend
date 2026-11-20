@@ -8,6 +8,8 @@ export interface CheckboxOption {
   label: string
   /** options with a group are listed under that heading, in the order given */
   group?: string
+  /** left out of "Select all" (e.g. First Touch → Not touched yet); can still be ticked on its own */
+  notInSelectAll?: boolean
 }
 
 /**
@@ -39,6 +41,12 @@ export function CheckboxMultiSelect({
   const nameOf = (id: string) => options.find((o) => o.value === id)?.label ?? id
   const text = chosen.length === 0 ? allLabel : chosen.length === 1 ? nameOf(chosen[0]) : `${chosen.length} ${plural}`
   const toggle = (id: string, on: boolean) => onChange(on ? [...value, id] : value.filter((v) => v !== id))
+  // "Select all" acts on the options currently shown, so it also works on a search result
+  const shownIds = shown.filter((o) => !o.notInSelectAll).map((o) => o.value)
+  const shownChosen = shownIds.filter((id) => value.includes(id)).length
+  const allShown = shownIds.length > 0 && shownChosen === shownIds.length
+  const toggleAll = (on: boolean) =>
+    onChange(on ? [...value, ...shownIds.filter((id) => !value.includes(id))] : value.filter((v) => !shownIds.includes(v)))
 
   return (
     <div className="relative">
@@ -73,6 +81,19 @@ export function CheckboxMultiSelect({
             </div>
             <div className="max-h-64 space-y-0.5 overflow-y-auto">
               {shown.length === 0 && <p className="px-2 py-1.5 text-xs text-slate-400">No match</p>}
+              {shownIds.length > 1 && (
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border-b border-slate-100 px-2 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={allShown}
+                    ref={(el) => {
+                      if (el) el.indeterminate = shownChosen > 0 && !allShown
+                    }}
+                    onChange={(e) => toggleAll(e.target.checked)}
+                  />
+                  <span className="truncate">{term ? 'Select all matching' : 'Select all'}</span>
+                </label>
+              )}
               {shown.map((o, i) => (
                 <div key={o.value}>
                   {o.group && o.group !== shown[i - 1]?.group && (

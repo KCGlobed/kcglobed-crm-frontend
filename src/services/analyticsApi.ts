@@ -15,11 +15,12 @@ export interface SourceRow {
   total: number
   open: number
   lost: number
+  notConnected: number
   converted: number
   conversion: number
 }
 export interface StageRow extends Part {
-  class: 'open' | 'lost' | 'converted'
+  class: 'open' | 'lost' | 'notConnected' | 'converted'
   color?: string | null
 }
 export interface FunnelRow extends Part {
@@ -97,7 +98,7 @@ export interface CounsellorActionRow {
 export interface MatrixColumn {
   key: string
   label: string
-  class?: 'open' | 'lost' | 'converted'
+  class?: 'open' | 'lost' | 'notConnected' | 'converted'
   color?: string | null
 }
 export interface MatrixRow {
