@@ -59,6 +59,13 @@ export interface Ref {
 
 export type RoleKey = 'super_admin' | 'admin' | 'counsellor' | 'other'
 
+/** A Super Admin's own alert channels (profile menu → My alerts); off = none of that channel's alerts reach them */
+export interface MyAlerts {
+  email: boolean
+  sms: boolean
+  push: boolean
+}
+
 export interface User {
   _id: string
   name: string
@@ -66,6 +73,8 @@ export interface User {
   mobile?: string
   designation?: string
   isSuperAdmin: boolean
+  /** a Super Admin only */
+  alerts?: MyAlerts
   /** Go-live role (§2) and its label */
   role?: RoleKey
   roleLabel?: string

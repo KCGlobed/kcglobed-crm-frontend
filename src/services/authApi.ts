@@ -1,5 +1,5 @@
 import { api } from './api'
-import type { ApiResponse, User } from '../types/models'
+import type { ApiResponse, MyAlerts, User } from '../types/models'
 
 interface AuthPayload {
   user: User
@@ -30,6 +30,21 @@ export const authApi = api.injectEndpoints({
     changePassword: build.mutation<ApiResponse<null>, { currentPassword: string; newPassword: string }>({
       query: (body) => ({ url: '/auth/change-password', method: 'POST', body }),
     }),
+    // a Super Admin's own alert channels; answers with the fresh profile
+    setMyAlerts: build.mutation<ApiResponse<{ user: User }>, Partial<MyAlerts>>({
+      query: (body) => ({ url: '/auth/me/alerts', method: 'PATCH', body }),
+      // the session sync copies the cached profile into the store: refresh it too, or it puts the old switches back
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+          dispatch(authApi.util.updateQueryData('me', undefined, (draft) => {
+            draft.data.user = data.data.user
+          }))
+        } catch {
+          // the menu shows the error
+        }
+      },
+    }),
   }),
 })
 
@@ -42,4 +57,5 @@ export const {
   useForgotPasswordMutation,
   useResetPasswordMutation,
   useChangePasswordMutation,
+  useSetMyAlertsMutation,
 } = authApi
