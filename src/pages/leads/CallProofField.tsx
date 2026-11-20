@@ -15,7 +15,7 @@ export interface ProofValue {
 /** Same limits as the server (apps/leads/call_proofs.py); one file of each kind per call. */
 const PROOF_RULES = {
   screenshot: { exts: ['.png', '.jpg', '.jpeg', '.webp'], maxMb: 5, label: 'Call Screenshot' },
-  recording: { exts: ['.mp3', '.m4a', '.wav', '.ogg', '.aac', '.amr', '.webm'], maxMb: 50, label: 'Call Recording' },
+  recording: { exts: ['.mp3', '.m4a', '.mp4', '.wav', '.ogg', '.aac', '.amr', '.webm'], maxMb: 50, label: 'Call Recording' },
 } as const
 
 /**
@@ -109,7 +109,7 @@ export function CallProofField({
   const hint =
     kind === 'screenshot'
       ? `The call screen showing its duration · PNG, JPG, WEBP up to ${rule.maxMb} MB · you can also paste`
-      : `Optional · MP3, M4A, WAV, OGG, AAC, AMR, WEBM up to ${rule.maxMb} MB`
+      : `Optional · MP3, M4A, MP4, WAV, OGG, AAC, AMR, WEBM up to ${rule.maxMb} MB`
   const current = value[0]
   return (
     <FormField label={rule.label} required={required} error={error} hint={current ? undefined : hint}>

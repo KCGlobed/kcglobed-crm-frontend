@@ -22,6 +22,12 @@ export type ModuleKey =
   | 'attendance'
   | 'targets'
   | 'analytics'
+  | 'consultants'
+  | 'consultants.leads'
+  | 'consultants.follow_ups'
+  | 'consultants.stages'
+  | 'consultants.targets'
+  | 'consultants.reports'
 
 export type ActionKey =
   | 'view'
@@ -53,6 +59,13 @@ export interface Ref {
 
 export type RoleKey = 'super_admin' | 'admin' | 'counsellor' | 'other'
 
+/** A Super Admin's own alert channels (profile menu → My alerts); off = none of that channel's alerts reach them */
+export interface MyAlerts {
+  email: boolean
+  sms: boolean
+  push: boolean
+}
+
 export interface User {
   _id: string
   name: string
@@ -60,6 +73,8 @@ export interface User {
   mobile?: string
   designation?: string
   isSuperAdmin: boolean
+  /** a Super Admin only */
+  alerts?: MyAlerts
   /** Go-live role (§2) and its label */
   role?: RoleKey
   roleLabel?: string
@@ -449,6 +464,11 @@ export interface Notification {
     count?: number
     leadIds?: string[]
     by?: string
+    /** Channel Partners: the consultant lead, or (several assigned at once) its lead list */
+    consultantLeadId?: string
+    consultants?: boolean
+    /** Channel Partners: a scheduled report that could not be sent (opens its Send history) */
+    cpReportRunId?: string
   }
   readAt?: string | null
   createdAt: string
@@ -1222,6 +1242,8 @@ export interface CallProofFile {
   size: number
 }
 
+export type AttendanceCallKind = 'manual' | 'click_to_call' | 'auto_dialer' | 'incoming'
+
 /** Attendance → Call Proofs: one logged call with its proofs. */
 export interface AttendanceCallRow {
   _id: string
@@ -1235,6 +1257,8 @@ export interface AttendanceCallRow {
   direction?: 'outbound' | 'inbound'
   /** manual (Log Call drawer) or dialer */
   source?: string
+  /** how it happened: logged by hand, the Call button, an auto-dialer run, or the lead calling in */
+  kind?: AttendanceCallKind
   customerNumber?: string | null
   stage?: string | null
   subStage?: string | null
@@ -2067,6 +2091,30 @@ export interface RoundRobinStatus {
   /** leads waiting (nobody online / outside window) */
   unassignedPoolCount: number
 }
+
+/**
+ * Round Robin → Inside Sales → Extra leads: on top of the rotation, each eligible member (punched in + logged in, toggle
+ * on, not on a break) gets `perMember` unassigned leads a day whose first source is picked — at the window start if
+ * online then, else when they come online. Oldest first; the rotation's own pool is left to it.
+ */
+export interface RoundRobinExtra {
+  enabled: boolean
+  /** masters Source ids */
+  firstSources: string[]
+  perMember: number
+  /** every Source, to pick from */
+  sources: { _id: string; name: string; channel: string; isActive: boolean }[]
+  /** unassigned leads of the picked first sources waiting now */
+  waiting: number
+  /** the rotation is on and its window open: extra leads can go out now */
+  rotationOpen: boolean
+  windowStart: string | null
+  /** who got how many today (the caller's hierarchy) */
+  today: { _id: string; name: string; count: number }[]
+  givenToday: number
+}
+
+export type RoundRobinExtraBody = Partial<Pick<RoundRobinExtra, 'enabled' | 'firstSources' | 'perMember'>>
 
 /** A member of a partner's card: the partner user's direct report, or someone in a team they manage. */
 export interface PartnerMember {

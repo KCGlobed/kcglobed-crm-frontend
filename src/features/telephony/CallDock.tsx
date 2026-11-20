@@ -21,8 +21,10 @@ import {
   useDialerProgressQuery,
   useDialerSessionMutation,
   useHangupCallMutation,
+  useMyDialerQuery,
   useSoftphoneCallerQuery,
 } from '../../services/telephonyApi'
+import { useKeepActive } from '../../hooks/useIdleLogout'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { ConfirmDialog } from '../../components/ui/feedback'
@@ -195,6 +197,13 @@ export function CallDock() {
     if (l) return { leadId: l._id, name: l.name, state: l.status === 'connected' ? 'on' : 'ringing', since: l.answeredAt ? Date.parse(l.answeredAt) : null }
     return null
   })()
+
+  // the 30-minute idle logout: a call ringing or on is not idle time, nor is the dialer's line while it dials (on a
+  // dialer break or stopped, the open line alone does not count); the 30 minutes start over when it ends
+  const onLine = current?.state === 'line'
+  const { data: myDialer } = useMyDialerQuery(undefined, { skip: !onLine, pollingInterval: onLine ? 60_000 : 0 })
+  const lineState = myDialer?.data.session?.state
+  useKeepActive(!!current && (!onLine || !lineState || lineState === 'ready' || lineState === 'calling_you'))
 
   // the wrap-up: from the end of this run's last call
   const last = phone.lastEnded

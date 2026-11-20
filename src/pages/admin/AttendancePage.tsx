@@ -19,6 +19,7 @@ import { Select } from '../../components/ui/fields'
 import { FilterBar, PageHeader, SearchInput, Tabs } from '../../components/ui/misc'
 import type { AttendanceRow, BreakEntry } from '../../types/models'
 import { CallProofsTab } from './attendance/CallProofsTab'
+import { CALL_KIND_OPTIONS } from './attendance/callKinds'
 import { DialerRunsTab } from './attendance/DialerRunsTab'
 
 /**
@@ -47,7 +48,7 @@ const DESCRIPTIONS: Record<Tab, string> = {
   calls: 'Every logged call with the duration the counsellor entered, its call screenshot and recording. Preview to compare the duration with the screenshot.',
   dialer: 'Progressive dialer runs: who is dialing now, when each run started and how long it ran, how many leads were called and connected, and the talk time. View a run for each lead with its calls and recordings.',
 }
-const FILTER_KEYS = ['tab', 'date_from', 'date_to', 'user', 'search', 'type', 'status']
+const FILTER_KEYS = ['tab', 'date_from', 'date_to', 'user', 'search', 'type', 'status', 'kind']
 
 const clock = (iso?: string) => (iso ? dayjs(iso).format('h:mm A') : '—')
 const muted = (text: string) => <span className="text-xs text-slate-400">{text}</span>
@@ -85,7 +86,7 @@ export default function AttendancePage() {
   const today = dayjs().format('YYYY-MM-DD')
   const dateFrom = (query.date_from as string) || today
   const dateTo = (query.date_to as string) || today
-  const hasFilters = ['date_from', 'date_to', 'user', 'search', 'type', 'status'].some((k) => query[k])
+  const hasFilters = ['date_from', 'date_to', 'user', 'search', 'type', 'status', 'kind'].some((k) => query[k])
   const tabParams = (key: Tab) => (key === 'consolidated' ? new URLSearchParams() : new URLSearchParams({ tab: key }))
   const resetFilters = () => setSearchParams(tabParams(tab), { replace: true })
   const switchTab = (key: string) => {
@@ -301,6 +302,16 @@ export default function AttendancePage() {
           to={dateTo}
           onChange={(from, to) => setFilters({ date_from: from, date_to: to })}
         />
+        {callsTab && (
+          <Select className="!w-auto" value={(query.kind as string) ?? ''} onChange={(e) => setParam('kind', e.target.value)}>
+            <option value="">All call types</option>
+            {CALL_KIND_OPTIONS.map((k) => (
+              <option key={k.value} value={k.value}>
+                {k.label}
+              </option>
+            ))}
+          </Select>
+        )}
         {entriesTab && (
           <>
             <Select className="!w-auto" value={(query.type as string) ?? ''} onChange={(e) => setParam('type', e.target.value)}>
@@ -323,7 +334,7 @@ export default function AttendancePage() {
       {dialerTab ? (
         <DialerRunsTab filters={filters} setParam={setParam} />
       ) : callsTab ? (
-        <CallProofsTab filters={filters} setParam={setParam} />
+        <CallProofsTab filters={{ ...filters, kind: query.kind }} setParam={setParam} />
       ) : entriesTab ? (
         <DataTable
           columns={entryColumns}

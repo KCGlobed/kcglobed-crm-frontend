@@ -1,15 +1,28 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronDown, KeyRound, LogOut } from 'lucide-react'
+import {
+  BellOff,
+  BellRing,
+  ChevronDown,
+  KeyRound,
+  Loader2,
+  LogOut,
+  Mail,
+  MailX,
+  MessageSquareOff,
+  MessageSquareText,
+  type LucideIcon,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { useAppDispatch, useCurrentUser } from '../../app/hooks'
-import { signedOut } from '../../features/auth/authSlice'
-import { useLogoutMutation } from '../../services/authApi'
+import { setUser, signedOut } from '../../features/auth/authSlice'
+import { useLogoutMutation, useSetMyAlertsMutation } from '../../services/authApi'
 import { useUnsubscribePushMutation } from '../../services/miscApi'
 import { forgetPushToken } from '../../lib/push'
 import { api } from '../../services/api'
 import { useIdleLogout } from '../../hooks/useIdleLogout'
-import { cn, initials } from '../../lib/utils'
+import { cn, initials, parseApiError } from '../../lib/utils'
+import type { MyAlerts } from '../../types/models'
 import { PunchBreakPanel } from './PunchBreak'
 
 function useSignOut() {
@@ -37,6 +50,93 @@ function useSignOut() {
       navigate('/login')
     },
     [dispatch, logout, navigate, unsubscribePush]
+  )
+}
+
+const ALERT_CHANNELS: { key: keyof MyAlerts; label: string; on: LucideIcon; off: LucideIcon }[] = [
+  { key: 'email', label: 'Email', on: Mail, off: MailX },
+  { key: 'sms', label: 'SMS', on: MessageSquareText, off: MessageSquareOff },
+  { key: 'push', label: 'Push', on: BellRing, off: BellOff },
+]
+
+/** A Super Admin's own alert channels: off = none of that channel's alerts reach them; the bell still lists them. */
+function MyAlertsPanel({ alerts }: { alerts: MyAlerts }) {
+  const dispatch = useAppDispatch()
+  const [save] = useSetMyAlertsMutation()
+  const [pending, setPending] = useState<keyof MyAlerts | null>(null)
+
+  const onToggle = async (key: keyof MyAlerts, label: string, on: boolean) => {
+    setPending(key)
+    try {
+      const res = await save({ [key]: on }).unwrap()
+      dispatch(setUser(res.data.user))
+      toast.success(`${label} alerts ${on ? 'on' : 'off'}`)
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    } finally {
+      setPending(null)
+    }
+  }
+
+  const off = ALERT_CHANNELS.filter((c) => !alerts[c.key]).length
+
+  return (
+    <div className="border-b border-slate-100 px-3 py-3" data-testid="my-alerts">
+      <div className="mb-2 flex items-center justify-between px-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">My alerts</p>
+        <span
+          className={cn(
+            'rounded-full px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-inset',
+            off ? 'bg-amber-50 text-amber-700 ring-amber-200' : 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+          )}
+        >
+          {off ? `${off} off` : 'All on'}
+        </span>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {ALERT_CHANNELS.map((c) => {
+          const on = alerts[c.key]
+          const busy = pending === c.key
+          const Icon = on ? c.on : c.off
+          return (
+            <button
+              key={c.key}
+              type="button"
+              role="switch"
+              aria-checked={on}
+              aria-label={`${c.label} alerts`}
+              aria-busy={busy || undefined}
+              disabled={busy}
+              title={`${c.label} alerts ${on ? 'on — click to turn off' : 'off — click to turn on'}`}
+              onClick={() => onToggle(c.key, c.label, !on)}
+              className={cn(
+                'flex cursor-pointer flex-col items-center gap-1 rounded-xl px-1 pb-1.5 pt-2 ring-1 ring-inset transition-all duration-150',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 active:scale-95 disabled:cursor-wait',
+                on ? 'bg-brand-50/70 ring-brand-200 hover:bg-brand-50' : 'bg-slate-50 ring-slate-200 hover:bg-slate-100'
+              )}
+            >
+              <span
+                className={cn(
+                  'flex h-8 w-8 items-center justify-center rounded-full transition-colors duration-150',
+                  on ? 'bg-linear-to-br from-brand-500 to-brand-700 text-white shadow-sm shadow-brand-500/30' : 'bg-white text-slate-400 ring-1 ring-slate-200'
+                )}
+              >
+                {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}
+              </span>
+              <span className={cn('text-[11px] font-semibold', on ? 'text-slate-800' : 'text-slate-500')}>{c.label}</span>
+              <span
+                className={cn(
+                  'rounded-full px-1.5 text-[9px] font-bold uppercase tracking-wide',
+                  on ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'
+                )}
+              >
+                {on ? 'On' : 'Off'}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -99,6 +199,7 @@ export function ProfileMenu() {
               <p className="truncate text-xs text-slate-500">{user?.email}</p>
               <span className="mt-1.5 inline-block rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-medium text-brand-700">{role}</span>
             </div>
+            {user?.isSuperAdmin && user.alerts && <MyAlertsPanel alerts={user.alerts} />}
             {/* Super Admin is not part of attendance */}
             {!user?.isSuperAdmin && (
               <div className="border-b border-slate-100">

@@ -143,6 +143,12 @@ export function AutomationEditor({ automation, onClose }: { automation?: Automat
   const { data: templates } = useListMessageTemplatesQuery({ channel, active: true })
   const chosen = templates?.data.find((t) => t._id === template)
   const templated = channel !== 'email'
+  // one value per {{n}} / {#var#} of the chosen template — an automation saved before its template had a variable
+  // (or with none typed) would otherwise show no field and the server's "Variable 1 is required" could not be fixed
+  const slots = useMemo(
+    () => (templated && chosen ? Array.from({ length: chosen.variableCount ?? 0 }, (_, i) => variables[i] ?? '') : variables),
+    [templated, chosen, variables],
+  )
   const fields = useMemo(() => meta?.data.fields ?? [], [meta])
   const triggers = options?.data.triggers ?? []
   const eventLabel = triggers.find((t) => t.value === event)?.label ?? automation?.eventLabel ?? null
@@ -193,7 +199,7 @@ export function AutomationEditor({ automation, onClose }: { automation?: Automat
     setVariables(id === automation?.template?._id ? (automation?.variables ?? []) : Array.from({ length: count }, () => ''))
   }
   const setVariable = (i: number, value: string) => {
-    setVariables((vs) => vs.map((v, j) => (j === i ? value : v)))
+    setVariables(() => slots.map((v, j) => (j === i ? value : v)))
     clearError(`variables.${i}`)
   }
   const toggleWeekday = (d: number) => {
@@ -216,7 +222,7 @@ export function AutomationEditor({ automation, onClose }: { automation?: Automat
     }
     if (s === 1) {
       if (!template) local.template = `Choose a${channel === 'email' ? 'n' : ''} ${CHANNEL_LABEL[channel]} template`
-      variables.forEach((v, i) => {
+      slots.forEach((v, i) => {
         if (!v.trim()) local[`variables.${i}`] = `Value ${i + 1} is needed`
       })
     }
@@ -243,7 +249,7 @@ export function AutomationEditor({ automation, onClose }: { automation?: Automat
     name: name.trim(),
     channel,
     template,
-    variables: templated ? variables.map((v) => v.trim()) : [],
+    variables: templated ? slots.map((v) => v.trim()) : [],
     triggerType,
     conditions,
     isActive: active,
@@ -269,7 +275,9 @@ export function AutomationEditor({ automation, onClose }: { automation?: Automat
       setErrors(parsed.errors)
       const keys = Object.keys(parsed.errors)
       if (keys.length) setStep(Math.min(...keys.map(stepOf)) as Step)
-      toast.error(parsed.message)
+      // "Validation failed" alone does not say what to fix: name the first problem
+      const first = keys.length ? parsed.errors[keys[0]] : null
+      toast.error(first ? `${parsed.message}: ${first}` : parsed.message)
     }
   }
 
@@ -473,7 +481,7 @@ export function AutomationEditor({ automation, onClose }: { automation?: Automat
                   ))}
                 </Select>
               </FormField>
-              <DltVariableFields variables={variables} errors={errors} onChange={setVariable} perRecipient />
+              <DltVariableFields variables={slots} errors={errors} onChange={setVariable} perRecipient />
               {chosen && (
                 <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                   <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-slate-400">{channel === 'email' ? `Subject: ${chosen.subject ?? ''}` : 'Message'}</p>

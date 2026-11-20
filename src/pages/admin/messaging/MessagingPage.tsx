@@ -33,6 +33,7 @@ import { AutomationsTab } from './AutomationsTab'
 import { MetricCell, ReasonBreakdown } from './deliveryMetrics'
 import { REASON_STATUS_LABELS, STATUS_COLUMNS, metricsOf } from './deliveryStatus'
 import { CallingTab } from './CallingTab'
+import { CreditsStrip } from './CreditsStrip'
 import { NotificationsTab } from './NotificationsTab'
 import { TextsTab } from './TextsTab'
 
@@ -351,6 +352,8 @@ function downloadCsv(path: string, filename: string) {
 }
 
 function CampaignReport({ id, onClose }: { id: string; onClose: () => void }) {
+  // the recipients CSV lists full numbers / emails: the Super Admin's alone (the server refuses everyone else)
+  const isSuperAdmin = Boolean(useCurrentUser()?.isSuperAdmin)
   const { data } = useGetCampaignQuery(id, { pollingInterval: 5000 })
   const c = data?.data
   // a reason picked in the breakdown lists those leads (all of them, paged by the backend)
@@ -382,14 +385,16 @@ function CampaignReport({ id, onClose }: { id: string; onClose: () => void }) {
               Selected {c.counts.selected} · excluded {c.counts.excluded?.optedOut ?? 0} opted out, {c.counts.excluded?.invalid ?? 0} invalid,{' '}
               {c.counts.excluded?.duplicate ?? 0} duplicate · final {c.counts.final}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              title="Every recipient with status, sent / delivered / read time and the reason"
-              onClick={() => downloadCsv(`/messaging/campaigns/${c._id}/recipients/export`, `${safeFileName(c.name)}-recipients.csv`)}
-            >
-              <Download className="h-3.5 w-3.5" /> Download recipients (CSV)
-            </Button>
+            {isSuperAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                title="Every recipient with status, sent / delivered / read time and the reason"
+                onClick={() => downloadCsv(`/messaging/campaigns/${c._id}/recipients/export`, `${safeFileName(c.name)}-recipients.csv`)}
+              >
+                <Download className="h-3.5 w-3.5" /> Download recipients (CSV)
+              </Button>
+            )}
           </div>
           {c.channel === 'email' && metrics.delivered === null && (
             <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -591,6 +596,7 @@ export default function MessagingPage() {
   return (
     <>
       <PageHeader title="SMS, Email & WhatsApp" description="Message templates, automatic messages and bulk sends to your leads." />
+      <CreditsStrip />
       <Tabs tabs={tabs.map(({ key, label }) => ({ key, label }))} active={tab} onChange={setTab} />
       <p className="mt-3 text-xs text-slate-500">{tabs.find((t) => t.key === tab)?.hint}</p>
       <div className="mt-3">
