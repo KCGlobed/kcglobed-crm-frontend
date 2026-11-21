@@ -3,6 +3,8 @@ import type { ApiResponse } from '../types/models'
 
 /** Analytics → Sales & Counsellor (backend apps/analytics). Shapes mirror apps/analytics/metrics.py. */
 export type AnalyticsParams = Record<string, string>
+/** top = cards + the two counsellor matrices (shown first); the others load after it */
+export type AnalyticsSection = 'top' | 'team' | 'calls' | 'leads' | 'followups'
 
 export interface Part {
   key: string
@@ -187,6 +189,8 @@ export interface AnalyticsSummary {
   counsellorFollowups: CounsellorFollowupRow[]
   filters: AnalyticsParams
   generatedAt: string
+  /** true when the backend served this from its short page cache (see generatedAt for its age) */
+  cached?: boolean
   options: { sources: Option[]; counsellors: Option[] }
   headline: { total: number; open: number; lost: number; notConnected: number; converted: number; conversion: number }
   stageSplit: Part[]
@@ -208,6 +212,14 @@ export const analyticsApi = api.injectEndpoints({
     analyticsSummary: build.query<ApiResponse<AnalyticsSummary>, AnalyticsParams>({
       query: (params) => ({ url: '/analytics/summary', params }),
       providesTags: ['Dashboard'],
+      // going back to the page, or to filters already viewed, shows the kept result at once (refetched in the background)
+      keepUnusedDataFor: 300,
+    }),
+    // one part of the page (backend metrics.SECTIONS): the visible top loads first, the rest after it
+    analyticsSection: build.query<ApiResponse<Partial<AnalyticsSummary>>, { section: AnalyticsSection; params: AnalyticsParams }>({
+      query: ({ section, params }) => ({ url: '/analytics/summary', params: { ...params, section } }),
+      providesTags: ['Dashboard'],
+      keepUnusedDataFor: 300,
     }),
     updateAnalyticsSettings: build.mutation<ApiResponse<{ firstCallTargetMinutes: number }>, { firstCallTargetMinutes: number }>({
       query: (body) => ({ url: '/analytics/settings', method: 'PATCH', body }),
@@ -216,4 +228,4 @@ export const analyticsApi = api.injectEndpoints({
   }),
 })
 
-export const { useAnalyticsSummaryQuery, useUpdateAnalyticsSettingsMutation } = analyticsApi
+export const { useAnalyticsSummaryQuery, useAnalyticsSectionQuery, useUpdateAnalyticsSettingsMutation } = analyticsApi

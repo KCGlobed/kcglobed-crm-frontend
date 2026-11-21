@@ -115,7 +115,8 @@ export const leadsApi = api.injectEndpoints({
     }),
     bulkAssign: build.mutation<
       ApiResponse<BulkAssignResult>,
-      { leadIds?: string[]; selectAll?: boolean; filters?: Record<string, unknown>; owners: string[]; reason: string; preview?: boolean }
+      // unassign: take the owner off the leads (owners is then empty)
+      { leadIds?: string[]; selectAll?: boolean; filters?: Record<string, unknown>; owners: string[]; unassign?: boolean; reason: string; preview?: boolean }
     >({
       query: (body) => ({ url: '/leads/bulk-assign', method: 'POST', body }),
       invalidatesTags: (_r, error, { preview }) => (error || preview ? [] : ['Lead', { type: 'Leads', id: 'LIST' }, 'Dashboard', 'Tasks']),
