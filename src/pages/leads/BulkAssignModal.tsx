@@ -8,6 +8,8 @@ import { parseApiError } from '../../lib/utils'
 import type { BulkAssignResult } from '../../types/models'
 import { ownerLabel, selectionBody, useAssignableOwners, type LeadSelection } from './leadSelection'
 
+const UNASSIGNED = '__unassigned__'
+
 
 /**
  * GL-13 bulk assign: one counsellor, or "split equally among" a chosen set →
@@ -22,12 +24,14 @@ export function BulkAssignModal({ selection, onClose, onDone }: { selection: Lea
   const [reason, setReason] = useState('')
   const [preview, setPreview] = useState<BulkAssignResult | null>(null)
   const [assign, { isLoading }] = useBulkAssignMutation()
-  const chosen = mode === 'one' ? (owner ? [owner] : []) : owners
+  // "Unassigned" in Assign to: the leads lose their owner (open follow-ups are cancelled by the server)
+  const unassign = mode === 'one' && owner === UNASSIGNED
+  const chosen = mode === 'one' ? (owner && !unassign ? [owner] : []) : owners
   const reasons = meta?.data.assignReasons ?? ['New allocation', 'Workload', 'Leave', 'Language', 'Performance', 'Other']
 
   const run = async (dryRun: boolean) => {
     try {
-      const res = await assign({ ...selectionBody(selection), owners: chosen, reason, preview: dryRun }).unwrap()
+      const res = await assign({ ...selectionBody(selection), owners: chosen, unassign: unassign || undefined, reason, preview: dryRun }).unwrap()
       if (dryRun) setPreview(res.data)
       else {
         toast.success(res.message)
@@ -42,7 +46,7 @@ export function BulkAssignModal({ selection, onClose, onDone }: { selection: Lea
     <Modal
       open
       onClose={onClose}
-      title={preview ? 'Confirm assignment' : `Assign ${selection.count} lead${selection.count === 1 ? '' : 's'}`}
+      title={preview ? (unassign ? 'Confirm unassign' : 'Confirm assignment') : `Assign ${selection.count} lead${selection.count === 1 ? '' : 's'}`}
       description="Open follow-ups move with the leads; the old owners lose access and both sides are notified."
       footer={
         preview ? (
@@ -51,7 +55,7 @@ export function BulkAssignModal({ selection, onClose, onDone }: { selection: Lea
               Back
             </Button>
             <Button onClick={() => run(false)} loading={isLoading}>
-              Confirm — assign {preview.total}
+              {unassign ? `Confirm — unassign ${preview.total - (preview.alreadyUnassigned ?? 0)}` : `Confirm — assign ${preview.total}`}
             </Button>
           </>
         ) : (
@@ -59,7 +63,7 @@ export function BulkAssignModal({ selection, onClose, onDone }: { selection: Lea
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button onClick={() => run(true)} loading={isLoading} disabled={!chosen.length || !reason || (mode === 'split' && chosen.length < 2)}>
+            <Button onClick={() => run(true)} loading={isLoading} disabled={(!chosen.length && !unassign) || !reason || (mode === 'split' && chosen.length < 2)}>
               Review
             </Button>
           </>
@@ -71,6 +75,13 @@ export function BulkAssignModal({ selection, onClose, onDone }: { selection: Lea
           <p className="text-sm text-slate-600">
             <b>{preview.total}</b> leads · reason <b>{reason}</b>
           </p>
+          {unassign && (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              These leads will have no owner. Their open follow-ups are cancelled, the old owners are told, and leads
+              from a round-robin source go back to the Unassigned pool.
+              {preview.alreadyUnassigned ? ` ${preview.alreadyUnassigned} already have no owner and stay as they are.` : ''}
+            </p>
+          )}
           <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
             {preview.perCounsellor.map((p) => (
               <li key={p._id} className="flex justify-between px-3 py-2 text-sm">
@@ -98,6 +109,7 @@ export function BulkAssignModal({ selection, onClose, onDone }: { selection: Lea
             <FormField label="Assign to" required>
               <Select value={owner} onChange={(e) => setOwner(e.target.value)}>
                 <option value="">Choose…</option>
+                <option value={UNASSIGNED}>Unassigned (remove owner)</option>
                 {assignable.map((u) => (
                   <option key={u._id} value={u._id}>
                     {ownerLabel(u)}

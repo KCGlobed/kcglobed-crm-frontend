@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Download, Mail, MessageCircle, Pause, Play, Plus, RefreshCw, Square, Trash2 } from 'lucide-react'
+import { Download, Mail, MessageCircle, Pause, Play, Plus, RefreshCw, Search, Square, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useCampaignRecipientsQuery,
@@ -183,7 +183,15 @@ function TemplatesTab() {
   const [editing, setEditing] = useState<MessageTemplate | 'new' | null>(null)
   const [deleting, setDeleting] = useState<MessageTemplate | null>(null)
   const [channel, setChannel] = useState<'all' | MessageTemplate['channel']>('all')
-  const rows = (data?.data ?? []).filter((t) => channel === 'all' || t.channel === channel)
+  const [search, setSearch] = useState('')
+  // search: name, subject, DLT id / sender, WhatsApp template name and the message text (every word, any case)
+  const words = search.toLowerCase().split(/\s+/).filter(Boolean)
+  const inChannel = (data?.data ?? []).filter((t) => channel === 'all' || t.channel === channel)
+  const rows = inChannel.filter((t) => {
+    if (!words.length) return true
+    const hay = [t.name, t.subject, t.dltTemplateId, t.senderId, t.waTemplateName, t.body].filter(Boolean).join(' ').toLowerCase()
+    return words.every((w) => hay.includes(w))
+  })
   // the buttons above the list belong to the selected channel; "All" shows every channel's
   const shows = (c: MessageTemplate['channel']) => channel === 'all' || channel === c
   const languageLabel = (code?: string) => options?.data.whatsappLanguages?.find((l) => l.value === code)?.label ?? code ?? 'en'
@@ -235,7 +243,19 @@ function TemplatesTab() {
             </button>
           ))}
         </div>
-        {shows('whatsapp') && options?.data.whatsappProvider === 'meta' && (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <Input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search templates"
+            aria-label="Search templates"
+            className="!h-8 !w-56 !py-0 !pl-8 !text-xs"
+          />
+        </div>
+        {/* always shown on All / WhatsApp; without WhatsApp (Meta) connected the server answers with what to set up */}
+        {shows('whatsapp') && (
           <Button size="sm" variant="outline" onClick={syncWhatsApp} loading={syncing} title="Pull the templates approved in WhatsApp Manager">
             <RefreshCw className="h-3.5 w-3.5" /> Sync from WhatsApp
           </Button>
@@ -264,7 +284,10 @@ function TemplatesTab() {
       {isLoading ? (
         <Skeleton className="h-40 w-full" />
       ) : !rows.length ? (
-        <EmptyState title={data?.data.length ? 'No templates on this channel yet' : 'No templates yet'} />
+        <EmptyState
+          title={inChannel.length ? `No templates match "${search.trim()}"` : data?.data.length ? 'No templates on this channel yet' : 'No templates yet'}
+          action={inChannel.length ? <Button size="sm" variant="outline" onClick={() => setSearch('')}>Clear search</Button> : undefined}
+        />
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-sm">

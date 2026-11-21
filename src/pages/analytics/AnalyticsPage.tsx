@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   FileSpreadsheet,
@@ -7,6 +7,7 @@ import {
   PhoneCall,
   PhoneOff,
   PhoneOutgoing,
+  RefreshCw,
   RotateCcw,
   Sparkles,
   Target,
@@ -16,11 +17,11 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { useCurrentUser } from '../../app/hooks'
+import { useAppDispatch, useCurrentUser } from '../../app/hooks'
 import { Button } from '../../components/ui/Button'
 import { CheckboxMultiSelect } from '../../components/ui/CheckboxMultiSelect'
 import { DateRangeFilter } from '../../components/ui/DateRangeFilter'
-import { ErrorState, LoadingState } from '../../components/ui/feedback'
+import { ErrorState, Skeleton } from '../../components/ui/feedback'
 import { KpiCard } from '../../components/ui/KpiCard'
 import { Card, PageHeader } from '../../components/ui/misc'
 import { can } from '../../constants/permissions'
@@ -30,7 +31,15 @@ import { NOT_TOUCHED, firstTouchOptions, firstTouchSubOptions, keepFirstTouchSub
 import { cn, formatDateTime } from '../../lib/utils'
 import { useMasterBootstrapQuery } from '../../services/mastersApi'
 import { TimelineFilter, type TimelineValue } from '../leads/TimelineFilter'
-import { useAnalyticsSummaryQuery, useUpdateAnalyticsSettingsMutation, type AnalyticsParams, type Matrix } from '../../services/analyticsApi'
+import {
+  analyticsApi,
+  useAnalyticsSectionQuery,
+  useUpdateAnalyticsSettingsMutation,
+  type AnalyticsParams,
+  type AnalyticsSection,
+  type AnalyticsSummary,
+  type Matrix,
+} from '../../services/analyticsApi'
 import { Bars, Donut, Funnel, Heatmap, LineChart, Ring, StackedBars, TrendCard } from './charts'
 import { COLORS } from './colors'
 
@@ -106,6 +115,109 @@ const hms = (minutes: number) => dur(minutes * 60)
 
 const Empty = ({ text = 'No data for these filters' }: { text?: string }) => <p className="py-8 text-center text-xs text-slate-400">{text}</p>
 
+/** Filters settle before the request goes out: ticking several sources / counsellors in a row fires one request. */
+function useDebounced<T>(value: T, ms: number): T {
+  const key = JSON.stringify(value)
+  const [settled, setSettled] = useState(value)
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(JSON.parse(key) as T), ms)
+    return () => clearTimeout(t)
+  }, [key, ms])
+  return settled
+}
+
+// Each section's last result is kept for this browser tab, so a reload paints at once while the live numbers load.
+type SectionData = Partial<AnalyticsSummary>
+const snapshotSlot = (section: AnalyticsSection) => `analytics-snapshot:${section}`
+function readSnapshot(section: AnalyticsSection, key: string): SectionData | undefined {
+  try {
+    const raw = sessionStorage.getItem(snapshotSlot(section))
+    const snap = raw ? (JSON.parse(raw) as { key: string; data: SectionData }) : null
+    return snap?.key === key ? snap.data : undefined
+  } catch {
+    return undefined
+  }
+}
+function writeSnapshot(section: AnalyticsSection, key: string, data: SectionData) {
+  try {
+    sessionStorage.setItem(snapshotSlot(section), JSON.stringify({ key, data }))
+  } catch {
+    /* storage full or blocked: the page works without it */
+  }
+}
+
+/**
+ * One section of the page. `currentData` is the result for exactly these filters, so a filter change shows the
+ * section's skeleton (not the old numbers) until its own answer arrives; a kept snapshot fills in on reload.
+ */
+function useSection(section: AnalyticsSection, params: AnalyticsParams, skip: boolean) {
+  const key = JSON.stringify(params)
+  const q = useAnalyticsSectionQuery({ section, params }, { skip })
+  const live = q.currentData?.data
+  const snapshot = useMemo(() => (live ? undefined : readSnapshot(section, key)), [live, section, key])
+  useEffect(() => {
+    if (live) writeSnapshot(section, key, live)
+  }, [live, section, key])
+  return { data: live ?? snapshot, fetching: !live && !q.isError, isError: q.isError, error: q.error, refetch: q.refetch }
+}
+
+/** Placeholder panels for a section still loading (optional KPI tiles above them). */
+function PanelSkeleton({ count = 2, kpis = 0 }: { count?: number; kpis?: number }) {
+  return (
+    <div aria-busy="true" aria-label="Loading">
+      {kpis > 0 && (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+          {Array.from({ length: kpis }, (_, i) => (
+            <div key={i} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-md">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="mt-3 h-6 w-16" />
+              <Skeleton className="mt-3 h-1.5 w-full" />
+            </div>
+          ))}
+        </div>
+      )}
+      <div className={cn('grid gap-4', kpis > 0 && 'mt-4')}>
+        {Array.from({ length: count }, (_, i) => (
+          <div key={i} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-md">
+            <Skeleton className="h-5 w-56" />
+            <Skeleton className="mt-3 h-3 w-80 max-w-full" />
+            <div className="mt-5 space-y-2">
+              {Array.from({ length: 4 }, (_, r) => <Skeleton key={r} className="h-7 w-full" />)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** The visible top while it loads: five cards and the two counsellor matrices. */
+function AnalyticsSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading analytics">
+      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+        {Array.from({ length: 5 }, (_, i) => (
+          <div key={i} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-md">
+            <div className="flex items-center gap-3"><Skeleton className="h-10 w-10 rounded-full" /><Skeleton className="h-4 w-24" /></div>
+            <Skeleton className="mt-5 h-7 w-20" />
+            <Skeleton className="mt-2 h-3 w-28" />
+            <Skeleton className="mt-5 h-10 w-full" />
+          </div>
+        ))}
+      </div>
+      {[0, 1].map((i) => (
+        <div key={i} className="mt-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-md">
+          <Skeleton className="h-5 w-64" />
+          <Skeleton className="mt-3 h-3 w-96 max-w-full" />
+          <div className="mt-5 space-y-2">
+            {Array.from({ length: 5 }, (_, r) => <Skeleton key={r} className="h-8 w-full" />)}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /**
  * Analytics → Sales & Counsellor (SOP "Sales & Counsellor Analytics Dashboard"): filters, four headline numbers and
  * twelve charts / lists on live CRM data. Every number and chart part opens the leads or follow-ups behind it.
@@ -116,7 +228,50 @@ export default function AnalyticsPage() {
   const filters: AnalyticsParams = Object.fromEntries(FILTER_KEYS.filter((k) => params.get(k)).map((k) => [k, params.get(k) as string]))
   // Calls trend: Daily / Weekly / Monthly (not a filter: only the trend's buckets change)
   const callPeriod = (['day', 'week', 'month'] as const).find((p) => p === params.get('call_period')) ?? 'day'
-  const { data, isLoading, isError, error, refetch, isFetching } = useAnalyticsSummaryQuery({ ...filters, call_period: callPeriod })
+  // filters settle (400 ms) before requests go out; the calls toggle only changes the Calls section
+  const filtersKey = JSON.stringify(filters)
+  const leadArgs = useDebounced<AnalyticsParams>(filters, 400)
+  const callArgs = useMemo(() => ({ ...leadArgs, call_period: callPeriod }), [leadArgs, callPeriod])
+  const settling = filtersKey !== JSON.stringify(leadArgs)
+  // the visible top first (cards + matrices); the other sections start once it has answered
+  const top = useSection('top', leadArgs, false)
+  const topReady = !!top.data && !top.fetching
+  const team = useSection('team', leadArgs, !topReady)
+  const calls = useSection('calls', callArgs, !topReady)
+  const leadsSec = useSection('leads', leadArgs, !topReady)
+  const followups = useSection('followups', leadArgs, !topReady)
+  const sections = [top, team, calls, leadsSec, followups]
+  const loadingCount = sections.filter((x) => x.fetching).length
+  // the page reads one object; each block below renders only once its own section is in (skeleton till then, and
+  // straight away when a filter changes, instead of the old numbers)
+  const d = { ...top.data, ...team.data, ...calls.data, ...leadsSec.data, ...followups.data } as AnalyticsSummary
+  const ready = {
+    top: !settling && !!top.data?.cards,
+    team: !settling && !!team.data?.scorecard,
+    calls: !settling && !!calls.data?.calls,
+    leads: !settling && !!leadsSec.data?.funnel,
+    followups: !settling && !!followups.data?.attention,
+  }
+  // Refresh: skip the server's short cache for every section, top first, and put the fresh numbers in place
+  const dispatch = useAppDispatch()
+  const [refreshing, setRefreshing] = useState(false)
+  const refresh = async () => {
+    setRefreshing(true)
+    const one = async (section: AnalyticsSection, params: AnalyticsParams) => {
+      const res = await dispatch(
+        analyticsApi.endpoints.analyticsSection.initiate({ section, params: { ...params, fresh: '1' } }, { subscribe: false, forceRefetch: true }),
+      ).unwrap()
+      dispatch(analyticsApi.util.upsertQueryData('analyticsSection', { section, params }, res))
+    }
+    try {
+      await one('top', leadArgs)
+      await Promise.all([one('team', leadArgs), one('calls', callArgs), one('leads', leadArgs), one('followups', leadArgs)])
+    } catch (err) {
+      toast.error((err as { data?: { message?: string } })?.data?.message ?? 'Could not refresh')
+    } finally {
+      setRefreshing(false)
+    }
+  }
   const navigate = useNavigate()
   const [stageOpen, setStageOpen] = useState<string | null>(null)
   const [downloading, setDownloading] = useState(false)
@@ -168,20 +323,25 @@ export default function AnalyticsPage() {
     }
   }
 
-  const d = data?.data
-  const h = d?.headline
+  const generatedAt = top.data?.generatedAt
+  const busy = settling ? sections.length : loadingCount
 
   return (
     <div className="pb-10">
       <PageHeader
         title="Sales & Counsellor Analytics"
-        description={d ? `Live CRM data · updated ${formatDateTime(d.generatedAt)} · click any chart or number to open those leads` : 'Live CRM data'}
+        description={generatedAt ? `Live CRM data · updated ${formatDateTime(generatedAt)} · click any chart or number to open those leads` : 'Live CRM data'}
         actions={
-          canExport && (
-            <Button onClick={download} loading={downloading} disabled={!d}>
-              <FileSpreadsheet className="h-4 w-4" /> Excel report
+          <>
+            <Button variant="outline" onClick={refresh} loading={refreshing} disabled={!ready.top} title="Recalculate now (numbers are kept up to 2 minutes)">
+              <RefreshCw className="h-4 w-4" /> Refresh
             </Button>
-          )
+            {canExport && (
+              <Button onClick={download} loading={downloading} disabled={!ready.top}>
+                <FileSpreadsheet className="h-4 w-4" /> Excel report
+              </Button>
+            )}
+          </>
         }
       />
 
@@ -192,9 +352,9 @@ export default function AnalyticsPage() {
           fromTime={params.get('modified_from_time') ?? ''} toTime={params.get('modified_to_time') ?? ''} onChange={range('modified')} />
         <DateRangeFilter withTime label="Activity date" heading="Counsellor actions between" from={params.get('acted_from') ?? ''} to={params.get('acted_to') ?? ''}
           fromTime={params.get('acted_from_time') ?? ''} toTime={params.get('acted_to_time') ?? ''} onChange={range('acted')} />
-        <CheckboxMultiSelect options={d?.options.sources ?? []} value={ids('source')} onChange={(v) => set({ source: v.join(',') })}
+        <CheckboxMultiSelect options={top.data?.options?.sources ?? []} value={ids('source')} onChange={(v) => set({ source: v.join(',') })}
           allLabel="All sources" plural="Sources" ariaLabel="Lead source" searchPlaceholder="Search sources…" />
-        <CheckboxMultiSelect options={d?.options.counsellors ?? []} value={ids('owner')} onChange={(v) => set({ owner: v.join(',') })}
+        <CheckboxMultiSelect options={top.data?.options?.counsellors ?? []} value={ids('owner')} onChange={(v) => set({ owner: v.join(',') })}
           allLabel="All counsellors" plural="Counsellors" ariaLabel="Counsellor" searchPlaceholder="Search counsellors…" />
         <CheckboxMultiSelect options={firstTouchOptions(stages).filter((o) => o.value !== NOT_TOUCHED)} value={ids('first_stage')} onChange={setFirstStages}
           allLabel="All first touch" plural="First Touch" ariaLabel="First Touch" searchPlaceholder="Search first touch…" />
@@ -208,15 +368,24 @@ export default function AnalyticsPage() {
             <RotateCcw className="h-3.5 w-3.5" /> Reset
           </Button>
         )}
-        {isFetching && !isLoading && <span className="ml-auto text-xs text-slate-400">Updating…</span>}
+        {(busy > 0 || refreshing) && (
+          <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-slate-500" role="status">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin text-brand-600" />
+            {refreshing ? 'Refreshing…' : `Loading ${sections.length - busy + 1} of ${sections.length} sections…`}
+          </span>
+        )}
       </div>
+      {busy > 0 && (
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-100" aria-hidden>
+          <div className="h-full rounded-full bg-brand-500 transition-all duration-500" style={{ width: `${Math.max(5, ((sections.length - busy) / sections.length) * 100)}%` }} />
+        </div>
+      )}
 
-      {isError ? (
-        <div className="mt-6"><ErrorState error={error} onRetry={refetch} /></div>
-      ) : isLoading || !d || !h ? (
-        <LoadingState className="mt-10" />
+      {top.isError && !top.data ? (
+        <div className="mt-6"><ErrorState error={top.error} onRetry={top.refetch} /></div>
       ) : (
-        <div className={isFetching ? 'opacity-70 transition-opacity' : ''}>
+        <div>
+          {!ready.top ? <AnalyticsSkeleton /> : (<>
           <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
             {d.cards.cards.map((c) => (
               <TrendCard
@@ -283,7 +452,10 @@ export default function AnalyticsPage() {
             </Panel>
           </div>
 
+          </>)}
+
           <Band title="Counsellors" sub="Leads with each counsellor, action taken, sources, stages and follow-ups" />
+          {!ready.team ? <PanelSkeleton count={3} /> : (
           <div className="grid gap-4">
             <Panel title="Leads with each counsellor and action taken" hint="Green = counsellor worked the lead (call, stage, note, follow-up, message); red = no action yet. Click a part to open those leads.">
               {d.counsellorAction.length ? (
@@ -389,7 +561,10 @@ export default function AnalyticsPage() {
             </Panel>
           </div>
 
+          )}
+
           <Band title="Calls" sub="How many calls each counsellor made, how many connected, and what came of them" />
+          {!ready.calls ? <PanelSkeleton count={2} kpis={6} /> : (<>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
             {[
               { label: 'Calls made', value: d.calls.totals.calls, hint: `${fmtN(d.calls.totals.leads)} leads called`, part: 'all', icon: PhoneOutgoing, accent: 'blue' as const, progress: d.calls.totals.calls ? 100 : 0 },
@@ -505,7 +680,10 @@ export default function AnalyticsPage() {
             </Panel>
           </div>
 
+          </>)}
+
           <Band title="Leads" sub="Where every lead stands" />
+          {!ready.leads ? <PanelSkeleton count={3} /> : (
           <div className="grid gap-4 lg:grid-cols-3">
             <Panel title="Actionable vs non-actionable" hint="Share of leads the team still has to work on">
               <Donut
@@ -541,7 +719,10 @@ export default function AnalyticsPage() {
             </Panel>
           </div>
 
+          )}
+
           <Band title="Calls & follow-up discipline" sub="Outcome, speed of first call, on-time follow-ups" />
+          {!(ready.leads && ready.team && ready.followups) ? <PanelSkeleton count={2} /> : (
           <div className="grid gap-4 lg:grid-cols-2">
             <Panel title="Assigned leads and outcome" hint="Each counsellor's load, contact rate and result" className="lg:col-span-2">
               {d.counsellors.length ? (
@@ -626,7 +807,10 @@ export default function AnalyticsPage() {
             </Panel>
           </div>
 
+          )}
+
           <Band title="Follow-ups" sub="What needs action today" />
+          {!ready.followups ? <PanelSkeleton count={3} /> : (
           <div className="grid gap-4 lg:grid-cols-3">
             <Panel title="Today's follow-ups" hint={`${d.todayFollowups.due} due today`}>
               <Donut
@@ -681,6 +865,7 @@ export default function AnalyticsPage() {
               ) : <Empty text="No overdue follow-ups" />}
             </Panel>
           </div>
+          )}
         </div>
       )}
 

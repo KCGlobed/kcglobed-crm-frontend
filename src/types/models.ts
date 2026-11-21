@@ -1912,6 +1912,8 @@ export interface BulkAssignResult {
   total: number
   perCounsellor: { _id: string; name: string; count: number }[]
   assigned?: number
+  /** unassign preview: selected leads that already have no owner */
+  alreadyUnassigned?: number
 }
 
 /**
