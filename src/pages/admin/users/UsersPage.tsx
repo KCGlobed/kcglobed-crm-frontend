@@ -70,7 +70,9 @@ export default function UsersPage() {
     setConfirmUser(null)
   }
 
-  const canEditRow = (u: User) => can(me, 'users', 'edit') && (!u.isSuperAdmin || u._id === me?._id)
+  // another Super Admin: only the System Super Admin manages them, and nobody manages the System Super Admin
+  const canTouch = (u: User) => !u.isSuperAdmin || u._id === me?._id || (!!me?.isSystemSuperAdmin && !u.isSystemSuperAdmin)
+  const canEditRow = (u: User) => can(me, 'users', 'edit') && canTouch(u)
 
   const columns: Column<User>[] = [
     {
@@ -148,20 +150,20 @@ export default function UsersPage() {
             {
               label: 'Resend credentials',
               icon: Send,
-              hidden: !can(me, 'users', 'edit') || u.isSuperAdmin || !u.isActive || u._id === me?._id,
+              hidden: !can(me, 'users', 'edit') || !canTouch(u) || !u.isActive || u._id === me?._id,
               onClick: () => run(() => resend(u._id).unwrap()),
             },
             {
               label: 'Reactivate',
               icon: UserCheck,
-              hidden: !can(me, 'users', 'delete') || u.isActive || u._id === me?._id,
+              hidden: !can(me, 'users', 'delete') || !canTouch(u) || u.isActive || u._id === me?._id,
               onClick: () => run(() => reactivate(u._id).unwrap()),
             },
             {
               label: 'Deactivate',
               icon: UserX,
               danger: true,
-              hidden: !can(me, 'users', 'delete') || u.isSuperAdmin || !u.isActive || u._id === me?._id,
+              hidden: !can(me, 'users', 'delete') || !canTouch(u) || !u.isActive || u._id === me?._id,
               onClick: () => setConfirmUser(u),
             },
           ]}
