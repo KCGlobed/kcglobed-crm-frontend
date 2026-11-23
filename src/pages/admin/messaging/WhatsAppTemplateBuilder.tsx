@@ -8,7 +8,7 @@ import {
   useSaveMessageTemplateMutation,
   useSubmitWhatsAppTemplateMutation,
   useUploadMessageAssetMutation,
-  useUploadMessageAttachmentMutation,
+  useUploadWhatsAppHeaderMutation,
 } from '../../../services/messagingApi'
 import { Button } from '../../../components/ui/Button'
 import { Checkbox, FormField, Input, Select, Textarea } from '../../../components/ui/fields'
@@ -38,6 +38,8 @@ const AUTH_BODY = '*{{1}}* is your verification code.'
 const AUTH_SECURITY = ' For your security, do not share this code.'
 const SAMPLE_CODE = '123456'
 const MEDIA: WhatsAppHeaderFormat[] = ['IMAGE', 'DOCUMENT']
+// the header PDF's cap: the server's (assets.MAX_WA_HEADER_BYTES), below its 60 MB request limit; images stay at Meta's 5 MB
+const HEADER_PDF_MAX_MB = 50
 
 /**
  * Communication → Templates → WhatsApp builder: a template is built here (category, name, language, header text /
@@ -133,7 +135,7 @@ function Builder({
   const [save, { isLoading: saving }] = useSaveMessageTemplateMutation()
   const [submit, { isLoading: submitting }] = useSubmitWhatsAppTemplateMutation()
   const [uploadImage, { isLoading: uploadingImage }] = useUploadMessageAssetMutation()
-  const [uploadFile, { isLoading: uploadingFile }] = useUploadMessageAttachmentMutation()
+  const [uploadFile, { isLoading: uploadingFile }] = useUploadWhatsAppHeaderMutation()
   const spec = template?.waSpec
   const startCategory = CATEGORIES.some((c) => c.key === template?.waCategory) ? (template?.waCategory as Category) : 'MARKETING'
 
@@ -291,6 +293,10 @@ function Builder({
     const image = headerFormat === 'IMAGE'
     if (image ? !['image/png', 'image/jpeg'].includes(file.type) : file.type !== 'application/pdf') {
       return toast.error(image ? 'The header image must be a JPG or PNG' : 'The header document must be a PDF')
+    }
+    // checked here too: a file past the server's request limit is cut off before the API can answer
+    if (!image && file.size > HEADER_PDF_MAX_MB * 1024 * 1024) {
+      return toast.error(`The header PDF can be at most ${HEADER_PDF_MAX_MB} MB`)
     }
     const form = new FormData()
     form.append('file', file)
@@ -481,7 +487,7 @@ function Builder({
                       )}
                     </div>
                     <p className={cn('text-[11px]', errors['waSpec.header.assetId'] ? 'font-medium text-red-600' : 'text-slate-500')}>
-                      {errors['waSpec.header.assetId'] ?? (headerFormat === 'IMAGE' ? 'JPG or PNG, up to 5 MB' : 'PDF, up to 8 MB')}
+                      {errors['waSpec.header.assetId'] ?? (headerFormat === 'IMAGE' ? 'JPG or PNG, up to 5 MB' : `PDF, up to ${HEADER_PDF_MAX_MB} MB`)}
                     </p>
                   </div>
                 )}

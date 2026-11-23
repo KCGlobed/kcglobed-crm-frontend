@@ -149,6 +149,10 @@ export const messagingApi = api.injectEndpoints({
     uploadMessageAttachment: build.mutation<ApiResponse<MessageAsset>, FormData>({
       query: (body) => ({ url: '/messaging/attachments', method: 'POST', body }),
     }),
+    /** The PDF header of a WhatsApp template: PDF only, up to 50 MB (bigger than an email attachment). */
+    uploadWhatsAppHeader: build.mutation<ApiResponse<MessageAsset>, FormData>({
+      query: (body) => ({ url: '/messaging/attachments/wa-header', method: 'POST', body }),
+    }),
     /** The email designer's draft to the signed-in user's own inbox. */
     sendTestEmail: build.mutation<ApiResponse<{ to: string; status: string; provider?: string }>, { subject: string; body: string; attachments?: string[] }>({
       query: (body) => ({ url: '/messaging/templates/test-email', method: 'POST', body }),
@@ -334,6 +338,7 @@ export const {
   useUploadMessageAssetMutation,
   useDeleteMessageAssetMutation,
   useUploadMessageAttachmentMutation,
+  useUploadWhatsAppHeaderMutation,
   useSendTestEmailMutation,
   useListAutomationsQuery,
   useCreateAutomationMutation,
