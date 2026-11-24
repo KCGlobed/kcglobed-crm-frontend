@@ -743,7 +743,8 @@ function movedMember(members: PartnerMember[], m: PartnerMember, step: -1 | 1): 
 
 /**
  * One partner (a Source in the Partner channel): the user its leads land on (Users → UTM source = the Source's name),
- * the Auto assign switch, and that user's reports and team with a toggle each and a sequence. The members list folds away.
+ * the Auto assign switch, and that user's reports, own team and managed teams with a toggle each and a sequence. The
+ * members list folds away.
  */
 function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; canEdit: boolean; canOpenLeads: boolean }) {
   const [setAutoAssign, { isLoading: switching }] = useSetPartnerAutoAssignMutation()
@@ -906,8 +907,8 @@ function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; 
                 </ul>
               ) : (
                 <p className="border-t border-slate-100 px-3 py-3 text-xs text-slate-500">
-                  Nobody reports to {user.name} yet. Set Reporting Manager to {user.name} on the partner's users, or add them to a team{' '}
-                  {user.name} manages.
+                  Nobody reports to {user.name} yet. Set Reporting Manager to {user.name} on the partner's users, or add them to{' '}
+                  {user.name}'s team or a team {user.name} manages.
                 </p>
               ))}
           </div>
