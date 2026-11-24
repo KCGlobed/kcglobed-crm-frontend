@@ -20,6 +20,7 @@ import { ColumnChooser } from '../../components/ui/ColumnChooser'
 import { FilterBar, PageHeader, SearchInput } from '../../components/ui/misc'
 import { Button } from '../../components/ui/Button'
 import { DateRangeFilter } from '../../components/ui/DateRangeFilter'
+import { NoActivityFilter } from '../../components/ui/NoActivityFilter'
 import { Checkbox, Input } from '../../components/ui/fields'
 import { Modal } from '../../components/ui/Modal'
 import { cn, formatDate, parseApiError } from '../../lib/utils'
@@ -247,8 +248,6 @@ export default function LeadsListPage() {
     replaceParams(next)
   }
   const lastActivity = rangeOf('last_activity')
-  // Quick Filters → No Activity: open leads with no timeline entry in the window (replaces "No Activity 3+ Days")
-  const noActivity = rangeOf('no_activity')
   // Timeline filter: ?activity_type=sms,stage&activity_from=…&activity_to=…&activity_from_time=…&activity_to_time=…
   const timeline: TimelineValue = {
     types: (params.get('activity_type') ?? '').split(',').filter(Boolean),
@@ -485,16 +484,10 @@ export default function LeadsListPage() {
             onChange={(ids) => setParam('first_sub_stage', ids.length ? ids.join(',') : undefined)}
           />
         )}
-        <DateRangeFilter
-          withTime
-          label="No Activity"
-          heading="No Activity Between"
+        <NoActivityFilter
           className="[&>button]:h-7 [&>button]:rounded-lg [&>button]:text-xs"
-          from={noActivity.from}
-          to={noActivity.to}
-          fromTime={noActivity.fromTime}
-          toTime={noActivity.toTime}
-          onChange={setRangeParams('no_activity')}
+          value={params.get('no_activity_before') ?? ''}
+          onChange={(day) => setParam('no_activity_before', day || undefined)}
         />
       </div>
 
