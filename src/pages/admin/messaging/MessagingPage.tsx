@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Download, Mail, MessageCircle, Pause, Play, Plus, RefreshCw, Square, Trash2 } from 'lucide-react'
+import { Download, Mail, MessageCircle, Pause, Play, Plus, RefreshCw, Search, Square, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   useCampaignRecipientsQuery,
@@ -28,6 +28,8 @@ import { EmptyState, Skeleton } from '../../../components/ui/feedback'
 import { WhatsAppStatusBadge } from '../../../components/whatsapp/TemplateStatusBadge'
 import { formatDateTime, parseApiError } from '../../../lib/utils'
 import { authorizedDownload } from '../../../lib/download'
+import { searchRank } from '../../../lib/search'
+import { Highlight } from '../../../components/ui/Highlight'
 import type { CampaignRow, MessageTemplate } from '../../../types/models'
 import { AutomationsTab } from './AutomationsTab'
 import { MetricCell, ReasonBreakdown } from './deliveryMetrics'
@@ -183,7 +185,22 @@ function TemplatesTab() {
   const [editing, setEditing] = useState<MessageTemplate | 'new' | null>(null)
   const [deleting, setDeleting] = useState<MessageTemplate | null>(null)
   const [channel, setChannel] = useState<'all' | MessageTemplate['channel']>('all')
-  const rows = (data?.data ?? []).filter((t) => channel === 'all' || t.channel === channel)
+  const [search, setSearch] = useState('')
+  // search: any part of any word, every word somewhere, best match first — name > WhatsApp name > subject > DLT id /
+  // sender > the message text (HTML stripped)
+  const inChannel = useMemo(() => (data?.data ?? []).filter((t) => channel === 'all' || t.channel === channel), [data, channel])
+  const rows = useMemo(
+    () =>
+      searchRank(inChannel, search, (t) => [
+        { text: t.name, weight: 10 },
+        { text: t.waTemplateName, weight: 6 },
+        { text: t.subject, weight: 5 },
+        { text: t.dltTemplateId, weight: 4 },
+        { text: t.senderId, weight: 4 },
+        { text: t.body, weight: 1 },
+      ]),
+    [inChannel, search]
+  )
   // the buttons above the list belong to the selected channel; "All" shows every channel's
   const shows = (c: MessageTemplate['channel']) => channel === 'all' || channel === c
   const languageLabel = (code?: string) => options?.data.whatsappLanguages?.find((l) => l.value === code)?.label ?? code ?? 'en'
@@ -235,7 +252,19 @@ function TemplatesTab() {
             </button>
           ))}
         </div>
-        {shows('whatsapp') && options?.data.whatsappProvider === 'meta' && (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <Input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name, subject, text…"
+            aria-label="Search templates"
+            className="!h-8 !w-56 !py-0 !pl-8 !text-xs"
+          />
+        </div>
+        {/* always shown on All / WhatsApp; without WhatsApp (Meta) connected the server answers with what to set up */}
+        {shows('whatsapp') && (
           <Button size="sm" variant="outline" onClick={syncWhatsApp} loading={syncing} title="Pull the templates approved in WhatsApp Manager">
             <RefreshCw className="h-3.5 w-3.5" /> Sync from WhatsApp
           </Button>
@@ -264,7 +293,10 @@ function TemplatesTab() {
       {isLoading ? (
         <Skeleton className="h-40 w-full" />
       ) : !rows.length ? (
-        <EmptyState title={data?.data.length ? 'No templates on this channel yet' : 'No templates yet'} />
+        <EmptyState
+          title={inChannel.length ? `No templates match "${search.trim()}"` : data?.data.length ? 'No templates on this channel yet' : 'No templates yet'}
+          action={inChannel.length ? <Button size="sm" variant="outline" onClick={() => setSearch('')}>Clear search</Button> : undefined}
+        />
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-sm">
@@ -281,16 +313,23 @@ function TemplatesTab() {
             <tbody className="divide-y divide-slate-100">
               {rows.map((t) => (
                 <tr key={t._id} className="cursor-pointer hover:bg-slate-50" onClick={() => open(t)}>
-                  <td className="px-4 py-2 font-medium text-slate-800">{t.name}</td>
+                  <td className="px-4 py-2 font-medium text-slate-800">
+                    <Highlight text={t.name} query={search} />
+                  </td>
                   <td className="px-4 py-2">
                     <Badge tone={t.channel === 'sms' ? 'blue' : t.channel === 'whatsapp' ? 'green' : 'violet'}>{t.channel.toUpperCase()}</Badge>
                   </td>
                   <td className="px-4 py-2 text-xs text-slate-600">
-                    {t.channel === 'sms'
-                      ? `${t.dltTemplateId} · ${t.senderId}`
-                      : t.channel === 'whatsapp'
-                        ? [t.waTemplateName, languageLabel(t.waLanguage), categoryLabel(t.waCategory)].filter(Boolean).join(' · ')
-                        : t.subject}
+                    <Highlight
+                      query={search}
+                      text={
+                        t.channel === 'sms'
+                          ? `${t.dltTemplateId} · ${t.senderId}`
+                          : t.channel === 'whatsapp'
+                            ? [t.waTemplateName, languageLabel(t.waLanguage), categoryLabel(t.waCategory)].filter(Boolean).join(' · ')
+                            : t.subject
+                      }
+                    />
                   </td>
                   <td className="px-4 py-2">
                     {t.channel === 'whatsapp' ? (

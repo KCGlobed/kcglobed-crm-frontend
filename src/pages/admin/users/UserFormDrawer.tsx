@@ -15,9 +15,10 @@ import { useCurrentUser } from '../../../app/hooks'
 import { can } from '../../../constants/permissions'
 import { Drawer } from '../../../components/ui/Drawer'
 import { Button } from '../../../components/ui/Button'
-import { Checkbox, FieldGroup, FormField, Input, PasswordInput, Select } from '../../../components/ui/fields'
+import { Checkbox, FieldGroup, FormField, Input, PasswordInput, Select, Switch } from '../../../components/ui/fields'
 import { mobileField } from '../../../lib/mobile'
 import { cn, parseApiError } from '../../../lib/utils'
+import { ALERT_CHANNELS } from '../../../constants/alertChannels'
 import type { RoleKey, User } from '../../../types/models'
 import { PermissionBuilder, type PermissionState } from './PermissionBuilder'
 import { MenuPreview } from './MenuPreview'
@@ -68,6 +69,7 @@ const schema = z.object({
   isActive: z.boolean().optional(),
   receivesLeads: z.boolean().optional(),
   isSuperAdmin: z.boolean().optional(),
+  alerts: z.object({ email: z.boolean(), sms: z.boolean(), push: z.boolean() }),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -97,6 +99,7 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
   const isEdit = !!user
   const me = useCurrentUser()
   const superAdmin = !!me?.isSuperAdmin
+  const systemSuperAdmin = !!me?.isSystemSuperAdmin // only they make or unmake a Super Admin
   const { data: teams } = useTeamOptionsQuery()
   // each unit under its department with its type ("Admissions › Team A · Team"), so a department and its team differ
   const teamChoices = useMemo(() => teamsInOrder(teams?.data ?? []), [teams])
@@ -149,9 +152,10 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
       isActive: user?.isActive ?? true,
       receivesLeads: user?.receivesLeads ?? true, // shown checked for a new counsellor
       isSuperAdmin: user?.isSuperAdmin ?? false,
+      alerts: user?.alerts ?? { email: true, sms: true, push: true },
     },
   })
-  const [role, isSuperAdminChecked] = useWatch({ control, name: ['role', 'isSuperAdmin'] })
+  const [role, isSuperAdminChecked, alerts] = useWatch({ control, name: ['role', 'isSuperAdmin', 'alerts'] })
   const receivesTouched = !!dirtyFields.receivesLeads
   // new users: the round-robin box follows the role (counsellors in) until it is ticked by hand
   useEffect(() => {
@@ -227,7 +231,8 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
         : isEdit || dirtyFields.receivesLeads
           ? { receivesLeads: !!values.receivesLeads }
           : {}),
-      ...(superAdmin ? { isSuperAdmin: values.isSuperAdmin } : {}),
+      ...(systemSuperAdmin ? { isSuperAdmin: values.isSuperAdmin } : {}),
+      alerts: values.alerts,
     }
     if (values.password) base.password = values.password
     const access = {
@@ -410,7 +415,7 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
                 )}
               </div>
             )}
-            {superAdmin && (
+            {systemSuperAdmin && (
               <label className="flex items-center gap-2 text-sm text-slate-700">
                 <Checkbox {...register('isSuperAdmin')} disabled={isEdit && user?._id === me?._id} /> Super admin (bypasses all
                 permissions)
@@ -425,6 +430,31 @@ export function UserFormDrawer({ open, onClose, user }: { open: boolean; onClose
               <MenuPreview permissions={perms.permissions} />
             </div>
           )}
+        </FieldGroup>
+
+        <FieldGroup title="Alerts">
+          <div className="flex flex-wrap gap-2">
+            {ALERT_CHANNELS.map((c) => {
+              const on = alerts[c.key]
+              const Icon = on ? c.on : c.off
+              return (
+                <label
+                  key={c.key}
+                  className="flex min-w-36 cursor-pointer items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                >
+                  <span className={cn('flex items-center gap-2 text-sm font-medium', on ? 'text-slate-800' : 'text-slate-500')}>
+                    <Icon className={cn('h-4 w-4', on ? 'text-brand-600' : 'text-slate-400')} />
+                    {c.label}
+                  </span>
+                  <Switch
+                    checked={on}
+                    label={`${c.label} alerts`}
+                    onChange={(next) => setValue('alerts', { ...alerts, [c.key]: next }, { shouldDirty: true })}
+                  />
+                </label>
+              )
+            })}
+          </div>
         </FieldGroup>
       </form>
     </Drawer>

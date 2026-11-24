@@ -6,6 +6,7 @@
 import type {
   StaffAlertBody, StaffAlertCapabilities, StaffAlertKind, StaffAlertRow, StaffAlertTestResult, StaffAlertsResponse,
 } from '../../../types/models'
+import { searchRank } from '../../../lib/search.ts'
 
 export type ChannelTab = 'email' | 'sms' | 'push'
 export type StatusFilter = 'all' | 'on' | 'off'
@@ -72,13 +73,19 @@ export function groupRows(rows: StaffAlertRow[], groups?: { key: string; label: 
 
 /** Search over the label, when it fires, who gets it and the titles; the status filter on isActive. */
 export function filterAlerts(rows: StaffAlertRow[], query: string, status: StatusFilter): StaffAlertRow[] {
-  const q = query.trim().toLowerCase()
-  return rows.filter((row) => {
-    if (status !== 'all' && row.isActive !== (status === 'on')) return false
-    if (!q) return true
-    return [row.label, row.description ?? row.when, row.recipientsText, row.pushTitle, row.emailSubject, row.groupLabel]
-      .some((text) => (text ?? '').toLowerCase().includes(q))
-  })
+  // any part of any word, every word somewhere, best match first (the label counts most)
+  return searchRank(
+    rows.filter((row) => status === 'all' || row.isActive === (status === 'on')),
+    query,
+    (row) => [
+      { text: row.label, weight: 10 },
+      { text: row.emailSubject, weight: 5 },
+      { text: row.pushTitle, weight: 5 },
+      { text: row.description ?? row.when, weight: 3 },
+      { text: row.recipientsText, weight: 3 },
+      { text: row.groupLabel, weight: 3 },
+    ]
+  )
 }
 
 /** What the toast says when an inline channel switch is refused for missing wording / DLT details. */
