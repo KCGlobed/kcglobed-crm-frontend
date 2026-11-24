@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
-import { useAddLeadNoteMutation, useAssignLeadMutation, useFilterFieldsQuery } from '../../services/leadsApi'
+import { useAddLeadNoteMutation, useAssignLeadMutation, useBulkAssignMutation, useFilterFieldsQuery } from '../../services/leadsApi'
 import {
   useListMessageTemplatesQuery,
   usePreviewLeadMessageMutation,
@@ -21,6 +21,8 @@ import type { Lead, MessageAsset, MessagePreview } from '../../types/models'
 import { DltVariableFields } from './DltVariableFields'
 import { ownerLabel, useAssignableOwners } from './leadSelection'
 
+const UNASSIGNED = '__unassigned__'
+
 /** GL-13 single assign / reassign: new owner (anyone who can own leads) + reason. */
 export function AssignLeadModal({ lead, onClose }: { lead: Lead; onClose: () => void }) {
   const assignable = useAssignableOwners()
@@ -28,12 +30,20 @@ export function AssignLeadModal({ lead, onClose }: { lead: Lead; onClose: () => 
   const [owner, setOwner] = useState('')
   const [reason, setReason] = useState('')
   const [assign, { isLoading }] = useAssignLeadMutation()
+  // "Unassigned": the same server path as Leads → bulk Assign (open follow-ups cancelled, old owner told)
+  const [bulkAssign, { isLoading: unassigning }] = useBulkAssignMutation()
+  const unassign = owner === UNASSIGNED
   const reasons = meta?.data.assignReasons ?? ['New allocation', 'Workload', 'Leave', 'Language', 'Performance', 'Other']
 
   const onSave = async () => {
     try {
-      await assign({ id: lead._id, owner, reason }).unwrap()
-      toast.success('Lead assigned')
+      if (unassign) {
+        await bulkAssign({ leadIds: [lead._id], owners: [], unassign: true, reason }).unwrap()
+        toast.success('Lead unassigned')
+      } else {
+        await assign({ id: lead._id, owner, reason }).unwrap()
+        toast.success('Lead assigned')
+      }
       onClose()
     } catch (err) {
       toast.error(parseApiError(err).message)
@@ -52,8 +62,8 @@ export function AssignLeadModal({ lead, onClose }: { lead: Lead; onClose: () => 
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={onSave} loading={isLoading} disabled={!owner || !reason}>
-            Save
+          <Button onClick={onSave} loading={isLoading || unassigning} disabled={!owner || !reason}>
+            {unassign ? 'Unassign' : 'Save'}
           </Button>
         </>
       }
@@ -66,6 +76,10 @@ export function AssignLeadModal({ lead, onClose }: { lead: Lead; onClose: () => 
         >
           <Select value={owner} onChange={(e) => setOwner(e.target.value)}>
             <option value="">Choose…</option>
+            {/* always listed; a lead with no owner is already unassigned, so there it cannot be picked */}
+            <option value={UNASSIGNED} disabled={!lead.owner}>
+              {lead.owner ? 'Unassigned (remove owner)' : 'Unassigned (already unassigned)'}
+            </option>
             {assignable
               .filter((u) => u._id !== lead.owner?._id)
               .map((u) => (
@@ -83,6 +97,12 @@ export function AssignLeadModal({ lead, onClose }: { lead: Lead; onClose: () => 
             ))}
           </Select>
         </FormField>
+        {unassign && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            The lead will have no owner. Its open follow-ups are cancelled, {lead.owner?.name ?? 'the owner'} is told, and a
+            lead from a round-robin source goes back to the Unassigned pool.
+          </p>
+        )}
       </div>
     </Modal>
   )

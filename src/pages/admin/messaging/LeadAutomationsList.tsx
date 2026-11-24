@@ -5,6 +5,8 @@ import { Button } from '../../../components/ui/Button'
 import { ConfirmDialog, EmptyState, Skeleton } from '../../../components/ui/feedback'
 import { Switch } from '../../../components/ui/fields'
 import { cn, formatDateTime, parseApiError } from '../../../lib/utils'
+import { searchRank } from '../../../lib/search'
+import { Highlight } from '../../../components/ui/Highlight'
 import { useFilterFieldsQuery } from '../../../services/leadsApi'
 import {
   useDeleteAutomationMutation,
@@ -63,8 +65,17 @@ export function LeadAutomationsList({ editable, status, search, onNew }: { edita
   const eventLabels = useMemo(() => new Map((options?.data.triggers ?? []).map((t) => [t.value, t.label])), [options])
 
   const rows = data?.data ?? []
-  const query = search.trim().toLowerCase()
-  const shown = rows.filter((r) => (status === 'all' || r.isActive === (status === 'on')) && (!query || r.name.toLowerCase().includes(query)))
+  // any part of any word, best match first: the name, then the template, channel and event it uses
+  const shown = searchRank(
+    rows.filter((r) => status === 'all' || r.isActive === (status === 'on')),
+    search,
+    (r) => [
+      { text: r.name, weight: 10 },
+      { text: r.template?.name, weight: 5 },
+      { text: (r.event && eventLabels.get(r.event)) ?? r.eventLabel, weight: 3 },
+      { text: r.channelLabel, weight: 3 },
+    ]
+  )
 
   const toggle = async (row: AutomationRow) => {
     setSwitching(row._id)
@@ -127,7 +138,9 @@ export function LeadAutomationsList({ editable, status, search, onNew }: { edita
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2">
-                    <span className={cn('truncate text-sm font-medium', row.isActive ? 'text-slate-800' : 'text-slate-500')}>{row.name}</span>
+                    <span className={cn('truncate text-sm font-medium', row.isActive ? 'text-slate-800' : 'text-slate-500')}>
+                      <Highlight text={row.name} query={search} />
+                    </span>
                     {problem && (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800" title={`${problem} — it cannot send until then.`}>
                         <AlertTriangle className="h-3 w-3" /> Can’t send
