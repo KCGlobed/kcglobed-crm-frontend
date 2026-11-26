@@ -166,3 +166,25 @@ export const hasDialableNumber = (mobile?: string | null) => {
   if (/[•*xX]/.test(value)) return value.replace(/[^\d•*xX]/g, '').length >= 6
   return value.replace(/\D/g, '').length >= 10
 }
+
+/** A call of the Progressive run that just ended: what the wrap-up gap (Next call in Ns) counts from. */
+export interface WrapUpEnd {
+  id: string
+  leadId?: string
+  endedAt: number
+}
+
+/**
+ * The run's call the wrap-up counts from. On the laptop (and "both") it is the CRM phone's last call, as always; with
+ * "My mobile" the phone never carries the call, so the end the live-calls feed saw counts too (the later of the two).
+ * Calls that ended before the run started never count.
+ */
+export function wrapUpCall<T extends WrapUpEnd>(runAt: number, phoneEnded: T | null, mobileEnded: T | null, onMobile: boolean): T | null {
+  const fromRun = (c: T | null) => (c && c.endedAt >= runAt ? c : null)
+  const phone = fromRun(phoneEnded)
+  if (!onMobile) return phone
+  const mobile = fromRun(mobileEnded)
+  if (!phone) return mobile
+  if (!mobile) return phone
+  return mobile.endedAt > phone.endedAt ? mobile : phone
+}

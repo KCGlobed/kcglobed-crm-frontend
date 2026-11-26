@@ -10,6 +10,7 @@ import {
   pollIntervalFor,
   statusLabel,
   statusTone,
+  wrapUpCall,
   talkSeconds,
 } from './callState.ts'
 
@@ -125,5 +126,30 @@ describe('labels and timers', () => {
     assert.equal(hasDialableNumber(null), false)
     assert.equal(hasDialableNumber(''), false)
     assert.equal(hasDialableNumber('12345'), false)
+  })
+})
+
+describe('wrapUpCall (Progressive call wrap-up gap)', () => {
+  const runAt = 1000
+  const phone = { id: 'p', leadId: 'l1', endedAt: 2000 }
+  const mobile = { id: 'm', leadId: 'l2', endedAt: 3000 }
+  test('laptop / both: only the CRM phone call counts, as before', () => {
+    assert.equal(wrapUpCall(runAt, phone, mobile, false), phone)
+    assert.equal(wrapUpCall(runAt, null, mobile, false), null)
+  })
+  test('my mobile: the later of the two ends', () => {
+    assert.equal(wrapUpCall(runAt, phone, mobile, true), mobile)
+    assert.equal(wrapUpCall(runAt, { ...phone, endedAt: 4000 }, mobile, true).id, 'p')
+    assert.equal(wrapUpCall(runAt, null, mobile, true), mobile)
+    assert.equal(wrapUpCall(runAt, phone, null, true), phone)
+  })
+  test('calls that ended before the run never count', () => {
+    assert.equal(wrapUpCall(5000, phone, mobile, true), null)
+    assert.equal(wrapUpCall(2500, phone, mobile, true), mobile)
+    assert.equal(wrapUpCall(5000, phone, null, false), null)
+  })
+  test('nothing ended yet', () => {
+    assert.equal(wrapUpCall(runAt, null, null, true), null)
+    assert.equal(wrapUpCall(runAt, null, null, false), null)
   })
 })
