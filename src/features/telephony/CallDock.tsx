@@ -33,7 +33,7 @@ import { leadNavOptions } from './leadNav'
 import { formatHms, useNow } from '../../lib/durations'
 import { cn, parseApiError } from '../../lib/utils'
 import type { DialerProgressStatus } from '../../types/models'
-import type { CallPhase } from './callState'
+import { wrapUpCall, type CallPhase, type WrapUpEnd } from './callState'
 import { hangup, toggleMute, usePhone } from './softphone'
 import { useLiveCalls, useStartCall, useTelephonyEnabled } from './useLiveCalls'
 
@@ -99,6 +99,12 @@ const saveWidth = (w: number | null) => {
   } catch {
     // storage blocked — the width lasts for this page only
   }
+}
+
+/** A call the counsellor's mobile carried, ended now (its id made unique per end, so "Call next now" skips only it). */
+const endedNow = (id: string, leadId: string): WrapUpEnd => {
+  const at = Date.now()
+  return { id: `${id}:${at}`, leadId, endedAt: at }
 }
 
 /** Where the counsellor dragged the dock: an offset from the bottom-left corner, where it always opens. */
@@ -205,9 +211,44 @@ export function CallDock() {
   const lineState = myDialer?.data.session?.state
   useKeepActive(!!current && (!onLine || !lineState || lineState === 'ready' || lineState === 'calling_you'))
 
+  // "My mobile": the counsellor's mobile carries the run's calls, so the CRM phone never sees them end. The gap starts
+  // once nothing shows the call any more — neither the CRM's call row nor the run (Smartflo's live list) — whoever hung
+  // up: the lead, the counsellor on the mobile, or End here (the row closes at once while Smartflo may still list the
+  // call for a while; counting from the row alone used that time up and the next lead was called with no gap)
+  const { data: ringData } = useMyDialerQuery(undefined, { skip: !dialerOn || !run })
+  const onMobile = ringData?.data.ringOn === 'mobile'
+  const [mobileEnded, setMobileEnded] = useState<WrapUpEnd | null>(null)
+  const watched = useRef<{ id: string; leadId?: string; viaPhone: boolean } | null>(null)
+  // the end just seen reaches `mobileEnded` one render later: until then the next lead must not be called (the
+  // place-call effect below runs in the same commit and would see no gap yet)
+  const holdFor = useRef<string | null>(null)
+  const runLeadIds = run?.leads.map((l) => l._id).join(',') ?? ''
+  const liveLead = live[0]
+  const rowLive = serverLive && !!serverCall
+  const callShown = rowLive || !!liveLead
+  useEffect(() => {
+    if (callShown) {
+      if (!watched.current) {
+        const id = (rowLive && serverCall?._id) || liveLead?.callId || `lead:${liveLead?._id}`
+        watched.current = { id, leadId: undefined, viaPhone: false }
+      }
+      if (!watched.current.leadId) watched.current.leadId = (rowLive ? serverCall?.lead?._id : undefined) ?? liveLead?._id
+      if (phone.inCall) watched.current.viaPhone = true // the CRM phone carried it: its own end counts, as always
+      return
+    }
+    if (dialing) return // the next call is being placed: not an end
+    const w = watched.current
+    watched.current = null
+    if (w && !w.viaPhone && onMobile && w.leadId && runLeadIds.split(',').includes(w.leadId)) {
+      const end = endedNow(w.id, w.leadId)
+      holdFor.current = end.id
+      setMobileEnded(end)
+    }
+  }, [callShown, rowLive, serverCall, liveLead, dialing, phone.inCall, onMobile, runLeadIds])
+
   // the wrap-up: from the end of this run's last call
   const last = phone.lastEnded
-  const ended = run && last?.kind === 'outbound' && last.endedAt >= Date.parse(run.at) ? last : null
+  const ended = run ? wrapUpCall<WrapUpEnd>(Date.parse(run.at), last?.kind === 'outbound' ? last : null, mobileEnded, onMobile) : null
   const wrapUpMs = (run?.wrapUpSeconds ?? 30) * 1000
   const ready =
     !!run && !run.done && !paused && !!run.next && phone.status === 'ready' && !phone.inCall && !phone.ringing && !dialing && !live.length && !serverLive
@@ -223,12 +264,13 @@ export function CallDock() {
   const placeKey = run && run.next ? `${run.at}:${run.next}:${run.round ?? 1}` : null
   const due = ready && (secondsLeft === null || secondsLeft === 0)
   useEffect(() => {
+    if (holdFor.current && mobileEnded?.id !== holdFor.current) return // a mobile call just ended: its gap comes first
     if (!due || !placeKey || !run?.next || fired.current === placeKey) return
     fired.current = placeKey
     void startCall(run.next).then((call) => {
       if (!call) setControl({ at: run.at, paused: true }) // refused (the toast says why): wait for the counsellor
     })
-  }, [due, placeKey, run, startCall])
+  }, [due, placeKey, run, startCall, mobileEnded])
 
   // a lead of the run picked up: its page opens (once per call)
   // a lead picking up does not take the counsellor anywhere: the Lead button opens it; the call's end opens its
