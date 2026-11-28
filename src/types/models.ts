@@ -2125,7 +2125,8 @@ export interface PartnerMember {
   name: string
   email: string
   team?: string | null
-  via: 'reports' | 'team'
+  /** how they are on the card: Reporting Manager, a team, or put on it by hand (Add member — the only ones Remove takes off) */
+  via: 'reports' | 'team' | 'added'
   /** the card's toggle; a member who joins starts on */
   on: boolean
   /** place in the card's sequence (1 = first) */
@@ -2150,6 +2151,22 @@ export interface PartnerCard {
   waiting: number
   members: PartnerMember[]
   nextUp: Ref | null
+}
+
+/** Someone "Add member" offers: active, can own leads, not a Super Admin or another partner's user. */
+export interface PartnerCandidate {
+  _id: string
+  name: string
+  team: string | null
+}
+
+/** GET /leads/round-robin/partners (and every card change's answer). */
+export interface PartnerCards {
+  cards: PartnerCard[]
+  /** the Super Admin and All scope: may put people on a card by hand and take them off */
+  canAdd: boolean
+  /** empty unless canAdd */
+  candidates: PartnerCandidate[]
 }
 
 /* ------------------------------------------------------------------ Punch Break & Attendance */

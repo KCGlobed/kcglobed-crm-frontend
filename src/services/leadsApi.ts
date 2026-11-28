@@ -24,7 +24,7 @@ import type {
   MyDay,
   ProfileStepKey,
   Note,
-  PartnerCard,
+  PartnerCards,
   RoundRobinExtra,
   RoundRobinExtraBody,
   RoundRobinSettings,
@@ -363,12 +363,12 @@ export const leadsApi = api.injectEndpoints({
       invalidatesTags: (_r, error) => (error ? [] : ['RoundRobin', { type: 'Leads', id: 'LIST' }, 'Dashboard']),
     }),
     // Round Robin → Partners. Every mutation answers with the fresh cards, written straight into the cache.
-    partnerCards: build.query<ApiResponse<{ cards: PartnerCard[] }>, void>({
+    partnerCards: build.query<ApiResponse<PartnerCards>, void>({
       query: () => '/leads/round-robin/partners',
       providesTags: ['RoundRobin'],
     }),
     // turning it on hands out the leads waiting with the partner user (just after the answer)
-    setPartnerAutoAssign: build.mutation<ApiResponse<{ cards: PartnerCard[] }>, { sourceId: string; autoAssign: boolean }>({
+    setPartnerAutoAssign: build.mutation<ApiResponse<PartnerCards>, { sourceId: string; autoAssign: boolean }>({
       query: ({ sourceId, autoAssign }) => ({ url: `/leads/round-robin/partners/${sourceId}`, method: 'PATCH', body: { autoAssign } }),
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
@@ -382,7 +382,7 @@ export const leadsApi = api.injectEndpoints({
       },
       invalidatesTags: (_r, error) => (error ? [] : [{ type: 'Leads', id: 'LIST' }, 'Dashboard']),
     }),
-    setPartnerMember: build.mutation<ApiResponse<{ cards: PartnerCard[] }>, { sourceId: string; userId: string; on: boolean }>({
+    setPartnerMember: build.mutation<ApiResponse<PartnerCards>, { sourceId: string; userId: string; on: boolean }>({
       query: ({ sourceId, userId, on }) => ({
         url: `/leads/round-robin/partners/${sourceId}/members/${userId}`,
         method: 'PATCH',
@@ -400,8 +400,38 @@ export const leadsApi = api.injectEndpoints({
       },
       invalidatesTags: (_r, error) => (error ? [] : [{ type: 'Leads', id: 'LIST' }]),
     }),
+    // Add member: someone put on the card by hand (the Super Admin / All scope); their team and Reporting Manager stay
+    addPartnerMember: build.mutation<ApiResponse<PartnerCards>, { sourceId: string; userId: string }>({
+      query: ({ sourceId, userId }) => ({ url: `/leads/round-robin/partners/${sourceId}/members`, method: 'POST', body: { user: userId } }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+          dispatch(leadsApi.util.updateQueryData('partnerCards', undefined, (draft) => {
+            draft.data = data.data
+          }))
+        } catch {
+          // the card shows the error
+        }
+      },
+      invalidatesTags: (_r, error) => (error ? [] : [{ type: 'Leads', id: 'LIST' }, 'Dashboard']),
+    }),
+    // Remove: takes a member added by hand off the card; the leads they were given stay with them
+    removePartnerMember: build.mutation<ApiResponse<PartnerCards>, { sourceId: string; userId: string }>({
+      query: ({ sourceId, userId }) => ({ url: `/leads/round-robin/partners/${sourceId}/members/${userId}`, method: 'DELETE' }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+          dispatch(leadsApi.util.updateQueryData('partnerCards', undefined, (draft) => {
+            draft.data = data.data
+          }))
+        } catch {
+          // the row shows the error
+        }
+      },
+      invalidatesTags: (_r, error) => (error ? [] : [{ type: 'Leads', id: 'LIST' }, 'Dashboard']),
+    }),
     // every member of the card, top first
-    setPartnerSequence: build.mutation<ApiResponse<{ cards: PartnerCard[] }>, { sourceId: string; order: string[] }>({
+    setPartnerSequence: build.mutation<ApiResponse<PartnerCards>, { sourceId: string; order: string[] }>({
       query: ({ sourceId, order }) => ({ url: `/leads/round-robin/partners/${sourceId}/sequence`, method: 'PUT', body: { order } }),
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
         try {
@@ -466,6 +496,8 @@ export const {
   useRoundRobinExtraQuery,
   useUpdateRoundRobinExtraMutation,
   usePartnerCardsQuery,
+  useAddPartnerMemberMutation,
+  useRemovePartnerMemberMutation,
   useSetPartnerAutoAssignMutation,
   useSetPartnerMemberMutation,
   useSetPartnerSequenceMutation,
