@@ -12,14 +12,18 @@ import {
   RefreshCw,
   Sunrise,
   UserCheck,
+  UserPlus,
   UserRoundCheck,
+  X,
   type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import dayjs from 'dayjs'
 import { authorizedDownload } from '../../lib/download'
 import {
+  useAddPartnerMemberMutation,
   usePartnerCardsQuery,
+  useRemovePartnerMemberMutation,
   useRoundRobinExtraQuery,
   useRoundRobinStatusQuery,
   useSetPartnerAutoAssignMutation,
@@ -37,11 +41,12 @@ import { Card, PageHeader, Tabs } from '../../components/ui/misc'
 import { Badge } from '../../components/ui/Badge'
 import { Button } from '../../components/ui/Button'
 import { CheckboxMultiSelect } from '../../components/ui/CheckboxMultiSelect'
-import { Checkbox, FormField, Input, Switch } from '../../components/ui/fields'
+import { Checkbox, FormField, Input, Select, Switch } from '../../components/ui/fields'
 import { EmptyState, ErrorState, LoadingState } from '../../components/ui/feedback'
 import { cn, parseApiError } from '../../lib/utils'
 import type {
   ModuleKey,
+  PartnerCandidate,
   PartnerCard,
   PartnerMember,
   RoundRobinChannel,
@@ -743,16 +748,31 @@ function movedMember(members: PartnerMember[], m: PartnerMember, step: -1 | 1): 
 
 /**
  * One partner (a Source in the Partner channel): the user its leads land on (Users → UTM source = the Source's name),
- * the Auto assign switch, and that user's reports, own team and managed teams with a toggle each and a sequence. The
- * members list folds away.
+ * the Auto assign switch, and that user's reports, own team, managed teams and anyone added by hand (Add member, the
+ * Super Admin / All scope) with a toggle each and a sequence. The members list folds away.
  */
-function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; canEdit: boolean; canOpenLeads: boolean }) {
+function PartnerCardPanel({
+  card,
+  canEdit,
+  canOpenLeads,
+  candidates,
+}: {
+  card: PartnerCard
+  canEdit: boolean
+  canOpenLeads: boolean
+  /** "Add member" choices; null when the caller may not add */
+  candidates: PartnerCandidate[] | null
+}) {
   const [setAutoAssign, { isLoading: switching }] = useSetPartnerAutoAssignMutation()
   const [setMember] = useSetPartnerMemberMutation()
   const [setSequence, { isLoading: reordering }] = useSetPartnerSequenceMutation()
+  const [addMember, { isLoading: adding }] = useAddPartnerMemberMutation()
+  const [removeMember] = useRemovePartnerMemberMutation()
   const [pendingId, setPendingId] = useState<string | null>(null)
+  const [pick, setPick] = useState('')
   const [open, setOpen] = useState(true)
   const { user, members } = card
+  const addable = (candidates ?? []).filter((c) => c._id !== user?._id && !members.some((m) => m._id === c._id))
   const onCount = members.filter((m) => m.on && m.canOwnLeads).length
   const today = members.reduce((sum, m) => sum + m.assignedToday, 0)
 
@@ -770,6 +790,28 @@ function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; 
     setPendingId(m._id)
     try {
       const res = await setMember({ sourceId: card._id, userId: m._id, on }).unwrap()
+      toast.success(res.message)
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    } finally {
+      setPendingId(null)
+    }
+  }
+
+  const onAdd = async () => {
+    try {
+      const res = await addMember({ sourceId: card._id, userId: pick }).unwrap()
+      toast.success(res.message)
+      setPick('')
+    } catch (err) {
+      toast.error(parseApiError(err).message)
+    }
+  }
+
+  const onRemove = async (m: PartnerMember) => {
+    setPendingId(m._id)
+    try {
+      const res = await removeMember({ sourceId: card._id, userId: m._id }).unwrap()
       toast.success(res.message)
     } catch (err) {
       toast.error(parseApiError(err).message)
@@ -889,7 +931,13 @@ function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; 
                           {!m.canOwnLeads && <Badge tone="amber">No leads access</Badge>}
                         </p>
                         <p className="truncate text-[11px] text-slate-500">
-                          {[m.via === 'reports' ? `Reports to ${user.name}` : m.team, `${m.assignedToday} today`].filter(Boolean).join(' · ')}
+                          {[
+                            m.via === 'reports' ? `Reports to ${user.name}` : m.via === 'added' ? 'Added' : m.team,
+                            m.via === 'added' ? m.team : null,
+                            `${m.assignedToday} today`,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
                           {m.lastAssignedAt ? ` · last ${dayjs(m.lastAssignedAt).format('h:mm A')}` : ''}
                         </p>
                       </div>
@@ -902,15 +950,56 @@ function PartnerCardPanel({ card, canEdit, canOpenLeads }: { card: PartnerCard; 
                           onChange={(v) => onToggle(m, v)}
                         />
                       </span>
+                      {candidates && m.via === 'added' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="!h-6 !w-6 text-slate-400 hover:text-red-600"
+                          aria-label={`Remove ${m.name} from ${card.name}`}
+                          title="Remove from this card"
+                          disabled={pendingId === m._id}
+                          onClick={() => onRemove(m)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </li>
                   ))}
                 </ul>
               ) : (
                 <p className="border-t border-slate-100 px-3 py-3 text-xs text-slate-500">
-                  Nobody reports to {user.name} yet. Set Reporting Manager to {user.name} on the partner's users, or add them to{' '}
-                  {user.name}'s team or a team {user.name} manages.
+                  {candidates ? (
+                    'No members yet.'
+                  ) : (
+                    <>
+                      Nobody reports to {user.name} yet. Set Reporting Manager to {user.name} on the partner's users, or add them to{' '}
+                      {user.name}'s team or a team {user.name} manages.
+                    </>
+                  )}
                 </p>
               ))}
+            {open && candidates && (
+              <div className="flex items-center gap-2 border-t border-slate-100 px-3 py-2">
+                <Select
+                  aria-label={`Add a member to ${card.name}`}
+                  value={pick}
+                  onChange={(e) => setPick(e.target.value)}
+                  className="h-8 min-w-0 flex-1 text-xs"
+                  data-testid="partner-add-member"
+                >
+                  <option value="">Add a member…</option>
+                  {addable.map((c) => (
+                    <option key={c._id} value={c._id}>
+                      {c.name}
+                      {c.team ? ` · ${c.team}` : ''}
+                    </option>
+                  ))}
+                </Select>
+                <Button size="sm" onClick={onAdd} loading={adding} disabled={!pick}>
+                  <UserPlus className="h-3.5 w-3.5" /> Add
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -931,6 +1020,7 @@ function PartnersTab() {
   const canEdit = can(me, 'round_robin.partners', 'edit')
   const canOpenLeads = can(me, 'leads', 'view')
   const cards = data?.data.cards ?? []
+  const candidates = canEdit && data?.data.canAdd ? data.data.candidates : null
 
   return (
     <>
@@ -960,7 +1050,7 @@ function PartnersTab() {
       ) : (
         <div className="grid gap-4 xl:grid-cols-2">
           {cards.map((card) => (
-            <PartnerCardPanel key={card._id} card={card} canEdit={canEdit} canOpenLeads={canOpenLeads} />
+            <PartnerCardPanel key={card._id} card={card} canEdit={canEdit} canOpenLeads={canOpenLeads} candidates={candidates} />
           ))}
         </div>
       )}
